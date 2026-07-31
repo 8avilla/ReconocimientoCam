@@ -34,8 +34,20 @@ export async function POST(req: NextRequest) {
     const matched = best && best.score >= MATCH_THRESHOLD;
     const employee = matched ? await Employee.findById(best!.employeeId) : null;
 
+    let type: "checkin" | "checkout" | null = null;
+    if (employee) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const lastToday = await AttendanceRecord.findOne({
+        employeeId: employee._id,
+        createdAt: { $gte: startOfDay },
+      }).sort({ createdAt: -1 });
+      type = lastToday?.type === "checkin" ? "checkout" : "checkin";
+    }
+
     await AttendanceRecord.create({
       employeeId: employee?._id ?? null,
+      type,
       confidence: best?.score ?? 0,
       photoUrl,
       lat: lat ?? null,
@@ -45,6 +57,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       match: employee?.name ?? null,
+      type,
       confidence: best?.score ?? null,
       photoUrl,
       location: lat != null ? { lat, lng, accuracy } : null,

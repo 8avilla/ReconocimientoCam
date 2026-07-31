@@ -3,6 +3,7 @@ import mongoose, { Schema, models, model } from "mongoose";
 const AttendanceRecordSchema = new Schema(
   {
     employeeId: { type: Schema.Types.ObjectId, ref: "Employee", default: null },
+    type: { type: String, enum: ["checkin", "checkout"], default: null },
     confidence: { type: Number, required: true },
     photoUrl: { type: String, required: true },
     lat: { type: Number, default: null },

@@ -12,6 +12,26 @@ type Employee = {
   embeddingCount: number;
 };
 
+type DaySummary = {
+  date: string;
+  firstCheckin: string | null;
+  lastCheckout: string | null;
+  workedMinutes: number;
+  incomplete: boolean;
+};
+
+function formatTime(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatWorked(minutes: number) {
+  if (!minutes) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}h ${m}m`;
+}
+
 export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -21,6 +41,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const [saving, setSaving] = useState(false);
   const [busyEnroll, setBusyEnroll] = useState(false);
   const [message, setMessage] = useState("");
+  const [attendance, setAttendance] = useState<DaySummary[]>([]);
 
   async function load() {
     const res = await fetch(`/api/employees/${id}`);
@@ -30,8 +51,15 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     setName(data.name);
   }
 
+  async function loadAttendance() {
+    const res = await fetch(`/api/employees/${id}/attendance`);
+    if (!res.ok) return;
+    setAttendance(await res.json());
+  }
+
   useEffect(() => {
     load();
+    loadAttendance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -88,7 +116,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   if (!employee) return <main style={{ padding: 24 }}>Cargando...</main>;
 
   return (
-    <main style={{ padding: 24, maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+    <main style={{ padding: 24, maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <BackHomeButton />
       <h1>Editar empleado</h1>
 
@@ -119,6 +147,38 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
       <h2>Enrolar rostro</h2>
       <FaceCapture onCapture={handleEnroll} busy={busyEnroll} buttonLabel="Enrolar rostro" />
       {message && <p>{message}</p>}
+
+      <hr />
+
+      <h2>Informe de asistencia</h2>
+      {attendance.length === 0 ? (
+        <p>Todavía no hay marcaciones.</p>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
+              <th>Fecha</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Horas trabajadas</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendance.map((day) => (
+              <tr key={day.date} style={{ borderBottom: "1px solid #eee" }}>
+                <td style={{ padding: "8px 0" }}>{day.date}</td>
+                <td>{formatTime(day.firstCheckin)}</td>
+                <td>{formatTime(day.lastCheckout)}</td>
+                <td>{formatWorked(day.workedMinutes)}</td>
+                <td style={{ color: day.incomplete ? "#dc2626" : "#16a34a" }}>
+                  {day.incomplete ? "Sin salida" : "Completo"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </main>
   );
 }

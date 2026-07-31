@@ -6,6 +6,7 @@ import BackHomeButton from "@/components/BackHomeButton";
 
 type MatchResult = {
   match: string | null;
+  type: "checkin" | "checkout" | null;
   confidence: number | null;
   location: { lat: number; lng: number; accuracy: number } | null;
   timestamp: string;
@@ -56,7 +57,8 @@ export default function CheckinPage() {
         <div style={{ textAlign: "center" }}>
           {result.match ? (
             <p style={{ color: "#16a34a", fontSize: 20 }}>
-              ✅ {result.match} — confianza {result.confidence?.toFixed(3)}
+              ✅ {result.type === "checkout" ? "Salida" : "Entrada"} registrada — {result.match} (confianza{" "}
+              {result.confidence?.toFixed(3)})
             </p>
           ) : (
             <p style={{ color: "#dc2626", fontSize: 20 }}>

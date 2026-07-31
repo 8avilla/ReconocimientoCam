@@ -63,6 +63,13 @@ export default function CheckinPage() {
               ❌ No se encontró coincidencia (mejor score: {result.confidence?.toFixed(3) ?? "N/A"})
             </p>
           )}
+          <p>
+            🕒{" "}
+            {new Date(result.timestamp).toLocaleString("es-CO", {
+              dateStyle: "long",
+              timeStyle: "medium",
+            })}
+          </p>
           {result.location && (
             <p>
               📍 {result.location.lat.toFixed(6)}, {result.location.lng.toFixed(6)} (±{Math.round(result.location.accuracy)}m)

@@ -71,6 +71,10 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         body: JSON.stringify({ image: imageBase64 }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setMessage(`Error: ${data.error ?? "No se pudo enrolar"}`);
+        return;
+      }
       setMessage(`Rostro enrolado. Total capturas: ${data.total}`);
       load();
     } catch (e) {

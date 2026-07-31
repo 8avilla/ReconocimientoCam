@@ -31,6 +31,10 @@ export default function CheckinPage() {
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "No se pudo procesar la marcación");
+        return;
+      }
       setResult(data);
     } catch (e) {
       setError("Error: " + (e as Error).message);

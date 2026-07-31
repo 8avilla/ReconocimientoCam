@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackHomeButton from "@/components/BackHomeButton";
 
 type Employee = {
   _id: string;
@@ -49,6 +50,7 @@ export default function EmployeesPage() {
 
   return (
     <main style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <BackHomeButton />
       <h1>Empleados</h1>
 
       <form onSubmit={handleCreate} style={{ display: "flex", gap: 8, marginBottom: 24 }}>

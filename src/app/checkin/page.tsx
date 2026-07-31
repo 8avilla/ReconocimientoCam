@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FaceCapture, { Coords } from "@/components/camera/FaceCapture";
+import BackHomeButton from "@/components/BackHomeButton";
 
 type MatchResult = {
   match: string | null;
@@ -45,6 +46,9 @@ export default function CheckinPage() {
 
   return (
     <main style={{ padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+      <div style={{ alignSelf: "flex-start" }}>
+        <BackHomeButton />
+      </div>
       <h1>Marcar asistencia (prueba)</h1>
       <FaceCapture onCapture={handleCapture} busy={busy} buttonLabel="Marcar asistencia" />
       {error && <p style={{ color: "red" }}>{error}</p>}

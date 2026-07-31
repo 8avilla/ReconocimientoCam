@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import FaceCapture from "@/components/camera/FaceCapture";
+import BackHomeButton from "@/components/BackHomeButton";
 
 type Employee = {
   _id: string;
@@ -88,6 +89,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <main style={{ padding: 24, maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <BackHomeButton />
       <h1>Editar empleado</h1>
 
       <div style={{ display: "flex", gap: 8 }}>

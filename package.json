@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "bash -c 'set -a && source .env.local && set +a && next dev -p ${PORT:-3096}'",
     "build": "next build",
-    "start": "next start",
+    "start": "bash -c 'set -a && source .env.local && set +a && next start -p ${PORT:-3096}'",
     "lint": "eslint"
   },
   "dependencies": {

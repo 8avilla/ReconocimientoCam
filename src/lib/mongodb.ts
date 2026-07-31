@@ -1,10 +1,5 @@
 import mongoose from "mongoose";
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  throw new Error("Falta la variable de entorno DATABASE_URL");
-}
-
 type MongooseCache = {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -22,7 +17,11 @@ global._mongooseCache = cache;
 export async function connectMongo() {
   if (cache.conn) return cache.conn;
   if (!cache.promise) {
-    cache.promise = mongoose.connect(DATABASE_URL as string);
+    const DATABASE_URL = process.env.DATABASE_URL;
+    if (!DATABASE_URL) {
+      throw new Error("Falta la variable de entorno DATABASE_URL");
+    }
+    cache.promise = mongoose.connect(DATABASE_URL);
   }
   cache.conn = await cache.promise;
   return cache.conn;

@@ -1,19 +1,17 @@
 import { BlobServiceClient } from "@azure/storage-blob";
 import { randomUUID } from "crypto";
 
-const CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const CONTAINER_NAME = process.env.AZURE_STORAGE_DEFAULT_CONTAINER;
-
-if (!CONNECTION_STRING || !CONTAINER_NAME) {
-  throw new Error("Faltan AZURE_STORAGE_CONNECTION_STRING o AZURE_STORAGE_DEFAULT_CONTAINER");
-}
-
 let containerClientPromise: ReturnType<BlobServiceClient["getContainerClient"]> | null = null;
 
 function getContainerClient() {
   if (!containerClientPromise) {
-    const service = BlobServiceClient.fromConnectionString(CONNECTION_STRING as string);
-    containerClientPromise = service.getContainerClient(CONTAINER_NAME as string);
+    const CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const CONTAINER_NAME = process.env.AZURE_STORAGE_DEFAULT_CONTAINER;
+    if (!CONNECTION_STRING || !CONTAINER_NAME) {
+      throw new Error("Faltan AZURE_STORAGE_CONNECTION_STRING o AZURE_STORAGE_DEFAULT_CONTAINER");
+    }
+    const service = BlobServiceClient.fromConnectionString(CONNECTION_STRING);
+    containerClientPromise = service.getContainerClient(CONTAINER_NAME);
   }
   return containerClientPromise;
 }

@@ -20,6 +20,15 @@ type DaySummary = {
   incomplete: boolean;
 };
 
+const ACCENT = "#4f46e5";
+
+const cardStyle: React.CSSProperties = {
+  background: "white",
+  borderRadius: 20,
+  padding: 24,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+};
+
 function formatTime(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
@@ -113,72 +122,122 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     }
   }
 
-  if (!employee) return <main style={{ padding: 24 }}>Cargando...</main>;
+  if (!employee) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f4f6f8", padding: 24 }}>
+        <p style={{ color: "#6b7280" }}>Cargando...</p>
+      </main>
+    );
+  }
 
   return (
-    <main style={{ padding: 24, maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <BackHomeButton />
-      <h1>Editar empleado</h1>
+    <main style={{ minHeight: "100vh", background: "#f4f6f8", padding: 24 }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <BackHomeButton />
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
-        />
-        <button onClick={handleSave} disabled={saving} style={{ padding: "8px 16px", borderRadius: 6 }}>
-          {saving ? "Guardando..." : "Guardar"}
-        </button>
+        <div>
+          <h1 style={{ color: ACCENT, margin: 0, fontSize: 28 }}>👤 {employee.name}</h1>
+          <p style={{ color: "#6b7280", marginTop: 4 }}>Editar datos, enrolar rostro y ver informe de asistencia</p>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: "1px solid #d1d5db", fontSize: 15 }}
+            />
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: ACCENT,
+                color: "white",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {saving ? "Guardando..." : "Guardar"}
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, color: "#374151" }}>
+              <input type="checkbox" checked={employee.active} onChange={handleToggleActive} /> Activo
+            </label>
+            <span style={{ color: "#6b7280", fontSize: 14 }}>{employee.embeddingCount} rostro(s) enrolado(s)</span>
+            <button
+              onClick={handleDelete}
+              style={{
+                marginLeft: "auto",
+                color: "#dc2626",
+                background: "none",
+                border: "none",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Eliminar empleado
+            </button>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: 18, alignSelf: "flex-start" }}>Enrolar rostro</h2>
+          <FaceCapture onCapture={handleEnroll} busy={busyEnroll} buttonLabel="Enrolar rostro" />
+          {message && (
+            <p style={{ color: message.startsWith("Error") ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{message}</p>
+          )}
+        </div>
+
+        <div style={cardStyle}>
+          <h2 style={{ margin: "0 0 16px", fontSize: 18 }}>Informe de asistencia</h2>
+          {attendance.length === 0 ? (
+            <p style={{ color: "#6b7280" }}>Todavía no hay marcaciones.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb", color: "#6b7280", fontSize: 13 }}>
+                    <th style={{ padding: "0 8px 8px 0" }}>Fecha</th>
+                    <th style={{ padding: "0 8px 8px" }}>Entrada</th>
+                    <th style={{ padding: "0 8px 8px" }}>Salida</th>
+                    <th style={{ padding: "0 8px 8px" }}>Horas trabajadas</th>
+                    <th style={{ padding: "0 0 8px 8px" }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendance.map((day) => (
+                    <tr key={day.date} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "10px 8px 10px 0", fontWeight: 600 }}>{day.date}</td>
+                      <td style={{ padding: "10px 8px" }}>{formatTime(day.firstCheckin)}</td>
+                      <td style={{ padding: "10px 8px" }}>{formatTime(day.lastCheckout)}</td>
+                      <td style={{ padding: "10px 8px" }}>{formatWorked(day.workedMinutes)}</td>
+                      <td style={{ padding: "10px 0 10px 8px" }}>
+                        <span
+                          style={{
+                            padding: "2px 10px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: day.incomplete ? "#dc2626" : "#16a34a",
+                            background: day.incomplete ? "#fef2f2" : "#f0fdf4",
+                          }}
+                        >
+                          {day.incomplete ? "Sin salida" : "Completo"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <label>
-          <input type="checkbox" checked={employee.active} onChange={handleToggleActive} /> Activo
-        </label>
-        <button onClick={handleDelete} style={{ color: "#dc2626", marginLeft: "auto" }}>
-          Eliminar empleado
-        </button>
-      </div>
-
-      <p>Rostros enrolados: {employee.embeddingCount}</p>
-
-      <hr />
-
-      <h2>Enrolar rostro</h2>
-      <FaceCapture onCapture={handleEnroll} busy={busyEnroll} buttonLabel="Enrolar rostro" />
-      {message && <p>{message}</p>}
-
-      <hr />
-
-      <h2>Informe de asistencia</h2>
-      {attendance.length === 0 ? (
-        <p>Todavía no hay marcaciones.</p>
-      ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th>Fecha</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-              <th>Horas trabajadas</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendance.map((day) => (
-              <tr key={day.date} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: "8px 0" }}>{day.date}</td>
-                <td>{formatTime(day.firstCheckin)}</td>
-                <td>{formatTime(day.lastCheckout)}</td>
-                <td>{formatWorked(day.workedMinutes)}</td>
-                <td style={{ color: day.incomplete ? "#dc2626" : "#16a34a" }}>
-                  {day.incomplete ? "Sin salida" : "Completo"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </main>
   );
 }

@@ -6,14 +6,55 @@ import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 const MEDIAPIPE_WASM_URL =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.0/wasm";
 
+// El WASM de MediaPipe escribe sus logs internos (incluso "INFO") por stderr,
+// que Emscripten mapea a console.error. En `next dev`, Next.js parchea
+// console.error para su overlay de errores, y ese parche es incompatible con
+// esa escritura interna (crashea en put_char/fd_write). Como no nos interesan
+// esos logs, los silenciamos solo mientras corre la llamada síncrona.
+function withSilencedConsole<T>(fn: () => T): T {
+  const original = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+  console.log = () => {};
+  console.info = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  try {
+    return fn();
+  } finally {
+    console.log = original.log;
+    console.info = original.info;
+    console.warn = original.warn;
+    console.error = original.error;
+  }
+}
+
+// Versión async: el WASM puede capturar su referencia a console.error/console.info
+// durante la instanciación (dentro de la promesa), no solo en la llamada síncrona
+// inicial, así que hay que mantener el silencio hasta que la promesa resuelva.
+async function withSilencedConsoleAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const original = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+  console.log = () => {};
+  console.info = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  try {
+    return await fn();
+  } finally {
+    console.log = original.log;
+    console.info = original.info;
+    console.warn = original.warn;
+    console.error = original.error;
+  }
+}
+
 // Singleton a nivel de módulo: evita crear dos instancias del módulo WASM en
 // paralelo (p. ej. por el doble-montaje de efectos de React StrictMode en dev),
 // lo cual corrompe el estado interno del módulo y lanza errores en put_char/fd_write.
 let landmarkerPromise: Promise<FaceLandmarker> | null = null;
 function getLandmarker(): Promise<FaceLandmarker> {
   if (!landmarkerPromise) {
-    landmarkerPromise = FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL).then((fileset) =>
-      FaceLandmarker.createFromOptions(fileset, {
+    landmarkerPromise = withSilencedConsoleAsync(async () => {
+      const fileset = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL);
+      return FaceLandmarker.createFromOptions(fileset, {
         baseOptions: {
           modelAssetPath: "/mediapipe-models/face_landmarker.task",
           // "GPU" falla en varios navegadores/móviles (delegado WebGL no soportado);
@@ -22,37 +63,23 @@ function getLandmarker(): Promise<FaceLandmarker> {
         },
         runningMode: "VIDEO",
         numFaces: 1,
-      })
-    );
+      });
+    });
   }
   return landmarkerPromise;
 }
 
-export type Coords = { lat: number; lng: number; accuracy: number };
-
-type Props = {
-  onCapture: (imageBase64: string, coords: Coords | null) => void;
+interface FaceCaptureProps {
+  /** Receives the face crop as a JPEG data URL. */
+  onCapture: (imageBase64: string) => void;
   busy?: boolean;
   buttonLabel?: string;
-};
-
-function getCoords(): Promise<Coords | null> {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  });
 }
 
-export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" }: Props) {
+/** Side (px) of the square face crop sent to the server; the embedding model downsizes it itself. */
+const CROP_SIZE = 320;
+
+export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto" }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -61,7 +88,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" 
   const lastVideoTimeRef = useRef(-1);
   const lastTimestampRef = useRef(0);
 
-  const [status, setStatus] = useState("Inicializando cámara...");
+  const [status, setStatus] = useState("Iniciando cámara...");
   const [faceReady, setFaceReady] = useState(false);
 
   useEffect(() => {
@@ -110,7 +137,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" 
       const timestamp = Math.max(performance.now(), lastTimestampRef.current + 1);
       lastTimestampRef.current = timestamp;
 
-      const result = landmarker.detectForVideo(video, timestamp);
+      const result = withSilencedConsole(() => landmarker.detectForVideo(video, timestamp));
       const ctx = overlay.getContext("2d")!;
       overlay.width = video.videoWidth;
       overlay.height = video.videoHeight;
@@ -134,7 +161,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" 
 
         bboxRef.current = { x: cx - size / 2, y: cy - size / 2, size };
 
-        ctx.strokeStyle = "#22c55e";
+        ctx.strokeStyle = "#16a34a";
         ctx.lineWidth = 3;
         ctx.strokeRect(cx - size / 2, cy - size / 2, size, size);
 
@@ -151,7 +178,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" 
 
     setup().catch((err) => {
       console.error(err);
-      setStatus("Error iniciando cámara/modelo: " + err.message);
+      setStatus(cameraErrorMessage(err));
     });
 
     return () => {
@@ -162,67 +189,53 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar" 
     };
   }, []);
 
-  const handleCapture = useCallback(async () => {
+  const handleCapture = useCallback(() => {
     const video = videoRef.current;
     const bbox = bboxRef.current;
     if (!video || !bbox) return;
 
     const crop = document.createElement("canvas");
-    crop.width = 112;
-    crop.height = 112;
-    const ctx = crop.getContext("2d")!;
-    ctx.drawImage(
-      video,
-      bbox.x,
-      bbox.y,
-      bbox.size,
-      bbox.size,
-      0,
-      0,
-      112,
-      112
-    );
-    const imageBase64 = crop.toDataURL("image/jpeg", 0.92);
-    const coords = await getCoords();
-    onCapture(imageBase64, coords);
+    crop.width = CROP_SIZE;
+    crop.height = CROP_SIZE;
+    crop.getContext("2d")!.drawImage(video, bbox.x, bbox.y, bbox.size, bbox.size, 0, 0, CROP_SIZE, CROP_SIZE);
+    onCapture(crop.toDataURL("image/jpeg", 0.92));
   }, [onCapture]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-      <div style={{ position: "relative", width: 480, maxWidth: "90vw" }}>
+    <div className="stack" style={{ alignItems: "center" }}>
+      <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
         <video
           ref={videoRef}
           muted
           playsInline
-          style={{ width: "100%", borderRadius: 12, transform: "scaleX(-1)" }}
+          style={{ width: "100%", borderRadius: "var(--radius-lg)", transform: "scaleX(-1)", background: "var(--color-navy)", aspectRatio: "1 / 1", objectFit: "cover" }}
         />
         <canvas
           ref={overlayRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            transform: "scaleX(-1)",
-          }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: "scaleX(-1)" }}
         />
       </div>
-      <p>{status}</p>
+      <p className="text-secondary" role="status">{status}</p>
       <button
+        type="button"
+        className="btn primary large block"
+        style={{ maxWidth: 420 }}
         onClick={handleCapture}
         disabled={!faceReady || busy}
-        style={{
-          padding: "10px 24px",
-          borderRadius: 8,
-          background: faceReady ? "#22c55e" : "#9ca3af",
-          color: "white",
-          border: "none",
-          cursor: faceReady ? "pointer" : "not-allowed",
-        }}
       >
         {busy ? "Procesando..." : buttonLabel}
       </button>
     </div>
   );
+}
+
+function cameraErrorMessage(error: unknown): string {
+  if (error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
+    return "No hay permiso para usar la cámara. Habilítalo en el navegador (requiere HTTPS).";
+  }
+  if (error instanceof DOMException && error.name === "NotFoundError") {
+    return "No se encontró una cámara en este dispositivo.";
+  }
+  console.error("Camera or face model initialization failed:", error);
+  return "No se pudo iniciar la cámara o el modelo de detección.";
 }

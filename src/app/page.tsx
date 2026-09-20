@@ -1,83 +1,87 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { CalendarDays, ClipboardCheck, MapPin, Shield, Users } from "lucide-react";
+import { RequireChampionship } from "@/components/layout/RequireChampionship";
+import { Avatar, PageHeader } from "@/components/ui";
+import { useFetch } from "@/lib/client/useFetch";
+import type { MatchDTO, Paginated } from "@/types/api";
 
-const menuItems = [
-  {
-    href: "/employees",
-    title: "Empleados",
-    description: "Crear, editar y enrolar el rostro de los empleados",
-    icon: "👥",
-    color: "#4f46e5",
-  },
-  {
-    href: "/checkin",
-    title: "Marcar asistencia",
-    description: "Capturar rostro y ubicación para registrar la entrada/salida",
-    icon: "📸",
-    color: "#16a34a",
-  },
-];
+export default function DashboardPage() {
+  return <RequireChampionship>{(championship) => <Dashboard championshipId={championship._id} name={championship.name} season={championship.season} />}</RequireChampionship>;
+}
 
-export default function Home() {
+function Dashboard({ championshipId, name, season }: { championshipId: string; name: string; season: string }) {
+  // Stable timestamp: a new value on every render would change the request path endlessly.
+  const [now] = useState(() => new Date().toISOString());
+  const teams = useFetch<Paginated<unknown>>(`/teams?championshipId=${championshipId}&limit=1`);
+  const players = useFetch<Paginated<unknown>>(`/players?championshipId=${championshipId}&limit=1`);
+  const matches = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&from=${encodeURIComponent(now)}&limit=1`);
+  const nextMatch = matches.data?.data[0];
+
+  const summary = [
+    { label: "Equipos", value: teams.data?.meta.total, icon: Shield, href: "/teams" },
+    { label: "Jugadores", value: players.data?.meta.total, icon: Users, href: "/players" },
+    { label: "Partidos programados", value: matches.data?.meta.total, icon: CalendarDays, href: "/matches" },
+  ];
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 32,
-        padding: 24,
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #16a34a 100%)",
-      }}
-    >
-      <div style={{ textAlign: "center" }}>
-        <h1 style={{ color: "white", fontSize: 36, margin: 0 }}>Asistencia Facial</h1>
-        <p style={{ color: "rgba(255,255,255,0.85)", marginTop: 8 }}>
-          Reconocimiento facial + geolocalización
-        </p>
-      </div>
+    <>
+      <PageHeader title={name} description={`Temporada ${season}`} />
 
-      <nav style={{ display: "flex", flexDirection: "column", gap: 16, width: 360, maxWidth: "90vw" }}>
-        {menuItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              padding: "20px 24px",
-              borderRadius: 16,
-              background: "white",
-              textDecoration: "none",
-              color: "#111",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-              borderLeft: `6px solid ${item.color}`,
-              transition: "transform 0.15s ease",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 28,
-                width: 48,
-                height: 48,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 12,
-                background: `${item.color}1a`,
-              }}
-            >
-              {item.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: item.color }}>{item.title}</div>
-              <div style={{ fontSize: 14, opacity: 0.7 }}>{item.description}</div>
-            </div>
-          </Link>
-        ))}
-      </nav>
-    </main>
+      <div className="stack" style={{ gap: "var(--space-2xl)" }}>
+        <section aria-label="Próximo partido">
+          <h2 style={{ marginBottom: "var(--space-md)" }}>Próximo partido</h2>
+          {nextMatch ? (
+            <Link href={`/matches/${nextMatch._id}`} className="card featured interactive stack">
+              <div className="row-between" style={{ justifyContent: "space-around" }}>
+                <TeamSide name={nextMatch.homeTeamId.name} shieldUrl={nextMatch.homeTeamId.shieldUrl} />
+                <span className="text-strong text-secondary">VS</span>
+                <TeamSide name={nextMatch.awayTeamId.name} shieldUrl={nextMatch.awayTeamId.shieldUrl} />
+              </div>
+              <p className="text-secondary" style={{ textAlign: "center" }}>
+                {new Date(nextMatch.scheduledAt).toLocaleString("es", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {nextMatch.venue && <> · <MapPin size={14} aria-hidden style={{ verticalAlign: "-2px" }} /> {nextMatch.venue}</>}
+              </p>
+            </Link>
+          ) : (
+            <div className="card text-secondary">No hay partidos programados.</div>
+          )}
+        </section>
+
+        <section aria-label="Resumen">
+          <h2 style={{ marginBottom: "var(--space-md)" }}>Resumen</h2>
+          <div className="card-grid">
+            {summary.map(({ label, value, icon: Icon, href }) => (
+              <Link key={label} href={href} className="card interactive row">
+                <Icon size={28} color="var(--color-primary)" aria-hidden />
+                <div>
+                  <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{value ?? "–"}</div>
+                  <div className="text-secondary">{label}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section aria-label="Acciones rápidas">
+          <h2 style={{ marginBottom: "var(--space-md)" }}>Acciones rápidas</h2>
+          <div className="row-wrap">
+            <Link href="/players/new" className="btn primary large"><Users size={20} aria-hidden /> Registrar jugador</Link>
+            <Link href="/attendance" className="btn secondary large"><ClipboardCheck size={20} aria-hidden /> Asistencia</Link>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function TeamSide({ name, shieldUrl }: { name: string; shieldUrl: string }) {
+  return (
+    <div className="stack-sm" style={{ alignItems: "center", textAlign: "center" }}>
+      <Avatar src={shieldUrl} name={name} size={64} square />
+      <span className="text-strong">{name}</span>
+    </div>
   );
 }

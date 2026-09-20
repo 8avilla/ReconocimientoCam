@@ -1,28 +1,46 @@
-import { BlobServiceClient } from "@azure/storage-blob";
+import { BlobServiceClient, ContainerClient } from "@azure/storage-blob";
 import { randomUUID } from "crypto";
 
-let containerClientPromise: ReturnType<BlobServiceClient["getContainerClient"]> | null = null;
+let containerClient: ContainerClient | null = null;
 
-function getContainerClient() {
-  if (!containerClientPromise) {
-    const CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    const CONTAINER_NAME = process.env.AZURE_STORAGE_DEFAULT_CONTAINER;
-    if (!CONNECTION_STRING || !CONTAINER_NAME) {
-      throw new Error("Faltan AZURE_STORAGE_CONNECTION_STRING o AZURE_STORAGE_DEFAULT_CONTAINER");
+function getContainerClient(): ContainerClient {
+  if (!containerClient) {
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const containerName = process.env.AZURE_STORAGE_DEFAULT_CONTAINER;
+    if (!connectionString || !containerName) {
+      throw new Error("Missing AZURE_STORAGE_CONNECTION_STRING or AZURE_STORAGE_DEFAULT_CONTAINER");
     }
-    const service = BlobServiceClient.fromConnectionString(CONNECTION_STRING);
-    containerClientPromise = service.getContainerClient(CONTAINER_NAME);
+    containerClient = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(containerName);
   }
-  return containerClientPromise;
+  return containerClient;
 }
 
-/** Sube una foto (buffer JPEG) bajo un prefijo lógico y devuelve la URL pública del blob. */
-export async function uploadAttendancePhoto(buffer: Buffer, prefix: "enroll" | "checkin"): Promise<string> {
-  const container = getContainerClient();
-  const blobName = `attendance/${prefix}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.jpg`;
-  const blockBlobClient = container.getBlockBlobClient(blobName);
-  await blockBlobClient.uploadData(buffer, {
-    blobHTTPHeaders: { blobContentType: "image/jpeg" },
-  });
-  return blockBlobClient.url;
+export type ImageFolder = "players/faces" | "players/checkins" | "teams/shields";
+
+export interface UploadedImage {
+  url: string;
+  blobName: string;
+}
+
+/** Uploads an image buffer under a logical folder and returns its URL and blob name. */
+export async function uploadImage(
+  buffer: Buffer,
+  folder: ImageFolder,
+  contentType = "image/jpeg"
+): Promise<UploadedImage> {
+  const extension = contentType === "image/png" ? "png" : "jpg";
+  const blobName = `${folder}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`;
+  const blockBlobClient = getContainerClient().getBlockBlobClient(blobName);
+  await blockBlobClient.uploadData(buffer, { blobHTTPHeaders: { blobContentType: contentType } });
+  return { url: blockBlobClient.url, blobName };
+}
+
+/** Deletes a blob if it exists; used when biometric data or images are replaced or removed. */
+export async function deleteImage(blobName: string): Promise<void> {
+  await getContainerClient().getBlockBlobClient(blobName).deleteIfExists();
+}
+
+/** Downloads a stored image, e.g. to regenerate its face embedding. */
+export async function downloadImage(blobName: string): Promise<Buffer> {
+  return getContainerClient().getBlockBlobClient(blobName).downloadToBuffer();
 }

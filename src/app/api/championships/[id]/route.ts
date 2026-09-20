@@ -1,0 +1,80 @@
+import { conflict, json, notFound, parseBody, route } from "@/lib/api";
+import { getActor } from "@/lib/actor";
+import { diffChanges, recordAudit } from "@/lib/audit";
+import { championshipUpdateSchema } from "@/lib/validation/schemas";
+import { assertThresholdOrder } from "@/lib/rules/championship";
+import { Championship, IChampionship } from "@/models/Championship";
+import { Match } from "@/models/Match";
+import { Team } from "@/models/Team";
+
+type Params = { id: string };
+
+export const GET = route<Params>(async (_request, { id }) => {
+  const championship = await Championship.findById(id).lean();
+  if (!championship) throw notFound("Campeonato no encontrado");
+  const [teams, matches] = await Promise.all([
+    Team.countDocuments({ championshipId: id }),
+    Match.countDocuments({ championshipId: id }),
+  ]);
+  return json({ ...championship, counts: { teams, matches } });
+});
+
+export const PATCH = route<Params>(async (request, { id }) => {
+  const { rules, ...fields } = await parseBody(request, championshipUpdateSchema);
+  const championship = await Championship.findById(id);
+  if (!championship) throw notFound("Campeonato no encontrado");
+
+  const before = championship.toObject() as IChampionship;
+  const beforeRules = { ...before.rules };
+
+  for (const [key, value] of Object.entries(fields)) {
+    championship.set(key, value === null ? undefined : value);
+  }
+  if (rules) {
+    for (const [key, value] of Object.entries(rules)) championship.set(`rules.${key}`, value);
+  }
+  assertThresholdOrder(championship.rules);
+  await championship.save();
+
+  const changes = {
+    ...diffChanges(before, fields as Partial<IChampionship>, ["name", "season", "status", "format", "startDate", "endDate"]),
+    ...Object.fromEntries(
+      Object.entries(diffChanges(beforeRules, rules ?? {}, Object.keys(rules ?? {}) as (keyof typeof beforeRules & string)[])).map(
+        ([key, value]) => [`rules.${key}`, value]
+      )
+    ),
+  };
+  if (Object.keys(changes).length > 0) {
+    await recordAudit(getActor(request), {
+      action: "update",
+      entityType: "championship",
+      entityId: championship._id,
+      championshipId: championship._id,
+      summary: `Campeonato actualizado: ${championship.name}`,
+      changes,
+    });
+  }
+  return json(championship);
+});
+
+export const DELETE = route<Params>(async (request, { id }) => {
+  const championship = await Championship.findById(id);
+  if (!championship) throw notFound("Campeonato no encontrado");
+
+  const [teams, matches] = await Promise.all([
+    Team.exists({ championshipId: id }),
+    Match.exists({ championshipId: id }),
+  ]);
+  if (teams || matches) {
+    throw conflict("El campeonato tiene equipos o partidos; no se puede eliminar", "championship_in_use");
+  }
+  await championship.deleteOne();
+  await recordAudit(getActor(request), {
+    action: "delete",
+    entityType: "championship",
+    entityId: championship._id,
+    championshipId: championship._id,
+    summary: `Campeonato eliminado: ${championship.name} ${championship.season}`,
+  });
+  return json({ ok: true });
+});

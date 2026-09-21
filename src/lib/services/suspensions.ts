@@ -1,3 +1,4 @@
+import { invalidateGalleries } from "@/lib/services/faceGallery";
 import type { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { conflict, notFound } from "@/lib/api";
@@ -25,6 +26,7 @@ async function releaseRegistration(registrationId: Types.ObjectId) {
 }
 
 export async function createSuspension(actor: Actor, input: CreateSuspensionInput) {
+  invalidateGalleries();
   const registration = await TeamRegistration.findOne({
     championshipId: input.championshipId,
     playerId: input.playerId,
@@ -54,6 +56,7 @@ export async function createSuspension(actor: Actor, input: CreateSuspensionInpu
 }
 
 export async function liftSuspension(actor: Actor, suspensionId: string, note?: string) {
+  invalidateGalleries();
   const suspension = await Suspension.findById(suspensionId);
   if (!suspension) throw notFound("Suspensión no encontrada");
   if (suspension.status !== "active") throw conflict("La suspensión ya no está vigente", "suspension_not_active");
@@ -75,6 +78,7 @@ export async function liftSuspension(actor: Actor, suspensionId: string, note?: 
 
 /** Lifts the active suspensions caused by the given (voided) events. */
 export async function liftSuspensionsFromEvents(actor: Actor, eventIds: Types.ObjectId[]) {
+  invalidateGalleries();
   const active = await Suspension.find({ sourceEventId: { $in: eventIds }, status: "active" });
   for (const suspension of active) await liftSuspension(actor, suspension._id.toString(), "El evento que la originó fue anulado");
   return active.length;
@@ -85,6 +89,7 @@ export async function liftSuspensionsFromEvents(actor: Actor, eventIds: Types.Ob
  * very match) counts one more served match and ends when the ban is complete.
  */
 export async function serveSuspensions(actor: Actor, match: Pick<IMatch, "_id" | "championshipId" | "homeTeamId" | "awayTeamId">) {
+  invalidateGalleries();
   const active = await Suspension.find({
     championshipId: match.championshipId,
     teamId: { $in: [match.homeTeamId, match.awayTeamId] },

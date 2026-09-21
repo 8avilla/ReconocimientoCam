@@ -36,6 +36,9 @@ function getSession() {
   return sessionPromise;
 }
 
+/** Loads the detector model ahead of the first request. */
+export const warmDetector = () => getSession();
+
 /** Decodes any supported image (applying EXIF orientation) to raw RGB. */
 export async function decodeRgb(buffer: Buffer): Promise<RgbImage> {
   const { data, info } = await sharp(buffer).rotate().removeAlpha().raw().toBuffer({ resolveWithObject: true });

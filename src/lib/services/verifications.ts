@@ -1,8 +1,9 @@
+import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { ApiError, conflict, notFound } from "@/lib/api";
-import { registerCheckIn } from "@/lib/services/checkins";
 import { recordAudit } from "@/lib/audit";
-import { cosineSimilarity, EMBEDDING_VERSION } from "@/lib/faceEngine/embedding";
+import { cosineSimilarity, EMBEDDING_VERSION, warmFaceEngine } from "@/lib/faceEngine/embedding";
+import { getGallery, type GalleryEntry } from "@/lib/services/faceGallery";
 import { classifySimilarity } from "@/lib/faceEngine/verification";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { embedFaceOrFail, prepareFaceImage } from "@/lib/services/players";
@@ -14,7 +15,6 @@ import { IPlayer, Player } from "@/models/Player";
 import { IPlayerCheckIn, PlayerCheckIn } from "@/models/PlayerCheckIn";
 import { ITeam, Team } from "@/models/Team";
 import { ITeamRegistration, TeamRegistration } from "@/models/TeamRegistration";
-import { Suspension } from "@/models/Suspension";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
@@ -114,7 +114,7 @@ export async function verifyFace(actor: Actor, matchId: string, playerId: string
     throw new ApiError(429, "Demasiados intentos fallidos. Usa la revisión manual.", "too_many_attempts");
   }
 
-  const captured = await embedFaceOrFail(await prepareFaceImage(image));
+  const captured = await embedFaceOrFail(await prepareFaceImage(image), { padFirst: true });
   const similarity = cosineSimilarity(captured, Float32Array.from(context.player.faceEmbedding));
   const result: VerificationResult = classifySimilarity(similarity, context.championship.rules);
 
@@ -183,112 +183,91 @@ const IDENTIFY_MARGIN = 0.05;
 
 export type IdentifyStatus = "no_face" | "identified" | "already_present" | "suspended" | "uncertain" | "unknown";
 
-interface PoolEntry {
-  playerId: string;
-  fullName: string;
-  photoUrl: string;
-  teamId: string;
-  teamName: string;
-  shirtNumber: number | null;
-  embedding: Float32Array;
-  checkInStatus: "pending" | "present" | "absent" | null;
-  suspended: boolean;
+/** Loads the models and prepares the faces of a match before the camera starts (so the first frame is fast). */
+export async function warmIdentification(matchId: string) {
+  const [, { gallery, cached }] = await Promise.all([warmFaceEngine(), getGallery(matchId)]);
+  return { faces: gallery.entries.filter((entry) => !entry.suspended).length, withoutFace: gallery.withoutFace.length, cached };
 }
 
 /**
  * Attendance by camera (1:N): compares a face against every player of both squads and, when one clearly matches,
  * registers them as present (recording the verification). Ambiguous faces return the closest candidates so the
- * operator confirms; suspended players are recognized but never registered.
+ * operator confirms; suspended players are recognized but never registered. The squads' faces come from a
+ * per-match gallery kept in memory, so each frame only pays for the face itself plus one light query.
  */
 export async function identifyFace(actor: Actor, matchId: string, image: string) {
-  await syncMatchCallUps(matchId);
-  const match = await Match.findById(matchId).lean();
-  if (!match) throw notFound("Partido no encontrado");
-  if (match.status !== "scheduled" && match.status !== "live") throw conflict("El partido no admite registro de asistencia", "match_not_open");
-  const championship = await Championship.findById(match.championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  const started = performance.now();
+  const { gallery, cached } = await getGallery(matchId);
+  const galleryMs = performance.now() - started;
+  if (gallery.matchStatus !== "scheduled" && gallery.matchStatus !== "live") throw conflict("El partido no admite registro de asistencia", "match_not_open");
 
-  const teamIds = [match.homeTeamId, match.awayTeamId];
-  const [checkIns, callUps, suspensions, teams] = await Promise.all([
-    PlayerCheckIn.find({ matchId: match._id })
-      .populate({ path: "playerId", select: "+faceEmbedding fullName photoUrl embeddingVersion" })
-      .lean(),
-    MatchCallUp.find({ matchId: match._id }).populate({ path: "registrationId", select: "shirtNumber" }).lean(),
-    Suspension.find({ teamId: { $in: teamIds }, status: "active" })
-      .populate({ path: "playerId", select: "+faceEmbedding fullName photoUrl embeddingVersion" })
-      .populate({ path: "registrationId", select: "shirtNumber" })
-      .lean(),
-    Team.find({ _id: { $in: teamIds } }).select("name").lean(),
-  ]);
-  const teamName = new Map(teams.map((team) => [team._id.toString(), team.name]));
-  const shirtByCallUp = new Map(callUps.map((callUp) => [callUp._id.toString(), (callUp.registrationId as unknown as { shirtNumber?: number } | null)?.shirtNumber ?? null]));
+  const statuses = new Map((await PlayerCheckIn.find({ matchId }).select("playerId status").lean()).map((row) => [row.playerId.toString(), row.status]));
+  const pendingWithoutFace = gallery.withoutFace.filter((id) => statuses.get(id) === "pending").length;
+  const timings = (extra: Record<string, number> = {}) => {
+    const total = performance.now() - started;
+    const rounded = Object.fromEntries(Object.entries({ galleryMs, ...extra, totalMs: total }).map(([key, value]) => [key, Math.round(value)]));
+    return { ...rounded, galleryCached: cached };
+  };
 
-  type PlayerDoc = Pick<IPlayer, "fullName" | "photoUrl" | "embeddingVersion"> & { _id: IPlayer["_id"]; faceEmbedding?: number[] };
-  const usable = (player: PlayerDoc | null) =>
-    Boolean(player?.faceEmbedding?.length) && (player?.embeddingVersion ?? 1) === EMBEDDING_VERSION;
-
-  const pool: PoolEntry[] = [];
-  let pendingWithoutFace = 0;
-  for (const checkIn of checkIns) {
-    const player = checkIn.playerId as unknown as PlayerDoc | null;
-    if (!player || !usable(player)) {
-      if (checkIn.status === "pending") pendingWithoutFace += 1;
-      continue;
-    }
-    pool.push({
-      playerId: player._id.toString(), fullName: player.fullName, photoUrl: player.photoUrl, teamId: checkIn.teamId.toString(),
-      teamName: teamName.get(checkIn.teamId.toString()) ?? "", shirtNumber: shirtByCallUp.get(checkIn.callUpId.toString()) ?? null,
-      embedding: Float32Array.from(player.faceEmbedding!), checkInStatus: checkIn.status, suspended: false,
-    });
-  }
-  for (const suspension of suspensions) {
-    const player = suspension.playerId as unknown as PlayerDoc | null;
-    if (!player || !usable(player)) continue;
-    pool.push({
-      playerId: player._id.toString(), fullName: player.fullName, photoUrl: player.photoUrl, teamId: suspension.teamId.toString(),
-      teamName: teamName.get(suspension.teamId.toString()) ?? "", shirtNumber: (suspension.registrationId as unknown as { shirtNumber?: number } | null)?.shirtNumber ?? null,
-      embedding: Float32Array.from(player.faceEmbedding!), checkInStatus: null, suspended: true,
-    });
-  }
-
-  const summary = (entry: PoolEntry, score: number) => ({
+  const summary = (entry: GalleryEntry, score: number) => ({
     playerId: entry.playerId, fullName: entry.fullName, photoUrl: entry.photoUrl, teamName: entry.teamName, shirtNumber: entry.shirtNumber,
     confidence: Math.round(score * 10000) / 10000,
   });
 
+  const embedStarted = performance.now();
   let captured: Float32Array;
   try {
-    captured = await embedFaceOrFail(await prepareFaceImage(image));
+    captured = await embedFaceOrFail(await prepareFaceImage(image), { padFirst: true });
   } catch (error) {
     // No usable face in this frame is expected while scanning; it is not an error.
-    if (error instanceof ApiError && error.status === 422) return { status: "no_face" as IdentifyStatus, pendingWithoutFace };
+    if (error instanceof ApiError && error.status === 422) return { status: "no_face" as IdentifyStatus, pendingWithoutFace, timings: timings({ embedMs: performance.now() - embedStarted }) };
     throw error;
   }
-  if (pool.length === 0) return { status: "unknown" as IdentifyStatus, pendingWithoutFace, message: "Ningún jugador de este partido tiene rostro registrado" };
+  const embedMs = performance.now() - embedStarted;
+  if (gallery.entries.length === 0) {
+    return { status: "unknown" as IdentifyStatus, pendingWithoutFace, message: "Ningún jugador de este partido tiene rostro registrado", timings: timings({ embedMs }) };
+  }
 
-  const ranked = pool.map((entry) => ({ entry, score: cosineSimilarity(captured, entry.embedding) })).sort((a, b) => b.score - a.score);
+  const ranked = gallery.entries.map((entry) => ({ entry, score: cosineSimilarity(captured, entry.embedding) })).sort((a, b) => b.score - a.score);
   const [best, second] = ranked;
-  const clear = best.score >= championship.rules.verifyThreshold && (!second || best.score - second.score >= IDENTIFY_MARGIN);
+  const { verifyThreshold, reviewThreshold } = gallery.thresholds;
+  const clear = best.score >= verifyThreshold && (!second || best.score - second.score >= IDENTIFY_MARGIN);
+  const bestStatus = statuses.get(best.entry.playerId);
 
-  if (clear && best.entry.suspended) return { status: "suspended" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace };
-  if (clear && best.entry.checkInStatus === "present") return { status: "already_present" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace };
+  if (clear && best.entry.suspended) return { status: "suspended" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace, timings: timings({ embedMs }) };
+  if (clear && bestStatus === "present") return { status: "already_present" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace, timings: timings({ embedMs }) };
   if (clear) {
-    const checkIn = await PlayerCheckIn.findOne({ matchId: match._id, playerId: best.entry.playerId });
+    const registerStarted = performance.now();
+    // Written directly instead of through registerCheckIn: the gallery just synced the call-ups, and the
+    // extra checks and queries there cost about a second per registration.
+    const checkIn = await PlayerCheckIn.findOne({ matchId, playerId: best.entry.playerId });
     if (!checkIn) throw notFound("El jugador no está convocado en este partido");
+    if (checkIn.status === "present") {
+      return { status: "already_present" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace, timings: timings({ embedMs }) };
+    }
+    const confidence = Math.round(best.score * 10000) / 10000;
     const verification = await IdentityVerification.create({
-      matchId, playerId: best.entry.playerId, checkInId: checkIn._id, result: "verified", confidence: Math.round(best.score * 10000) / 10000,
+      matchId, playerId: best.entry.playerId, checkInId: checkIn._id, result: "verified", confidence,
       method: "face", operatorName: actor.name, operatorUserId: actor.userId,
     });
-    await registerCheckIn(actor, matchId, { playerId: best.entry.playerId, status: "present", verificationId: verification._id.toString() });
-    await recordAudit(actor, {
-      action: "create", entityType: "verification", entityId: verification._id, championshipId: match.championshipId,
-      summary: `Asistencia por cámara: ${best.entry.fullName}`, changes: { matchId, playerId: best.entry.playerId, confidence: verification.confidence },
-    });
-    return { status: "identified" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace };
+    checkIn.set({ status: "present", method: "face", checkedInAt: new Date(), operatorName: actor.name, operatorUserId: actor.userId, verificationId: verification._id });
+    await checkIn.save();
+    const championshipId = new Types.ObjectId(gallery.championshipId);
+    await Promise.all([
+      recordAudit(actor, {
+        action: "create", entityType: "verification", entityId: verification._id, championshipId,
+        summary: `Asistencia por cámara: ${best.entry.fullName}`, changes: { matchId, playerId: best.entry.playerId, confidence },
+      }),
+      recordAudit(actor, {
+        action: "check_in", entityType: "check_in", entityId: checkIn._id, championshipId,
+        summary: "Asistencia presente (face)", changes: { matchId, playerId: best.entry.playerId, verificationId: verification._id.toString() },
+      }),
+    ]);
+    return { status: "identified" as IdentifyStatus, player: summary(best.entry, best.score), pendingWithoutFace, timings: timings({ embedMs, registerMs: performance.now() - registerStarted }) };
   }
-  if (best.score >= championship.rules.reviewThreshold) {
-    const candidates = ranked.filter((item) => item.score >= championship.rules.reviewThreshold && !item.entry.suspended).slice(0, 3);
-    return { status: "uncertain" as IdentifyStatus, candidates: candidates.map((item) => summary(item.entry, item.score)), pendingWithoutFace };
+  if (best.score >= reviewThreshold) {
+    const candidates = ranked.filter((item) => item.score >= reviewThreshold && !item.entry.suspended).slice(0, 3);
+    return { status: "uncertain" as IdentifyStatus, candidates: candidates.map((item) => summary(item.entry, item.score)), pendingWithoutFace, timings: timings({ embedMs }) };
   }
-  return { status: "unknown" as IdentifyStatus, pendingWithoutFace };
+  return { status: "unknown" as IdentifyStatus, pendingWithoutFace, timings: timings({ embedMs }) };
 }

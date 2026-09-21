@@ -25,7 +25,6 @@ type Banner =
   | { kind: "unknown" | "error"; message: string };
 
 const BANNER_MS = 4000;
-const SETTLE_MS = 2500;
 
 /** Attendance by camera: keep the camera on the players; whoever is recognized is registered as present. */
 export function CameraAttendanceModal({ open, ...props }: Props) {
@@ -38,6 +37,9 @@ export function CameraAttendanceModal({ open, ...props }: Props) {
 
 function Scanner({ matchId, present, called, onChanged }: Omit<Props, "open" | "onClose">) {
   const [busy, setBusy] = useState(false);
+  // After someone was recognized, that face is not sent again until it leaves the frame or another one arrives.
+  const [hold, setHold] = useState(false);
+  const [timings, setTimings] = useState<IdentifyDTO["timings"]>();
   const [banner, setBanner] = useState<Banner | null>(null);
   const [recent, setRecent] = useState<{ id: string; name: string; team: string; shirt: number | null }[]>([]);
   const [withoutFace, setWithoutFace] = useState(0);
@@ -52,12 +54,11 @@ function Scanner({ matchId, present, called, onChanged }: Omit<Props, "open" | "
 
   async function handleFrame(image: string) {
     setBusy(true);
-    let settled = false;
     try {
       const result = await http<IdentifyDTO>(`/matches/${matchId}/identify`, { json: { image } });
       setWithoutFace(result.pendingWithoutFace);
-      // Someone who was just recognized may keep standing in front of the camera: pause before looking again.
-      settled = result.status === "identified" || result.status === "already_present" || result.status === "suspended";
+      if (result.timings) setTimings(result.timings);
+      if (result.status === "identified" || result.status === "already_present" || result.status === "suspended") setHold(true);
       switch (result.status) {
         case "identified":
           if (result.player) {
@@ -84,8 +85,7 @@ function Scanner({ matchId, present, called, onChanged }: Omit<Props, "open" | "
     } catch (error) {
       show({ kind: "error", message: errorMessage(error) });
     } finally {
-      if (settled) setTimeout(() => setBusy(false), SETTLE_MS);
-      else setBusy(false);
+      setBusy(false);
     }
   }
 
@@ -113,7 +113,7 @@ function Scanner({ matchId, present, called, onChanged }: Omit<Props, "open" | "
         <span style={{ width: `${called ? (present / called) * 100 : 0}%` }} />
       </div>
 
-      <FaceCapture auto busy={busy || banner?.kind === "uncertain"} onCapture={(image) => void handleFrame(image)} />
+      <FaceCapture auto busy={busy || banner?.kind === "uncertain"} hold={hold} onFaceLost={() => setHold(false)} onCapture={(image) => void handleFrame(image)} />
 
       <div className={`scan-banner ${banner?.kind ?? "idle"}`} role="status" aria-live="polite">
         {!banner && <><Info size={20} aria-hidden /> Apunta la cámara al rostro de cada jugador, de a uno.</>}
@@ -149,6 +149,16 @@ function Scanner({ matchId, present, called, onChanged }: Omit<Props, "open" | "
         <p className="text-secondary text-small">
           {withoutFace} {withoutFace === 1 ? "jugador pendiente no tiene" : "jugadores pendientes no tienen"} rostro registrado: usa «Verificar» o «Manual» en la lista.
         </p>
+      )}
+
+      {timings && (
+        <details className="text-secondary text-small">
+          <summary style={{ cursor: "pointer" }}>Diagnóstico de velocidad</summary>
+          <p>
+            Última comparación: {timings.totalMs} ms en el servidor (rostros del partido {timings.galleryMs} ms{timings.galleryCached ? ", en memoria" : ", recién cargados"}
+            {timings.embedMs !== undefined && `, reconocimiento ${timings.embedMs} ms`}{timings.registerMs !== undefined && `, registro ${timings.registerMs} ms`}).
+          </p>
+        </details>
       )}
 
       {recent.length > 0 && (

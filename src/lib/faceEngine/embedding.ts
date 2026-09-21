@@ -2,7 +2,7 @@ import * as ort from "onnxruntime-node";
 import sharp from "sharp";
 import path from "path";
 import { alignFace, ALIGNED_SIZE } from "./align";
-import { decodeRgb, detectFaces, padRgb, type DetectedFace } from "./detector";
+import { decodeRgb, detectFaces, padRgb, warmDetector, type DetectedFace } from "./detector";
 
 /** Margin added around tight crops when the first detection attempt finds nothing. */
 const RETRY_MARGIN_RATIO = 0.5;
@@ -23,6 +23,11 @@ function getSession() {
     sessionPromise = ort.InferenceSession.create(MODEL_PATH);
   }
   return sessionPromise;
+}
+
+/** Loads the detector and embedding models so the first identification is not slow. */
+export async function warmFaceEngine(): Promise<void> {
+  await Promise.all([getSession(), warmDetector()]);
 }
 
 /** Raised when the image has no detectable face, or more than one. */
@@ -72,10 +77,17 @@ export interface EmbeddedFace {
  * Detects the face in a photo, aligns it to the ArcFace template and embeds it.
  * Throws FaceDetectionError when there is no face or more than one prominent face.
  */
-export async function embedFaceFromPhoto(imageBuffer: Buffer): Promise<EmbeddedFace> {
+export async function embedFaceFromPhoto(imageBuffer: Buffer, options: { padFirst?: boolean } = {}): Promise<EmbeddedFace> {
   let image = await decodeRgb(imageBuffer);
-  let faces = await detectFaces(image);
-  if (faces.length === 0) {
+  let faces: DetectedFace[] = [];
+  if (options.padFirst) {
+    // Browser crops are tight and the detector nearly always misses them unpadded: skip that wasted pass (~1/3 of the time).
+    const padded = padRgb(image, RETRY_MARGIN_RATIO);
+    faces = await detectFaces(padded);
+    if (faces.length > 0) image = padded;
+  }
+  if (faces.length === 0) faces = await detectFaces(image);
+  if (faces.length === 0 && !options.padFirst) {
     // Tight crops (as sent by the browser) often lack the context the detector needs.
     image = padRgb(image, RETRY_MARGIN_RATIO);
     faces = await detectFaces(image);

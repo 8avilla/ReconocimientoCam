@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ClipboardCheck, ScanFace, ScanLine, Search } from "lucide-react";
 import { CheckInBadge, VerificationBadge } from "@/components/attendance/AttendanceBadges";
 import { CameraAttendanceModal } from "@/components/attendance/CameraAttendanceModal";
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
+import { http } from "@/lib/client/http";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { VerificationFlow } from "@/components/verification/VerificationFlow";
 import { Avatar, Badge, Button, EmptyState } from "@/components/ui";
@@ -28,6 +29,15 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
   const [search, setSearch] = useState("");
   const [flow, setFlow] = useState<{ open: boolean; code?: string }>({ open: false });
   const [cameraOpen, setCameraOpen] = useState(false);
+
+  // While the attendance list is on screen, prepare the camera flow: the detector on the phone and the
+  // faces of this match on the server, so pressing "Asistencia por cámara" starts right away.
+  const matchOpen = match.status === "scheduled" || match.status === "live";
+  useEffect(() => {
+    if (readOnly || !matchOpen) return;
+    http(`/matches/${matchId}/identify/warmup`, { method: "POST", json: {} }).catch(() => undefined);
+    import("@/components/camera/FaceCapture").then((module) => module.preloadFaceDetector()).catch(() => undefined);
+  }, [matchId, readOnly, matchOpen]);
   const [manualFor, setManualFor] = useState<AttendanceRowDTO | null>(null);
 
   const { checkIns } = attendance;

@@ -1,3 +1,4 @@
+import { invalidateGalleries } from "@/lib/services/faceGallery";
 import { randomBytes } from "crypto";
 import sharp from "sharp";
 import type { Actor } from "@/lib/actor";
@@ -29,9 +30,9 @@ export async function prepareFaceImage(dataUrl: string): Promise<Buffer> {
 }
 
 /** Detects, aligns and embeds the face of a photo; a missing or ambiguous face becomes a 422. */
-export async function embedFaceOrFail(photo: Buffer): Promise<Float32Array> {
+export async function embedFaceOrFail(photo: Buffer, options: { padFirst?: boolean } = {}): Promise<Float32Array> {
   try {
-    return (await embedFaceFromPhoto(photo)).embedding;
+    return (await embedFaceFromPhoto(photo, options)).embedding;
   } catch (error) {
     if (error instanceof FaceDetectionError) throw unprocessable(error.message, error.reason);
     throw error;
@@ -51,6 +52,7 @@ export async function enrollPlayerFace(
   playerId: string,
   input: { image: string; consent?: boolean }
 ) {
+  invalidateGalleries();
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 
@@ -89,6 +91,7 @@ export async function enrollPlayerFace(
 
 /** Removes the photo, embedding and consent of a player (privacy / retention). */
 export async function removePlayerFace(actor: Actor, playerId: string) {
+  invalidateGalleries();
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 

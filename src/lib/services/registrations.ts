@@ -1,3 +1,4 @@
+import { invalidateGalleries } from "@/lib/services/faceGallery";
 import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { conflict, notFound } from "@/lib/api";
@@ -41,6 +42,7 @@ async function assertRosterHasRoom(teamId: Types.ObjectId, championshipId: Types
 }
 
 export async function createRegistration(actor: Actor, input: CreateRegistrationInput) {
+  invalidateGalleries();
   const team = await Team.findById(input.teamId).lean();
   if (!team) throw notFound("Equipo no encontrado");
   const player = await Player.findById(input.playerId).lean();
@@ -94,6 +96,7 @@ export interface UpdateRegistrationInput {
 }
 
 export async function updateRegistration(actor: Actor, id: string, input: UpdateRegistrationInput) {
+  invalidateGalleries();
   const registration = await TeamRegistration.findById(id);
   if (!registration) throw notFound("Inscripción no encontrada");
 
@@ -142,6 +145,7 @@ export async function updateRegistration(actor: Actor, id: string, input: Update
 }
 
 export async function deleteRegistration(actor: Actor, id: string) {
+  invalidateGalleries();
   const registration = await TeamRegistration.findById(id);
   if (!registration) throw notFound("Inscripción no encontrada");
 

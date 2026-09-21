@@ -415,4 +415,6 @@ export interface IdentifyDTO {
   /** Players still pending that have no usable registered face (they need Verificar or Manual). */
   pendingWithoutFace: number;
   message?: string;
+  /** Milliseconds spent by the server in each stage of this frame (for measuring on real devices). */
+  timings?: { galleryMs: number; embedMs?: number; registerMs?: number; totalMs: number; galleryCached: boolean };
 }

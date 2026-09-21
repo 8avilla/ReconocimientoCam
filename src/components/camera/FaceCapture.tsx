@@ -79,6 +79,10 @@ interface FaceCaptureProps {
   buttonLabel?: string;
   /** Captures by itself once a face has stayed in view for a moment (no button); used for attendance by camera. */
   auto?: boolean;
+  /** While true no automatic capture happens (the face in view was already handled). */
+  hold?: boolean;
+  /** The face in view left or was replaced by another one: the hold can be released. */
+  onFaceLost?: () => void;
 }
 
 /** Side (px) of the square face crop sent to the server; the embedding model downsizes it itself. */
@@ -87,8 +91,10 @@ const CROP_SIZE = 320;
 /** A face must stay in view this long before an automatic capture, and captures are spaced by the cooldown. */
 const AUTO_STABLE_MS = 700;
 const AUTO_COOLDOWN_MS = 1800;
+/** Time without a face after which the person is considered gone. */
+const FACE_LOST_MS = 600;
 
-export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto", auto = false }: FaceCaptureProps) {
+export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto", auto = false, hold = false, onFaceLost }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -101,11 +107,17 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
   const busyRef = useRef(busy);
   const autoRef = useRef(auto);
   const faceSinceRef = useRef<number | null>(null);
+  const holdRef = useRef(hold);
+  const onFaceLostRef = useRef(onFaceLost);
+  /** Last face seen: used to tell "the same person still standing there" from "someone else". */
+  const trackRef = useRef<{ cx: number; cy: number; size: number; seenAt: number } | null>(null);
   const nextAutoRef = useRef(0);
   useEffect(() => {
     onCaptureRef.current = onCapture;
     busyRef.current = busy;
     autoRef.current = auto;
+    holdRef.current = hold;
+    onFaceLostRef.current = onFaceLost;
   });
 
   const [status, setStatus] = useState("Iniciando cámara...");
@@ -215,8 +227,15 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
 
         // Attendance by camera: capture without pressing anything once the face is steady.
         const now = performance.now();
+        // A big jump of the face box means another person: release the hold and start counting again.
+        const previous = trackRef.current;
+        if (previous && Math.hypot(cx - previous.cx, cy - previous.cy) > previous.size * 0.6) {
+          faceSinceRef.current = null;
+          onFaceLostRef.current?.();
+        }
+        trackRef.current = { cx, cy, size, seenAt: now };
         faceSinceRef.current ??= now;
-        if (autoRef.current && !busyRef.current && now - faceSinceRef.current >= AUTO_STABLE_MS && now >= nextAutoRef.current) {
+        if (autoRef.current && !busyRef.current && !holdRef.current && now - faceSinceRef.current >= AUTO_STABLE_MS && now >= nextAutoRef.current) {
           nextAutoRef.current = now + AUTO_COOLDOWN_MS;
           const crop = document.createElement("canvas");
           crop.width = CROP_SIZE;
@@ -226,7 +245,12 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
         }
       } else {
         bboxRef.current = null;
-        faceSinceRef.current = null;
+        // Gone for a moment (not just a missed frame): the next face is someone new.
+        if (trackRef.current && performance.now() - trackRef.current.seenAt > FACE_LOST_MS) {
+          trackRef.current = null;
+          faceSinceRef.current = null;
+          onFaceLostRef.current?.();
+        }
         setFaceReady(false);
         setStatus("Buscando rostro...");
       }
@@ -303,4 +327,9 @@ function cameraErrorMessage(error: unknown): string {
   }
   console.error("Camera or face model initialization failed:", error);
   return "No se pudo iniciar la cámara o el modelo de detección.";
+}
+
+/** Starts loading the detector (WASM + model) so opening the camera later is instant. */
+export function preloadFaceDetector(): Promise<unknown> {
+  return getLandmarker();
 }

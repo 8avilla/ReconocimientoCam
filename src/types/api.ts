@@ -397,3 +397,22 @@ export interface FineDTO {
 export interface FinesDTO extends Paginated<FineDTO> {
   summary: { owed: number; collected: number; byTeam: { teamId: string; name: string; shieldUrl: string; owed: number }[] };
 }
+
+export interface IdentifiedPlayerDTO {
+  playerId: string;
+  fullName: string;
+  photoUrl: string;
+  teamName: string;
+  shirtNumber: number | null;
+  confidence: number;
+}
+
+/** Outcome of one frame in attendance by camera. */
+export interface IdentifyDTO {
+  status: "no_face" | "identified" | "already_present" | "suspended" | "uncertain" | "unknown";
+  player?: IdentifiedPlayerDTO;
+  candidates?: IdentifiedPlayerDTO[];
+  /** Players still pending that have no usable registered face (they need Verificar or Manual). */
+  pendingWithoutFace: number;
+  message?: string;
+}

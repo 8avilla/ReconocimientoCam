@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { SwitchCamera } from "lucide-react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+
+const FACING_KEY = "super-torneos:camera-facing";
 
 const MEDIAPIPE_WASM_URL =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.0/wasm";
@@ -74,12 +77,18 @@ interface FaceCaptureProps {
   onCapture: (imageBase64: string) => void;
   busy?: boolean;
   buttonLabel?: string;
+  /** Captures by itself once a face has stayed in view for a moment (no button); used for attendance by camera. */
+  auto?: boolean;
 }
 
 /** Side (px) of the square face crop sent to the server; the embedding model downsizes it itself. */
 const CROP_SIZE = 320;
 
-export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto" }: FaceCaptureProps) {
+/** A face must stay in view this long before an automatic capture, and captures are spaced by the cooldown. */
+const AUTO_STABLE_MS = 700;
+const AUTO_COOLDOWN_MS = 1800;
+
+export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto", auto = false }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -87,9 +96,41 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
   const rafRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef(-1);
   const lastTimestampRef = useRef(0);
+  // Latest props for the animation loop, which lives in an effect that must not restart on every render.
+  const onCaptureRef = useRef(onCapture);
+  const busyRef = useRef(busy);
+  const autoRef = useRef(auto);
+  const faceSinceRef = useRef<number | null>(null);
+  const nextAutoRef = useRef(0);
+  useEffect(() => {
+    onCaptureRef.current = onCapture;
+    busyRef.current = busy;
+    autoRef.current = auto;
+  });
 
   const [status, setStatus] = useState("Iniciando cámara...");
   const [faceReady, setFaceReady] = useState(false);
+  // Front camera by default (selfie); the rear one is handy when photographing someone else.
+  const [facing, setFacing] = useState<"user" | "environment">(() => {
+    try {
+      return window.localStorage.getItem(FACING_KEY) === "environment" ? "environment" : "user";
+    } catch {
+      return "user";
+    }
+  });
+  const [canSwitch, setCanSwitch] = useState(false);
+
+  const switchCamera = () => {
+    const next = facing === "user" ? "environment" : "user";
+    try {
+      window.localStorage.setItem(FACING_KEY, next);
+    } catch {
+      // Not remembered when storage is unavailable.
+    }
+    setFaceReady(false);
+    setStatus("Cambiando de cámara...");
+    setFacing(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +142,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
       landmarkerRef.current = landmarker;
 
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 480, height: 480 },
+        video: { facingMode: { ideal: facing }, width: 480, height: 480 },
         audio: false,
       });
       if (cancelled) {
@@ -112,6 +153,10 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+      // Device labels/ids are only available once the camera permission was granted.
+      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput");
+      if (!cancelled) setCanSwitch(cameras.length > 1);
+      lastVideoTimeRef.current = -1;
       setStatus("Buscando rostro...");
       loop();
     }
@@ -167,8 +212,21 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
 
         setFaceReady(true);
         setStatus("Rostro detectado");
+
+        // Attendance by camera: capture without pressing anything once the face is steady.
+        const now = performance.now();
+        faceSinceRef.current ??= now;
+        if (autoRef.current && !busyRef.current && now - faceSinceRef.current >= AUTO_STABLE_MS && now >= nextAutoRef.current) {
+          nextAutoRef.current = now + AUTO_COOLDOWN_MS;
+          const crop = document.createElement("canvas");
+          crop.width = CROP_SIZE;
+          crop.height = CROP_SIZE;
+          crop.getContext("2d")!.drawImage(video, cx - size / 2, cy - size / 2, size, size, 0, 0, CROP_SIZE, CROP_SIZE);
+          onCaptureRef.current(crop.toDataURL("image/jpeg", 0.92));
+        }
       } else {
         bboxRef.current = null;
+        faceSinceRef.current = null;
         setFaceReady(false);
         setStatus("Buscando rostro...");
       }
@@ -187,7 +245,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
       // No cerramos el landmarker: es un singleton compartido entre montajes.
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [facing]);
 
   const handleCapture = useCallback(() => {
     const video = videoRef.current;
@@ -208,23 +266,30 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
           ref={videoRef}
           muted
           playsInline
-          style={{ width: "100%", borderRadius: "var(--radius-lg)", transform: "scaleX(-1)", background: "var(--color-navy)", aspectRatio: "1 / 1", objectFit: "cover" }}
+          style={{ width: "100%", borderRadius: "var(--radius-lg)", transform: facing === "user" ? "scaleX(-1)" : undefined, background: "var(--color-navy)", aspectRatio: "1 / 1", objectFit: "cover" }}
         />
         <canvas
           ref={overlayRef}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: "scaleX(-1)" }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       </div>
       <p className="text-secondary" role="status">{status}</p>
-      <button
-        type="button"
-        className="btn primary large block"
-        style={{ maxWidth: 420 }}
-        onClick={handleCapture}
-        disabled={!faceReady || busy}
-      >
-        {busy ? "Procesando..." : buttonLabel}
-      </button>
+      {canSwitch && (
+        <button type="button" className="btn secondary block" style={{ maxWidth: 420 }} onClick={switchCamera} disabled={busy}>
+          <SwitchCamera size={18} aria-hidden /> {facing === "user" ? "Usar cámara trasera" : "Usar cámara frontal"}
+        </button>
+      )}
+      {!auto && (
+        <button
+          type="button"
+          className="btn primary large block"
+          style={{ maxWidth: 420 }}
+          onClick={handleCapture}
+          disabled={!faceReady || busy}
+        >
+          {busy ? "Procesando..." : buttonLabel}
+        </button>
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardCheck, ScanLine, Search } from "lucide-react";
+import { ClipboardCheck, ScanFace, ScanLine, Search } from "lucide-react";
 import { CheckInBadge, VerificationBadge } from "@/components/attendance/AttendanceBadges";
+import { CameraAttendanceModal } from "@/components/attendance/CameraAttendanceModal";
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { VerificationFlow } from "@/components/verification/VerificationFlow";
@@ -26,6 +27,7 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
   const [teamId, setTeamId] = useState(match.homeTeamId._id);
   const [search, setSearch] = useState("");
   const [flow, setFlow] = useState<{ open: boolean; code?: string }>({ open: false });
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [manualFor, setManualFor] = useState<AttendanceRowDTO | null>(null);
 
   const { checkIns } = attendance;
@@ -51,6 +53,12 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
 
   return (
     <div className="stack" style={{ gap: 0 }}>
+      {canOperate && (
+        <div style={{ marginBottom: "var(--space-lg)" }}>
+          <Button size="large" block icon={<ScanFace size={20} />} onClick={() => setCameraOpen(true)}>Asistencia por cámara</Button>
+          <p className="text-secondary text-small" style={{ marginTop: "var(--space-xs)" }}>Apunta la cámara a los jugadores y se registran solos. Ideal para tomar lista rápido.</p>
+        </div>
+      )}
       {canOperate && QR_VERIFICATION_ENABLED && (
         <div style={{ marginBottom: "var(--space-lg)" }}>
           <Button size="large" icon={<ScanLine size={20} />} onClick={() => setFlow({ open: true })}>Escanear jugador</Button>
@@ -146,6 +154,9 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
         </div>
       )}
 
+      {cameraOpen && (
+        <CameraAttendanceModal open matchId={matchId} present={attendance.summary.present} called={attendance.summary.called} onClose={() => setCameraOpen(false)} onChanged={onChanged} />
+      )}
       <VerificationFlow open={flow.open} matchId={matchId} initialCode={flow.code} onClose={() => setFlow({ open: false })} onRegistered={onChanged} />
       {manualFor && (
         <ManualCheckInModal

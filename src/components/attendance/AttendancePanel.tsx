@@ -6,47 +6,38 @@ import { CheckInBadge, VerificationBadge } from "@/components/attendance/Attenda
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { VerificationFlow } from "@/components/verification/VerificationFlow";
-import { Avatar, Button, EmptyState } from "@/components/ui";
+import { Avatar, Badge, Button, EmptyState } from "@/components/ui";
+import { SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import type { AttendanceDTO, AttendanceRowDTO, MatchDTO } from "@/types/api";
-
-type Filter = "all" | "verified" | "pending" | "absent";
-
-const isVerified = (row: AttendanceRowDTO) => row.status === "present" && row.verificationId?.result === "verified";
-
-const FILTERS: { id: Filter; label: string; matches: (row: AttendanceRowDTO) => boolean }[] = [
-  { id: "all", label: "Todos", matches: () => true },
-  { id: "verified", label: "Verificados", matches: isVerified },
-  { id: "pending", label: "Pendientes", matches: (row) => row.status === "pending" },
-  { id: "absent", label: "Ausentes", matches: (row) => row.status === "absent" },
-];
 
 interface Props {
   matchId: string;
   match: MatchDTO;
   attendance: AttendanceDTO;
+  /** Read-only view (e.g. delegate): no verification or manual check-in. */
+  readOnly?: boolean;
   /** Reloads the match data after attendance changes. */
   onChanged: () => void;
 }
 
 /** Attendance of a match: the whole squad of both teams, with QR/face verification and manual contingency. */
-export function AttendancePanel({ matchId, match, attendance, onChanged }: Props) {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [teamId, setTeamId] = useState("");
+export function AttendancePanel({ matchId, match, attendance, onChanged, readOnly }: Props) {
+  // One team at a time: home on the left tab, away on the right one.
+  const [teamId, setTeamId] = useState(match.homeTeamId._id);
   const [search, setSearch] = useState("");
   const [flow, setFlow] = useState<{ open: boolean; code?: string }>({ open: false });
   const [manualFor, setManualFor] = useState<AttendanceRowDTO | null>(null);
 
   const { checkIns } = attendance;
-  const canOperate = match.status === "scheduled" || match.status === "live";
-  const teamName = (id: string) => (id === match.homeTeamId._id ? match.homeTeamId.name : match.awayTeamId.name);
+  const teamSuspended = (attendance.suspended ?? []).filter((item) => item.teamId === teamId);
+  const canOperate = !readOnly && (match.status === "scheduled" || match.status === "live");
+  const teams = [match.homeTeamId, match.awayTeamId];
 
   const term = search.trim().toLowerCase();
-  const activeFilter = FILTERS.find((item) => item.id === filter) ?? FILTERS[0];
   const rows = checkIns
-    .filter((row) => activeFilter.matches(row))
-    .filter((row) => !teamId || row.teamId === teamId)
+    .filter((row) => row.teamId === teamId)
     .filter((row) => !term || row.playerId.fullName.toLowerCase().includes(term) || String(row.shirtNumber ?? "") === term)
-    .sort((a, b) => a.teamId.localeCompare(b.teamId) || (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
+    .sort((a, b) => (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
 
   const rowActions = (row: AttendanceRowDTO) =>
     canOperate && (
@@ -66,23 +57,22 @@ export function AttendancePanel({ matchId, match, attendance, onChanged }: Props
         </div>
       )}
 
-      <div className="row-wrap" style={{ marginBottom: "var(--space-md)" }} role="tablist" aria-label="Filtrar asistencia">
-        {FILTERS.map((item) => (
-          <Button key={item.id} role="tab" aria-selected={filter === item.id} size="small" variant={filter === item.id ? "primary" : "secondary"} onClick={() => setFilter(item.id)}>
-            {item.label} ({checkIns.filter(item.matches).length})
-          </Button>
-        ))}
+      <div className="team-tabs" role="tablist" aria-label="Equipo">
+        {teams.map((team) => {
+          const squad = checkIns.filter((row) => row.teamId === team._id);
+          const present = squad.filter((row) => row.status === "present").length;
+          return (
+            <button key={team._id} role="tab" aria-selected={teamId === team._id} className={`team-tab${teamId === team._id ? " active" : ""}`} onClick={() => setTeamId(team._id)}>
+              <Avatar src={team.shieldUrl} name={team.name} size={32} square />
+              <span className="team-tab-name">{team.name}</span>
+              <span className="team-tab-count">{present}/{squad.length} presentes</span>
+            </button>
+          );
+        })}
       </div>
-      <div className="row-wrap" style={{ marginBottom: "var(--space-lg)" }}>
-        <div className="search grow" style={{ minWidth: 220, maxWidth: 420 }}>
-          <Search size={18} aria-hidden />
-          <input className="input" type="search" placeholder="Buscar por nombre o número..." aria-label="Buscar jugador" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <select className="select" style={{ width: "auto", minWidth: 200 }} aria-label="Filtrar por equipo" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-          <option value="">Ambos equipos</option>
-          <option value={match.homeTeamId._id}>{match.homeTeamId.name}</option>
-          <option value={match.awayTeamId._id}>{match.awayTeamId.name}</option>
-        </select>
+      <div className="search" style={{ marginBottom: "var(--space-lg)", maxWidth: 420 }}>
+        <Search size={18} aria-hidden />
+        <input className="input" type="search" placeholder="Buscar por nombre o número..." aria-label="Buscar jugador" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       {rows.length === 0 ? (
@@ -90,22 +80,21 @@ export function AttendancePanel({ matchId, match, attendance, onChanged }: Props
           <EmptyState
             icon={<ClipboardCheck size={28} />}
             title={checkIns.length === 0 ? "Sin jugadores" : "Sin resultados"}
-            description={checkIns.length === 0 ? "Los equipos no tienen jugadores activos en su plantilla." : "Prueba con otros filtros."}
+            description={checkIns.length === 0 ? "Los equipos no tienen jugadores activos en su plantilla." : "Este equipo no tiene jugadores con esa búsqueda."}
           />
         </div>
       ) : (
-        <div className="card flush">
+        <div className="flush-list">
           <div className="table-wrap only-desktop">
             <table className="table">
               <thead>
-                <tr><th>#</th><th>Jugador</th><th>Equipo</th><th>Estado</th><th>Verificación</th><th>Hora</th><th aria-label="Acciones" /></tr>
+                <tr><th>#</th><th>Jugador</th><th>Estado</th><th>Verificación</th><th>Hora</th><th aria-label="Acciones" /></tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row._id}>
                     <td>{row.shirtNumber}</td>
                     <td><span className="row"><Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={36} /><span className="text-strong">{row.playerId.fullName}</span></span></td>
-                    <td>{teamName(row.teamId)}</td>
                     <td><CheckInBadge status={row.status} /></td>
                     <td>
                       <VerificationBadge verification={row.verificationId} />
@@ -122,10 +111,12 @@ export function AttendancePanel({ matchId, match, attendance, onChanged }: Props
           <div className="only-mobile">
             {rows.map((row) => (
               <div key={row._id} className="list-row" style={{ alignItems: "flex-start" }}>
-                <Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={48} />
-                <div className="grow stack-sm" style={{ gap: 4 }}>
-                  <div className="text-strong">#{row.shirtNumber} · {row.playerId.fullName}</div>
-                  <div className="text-secondary text-small">{teamName(row.teamId)}</div>
+                <Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={44} />
+                <div className="grow stack-sm" style={{ gap: 4, minWidth: 0 }}>
+                  <div>
+                    <div className="champ-caption">#{row.shirtNumber}</div>
+                    <div className="champ-name">{row.playerId.fullName}</div>
+                  </div>
                   <div className="row-wrap" style={{ gap: 6 }}>
                     <CheckInBadge status={row.status} />
                     <VerificationBadge verification={row.verificationId} />
@@ -135,6 +126,23 @@ export function AttendancePanel({ matchId, match, attendance, onChanged }: Props
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {teamSuspended.length > 0 && (
+        <div className="flush-list" style={{ marginTop: "var(--space-lg)" }}>
+          <h3 className="band band-small" style={{ background: "var(--color-error-bg)", color: "#991b1b" }}>Suspendidos, no pueden jugar ({teamSuspended.length})</h3>
+          {teamSuspended.map((item) => (
+            <div key={item._id} className="list-row">
+              <Avatar src={item.playerId.photoUrl} name={item.playerId.fullName} size={44} />
+              <div className="grow" style={{ minWidth: 0 }}>
+                <div className="champ-caption">{item.registrationId?.shirtNumber != null ? `#${item.registrationId.shirtNumber} · ` : ""}{SUSPENSION_REASON_LABEL[item.reason]}</div>
+                <div className="champ-name truncate">{item.playerId.fullName}</div>
+                <div className="text-secondary text-small">Cumplió {item.matchesServed} de {item.matchesToServe} {item.matchesToServe === 1 ? "partido" : "partidos"}</div>
+              </div>
+              <Badge tone="error">Suspendido</Badge>
+            </div>
+          ))}
         </div>
       )}
 

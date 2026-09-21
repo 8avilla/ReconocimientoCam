@@ -1,37 +1,8 @@
-import { computeStandings } from "@/lib/rules/standings";
 import { notFound } from "@/lib/api";
-import { Championship, DEFAULT_RULES } from "@/models/Championship";
+import { Championship } from "@/models/Championship";
 import { Match } from "@/models/Match";
 import { MatchEvent } from "@/models/MatchEvent";
 import { Team } from "@/models/Team";
-
-/** League table from the finished matches of a championship. */
-export async function getStandings(championshipId: string) {
-  const championship = await Championship.findById(championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
-
-  const [teams, matches] = await Promise.all([
-    Team.find({ championshipId }).select("name shieldUrl active").lean(),
-    Match.find({ championshipId, status: "finished" }).select("homeTeamId awayTeamId homeScore awayScore finishedAt").lean(),
-  ]);
-  const table = computeStandings(
-    teams.map((team) => ({ id: team._id.toString(), name: team.name })),
-    matches.map((match) => ({
-      homeTeamId: match.homeTeamId.toString(),
-      awayTeamId: match.awayTeamId.toString(),
-      homeScore: match.homeScore ?? 0,
-      awayScore: match.awayScore ?? 0,
-      finishedAt: match.finishedAt,
-    })),
-    {
-      pointsPerWin: championship.rules.pointsPerWin ?? DEFAULT_RULES.pointsPerWin,
-      pointsPerDraw: championship.rules.pointsPerDraw ?? DEFAULT_RULES.pointsPerDraw,
-      pointsPerLoss: championship.rules.pointsPerLoss ?? DEFAULT_RULES.pointsPerLoss,
-    }
-  );
-  const shieldByTeam = new Map(teams.map((team) => [team._id.toString(), team.shieldUrl]));
-  return table.map((row) => ({ ...row, shieldUrl: shieldByTeam.get(row.teamId) ?? "" }));
-}
 
 interface PlayerTally {
   playerId: string;

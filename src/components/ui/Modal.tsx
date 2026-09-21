@@ -17,22 +17,36 @@ interface ModalProps {
 export function Modal({ title, open, onClose, wide, children, footer }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Callers pass a new onClose on every render; the effect below must only run when the modal opens or closes,
+  // otherwise it would steal the focus from the field being typed in on each keystroke.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
+    };
+    // With the on-screen keyboard open, keep the field being edited visible.
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.matches("input, select, textarea")) setTimeout(() => target.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
     };
     document.addEventListener("keydown", onKeyDown);
+    dialogRef.current?.addEventListener("focusin", onFocusIn);
+    const dialog = dialogRef.current;
     document.body.style.overflow = "hidden";
     dialogRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      dialog?.removeEventListener("focusin", onFocusIn);
       document.body.style.overflow = "";
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (

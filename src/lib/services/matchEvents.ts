@@ -1,9 +1,10 @@
-import type { Types } from "mongoose";
+import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { badRequest, conflict, notFound } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import type { MatchEventType } from "@/lib/constants";
 import { applyMatchAction, computeScore, reachesYellowThreshold, type MatchAction } from "@/lib/rules/match";
+import { createCardFine, voidFinesForEvents } from "@/lib/services/fines";
 import { createSuspension, liftSuspensionsFromEvents, serveSuspensions } from "@/lib/services/suspensions";
 import { Championship, DEFAULT_RULES, IChampionship } from "@/models/Championship";
 import { IMatch, Match } from "@/models/Match";
@@ -101,6 +102,14 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
   const autoEvents: IMatchEvent[] = [];
   const suspensions = [];
 
+  /** Card fines are charged when the championship sets an amount for that card. */
+  const chargeCard = (type: "yellow_card" | "red_card", eventId: Types.ObjectId, concept: string) =>
+    createCardFine(actor, {
+      championshipId: match.championshipId, teamId: new Types.ObjectId(input.teamId), playerId: new Types.ObjectId(input.playerId!), matchId: match._id, eventId, type,
+      amount: type === "yellow_card" ? rule(championship, "yellowCardFine") ?? 0 : rule(championship, "redCardFine") ?? 0, concept,
+    });
+  if (input.type === "yellow_card") await chargeCard("yellow_card", event._id, "Tarjeta amarilla");
+
   if (input.type === "yellow_card") {
     const previousYellows = await MatchEvent.find({
       matchId: match._id, playerId: input.playerId, type: "yellow_card", voided: false, _id: { $ne: event._id },
@@ -114,6 +123,7 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
         recordedBy: actor.name,
       });
       autoEvents.push(red.toObject());
+      await chargeCard("red_card", red._id, "Tarjeta roja (doble amarilla)");
       suspensions.push(
         await createSuspension(actor, {
           championshipId: match.championshipId, teamId: input.teamId, playerId: input.playerId!, reason: "red_card",
@@ -142,6 +152,7 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
   }
 
   if (input.type === "red_card") {
+    await chargeCard("red_card", event._id, "Tarjeta roja");
     suspensions.push(
       await createSuspension(actor, {
         championshipId: match.championshipId, teamId: input.teamId, playerId: input.playerId!, reason: "red_card",
@@ -188,6 +199,7 @@ export async function voidEvent(actor: Actor, matchId: string, eventId: string) 
   }
 
   const liftedBans = await liftSuspensionsFromEvents(actor, affected.map((item) => item._id));
+  await voidFinesForEvents(actor, affected.map((item) => item._id));
   const score = await recomputeScore(match);
   await recordAudit(actor, {
     action: "void",

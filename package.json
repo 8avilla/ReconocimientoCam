@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "calibrate": "tsx scripts/calibrate-faces.ts",
-    "reembed": "tsx --env-file=.env.local scripts/reembed-faces.ts"
+    "reembed": "tsx --env-file=.env.local scripts/reembed-faces.ts",
+    "integrity": "tsx --env-file=.env.local scripts/check-integrity.ts"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.33.0",

@@ -3,14 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Pencil, Trash2, UserPlus, Users } from "lucide-react";
+import { Pencil, Star, Trash2, UserPlus } from "lucide-react";
+import { TeamMatchesTab } from "@/components/team/TeamMatchesTab";
+import { TeamRosterTab } from "@/components/team/TeamRosterTab";
+import { TeamStatsTab } from "@/components/team/TeamStatsTab";
 import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
 import { TeamFormModal } from "@/components/team/TeamFormModal";
-import { Avatar, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
+import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
+import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
+import { useRole } from "@/components/layout/RoleContext";
+import { canAccess } from "@/lib/roles";
 import { useFetch } from "@/lib/client/useFetch";
-import { REGISTRATION_STATUS_LABEL } from "@/lib/labels";
+import { useStoredState } from "@/lib/client/useStoredState";
 import type { RosterEntryDTO, TeamDTO } from "@/types/api";
+
+type TeamTab = "results" | "fixtures" | "stats" | "roster";
+const TABS: { id: TeamTab; label: string }[] = [
+  { id: "results", label: "Resultados" },
+  { id: "fixtures", label: "Partidos" },
+  { id: "stats", label: "Estadísticas" },
+  { id: "roster", label: "Plantilla" },
+];
 
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +32,9 @@ export default function TeamDetailPage() {
   const toast = useToast();
   const team = useFetch<TeamDTO>(`/teams/${id}`);
   const roster = useFetch<{ data: RosterEntryDTO[] }>(`/teams/${id}/roster`);
+  const { can, role } = useRole();
+  const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);
+  const [tab, setTab] = useStoredState<TeamTab>("super-torneos:team:tab", "results", (value) => TABS.some((item) => item.id === value));
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -53,84 +70,48 @@ export default function TeamDetailPage() {
         breadcrumb={[{ label: "Equipos", href: "/teams" }, { label: current.name }]}
         actions={
           <>
-            <Link href={`/players/new?teamId=${id}`} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>
-            <Button variant="secondary" icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>Editar</Button>
-            <Button variant="ghost" icon={<Trash2 size={18} />} onClick={() => setDeleteOpen(true)} aria-label="Eliminar equipo" />
+            {can("roster.manage") && <Link href={`/players/new?teamId=${id}`} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>}
+            {can("team.manage") && <ActionMenu
+              label="Más acciones del equipo"
+              actions={[
+                { label: "Editar equipo", icon: <Pencil size={18} />, onClick: () => setEditOpen(true) },
+                { label: "Eliminar equipo", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleteOpen(true) },
+              ]}
+            />}
           </>
         }
       />
 
-      <section className="card row" style={{ marginBottom: "var(--space-2xl)" }}>
-        <Avatar src={current.shieldUrl} name={current.name} size={80} square />
-        <div className="stack-sm">
-          <div className="row-wrap">
-            <span className="text-strong">{current.playerCount ?? 0} jugadores</span>
+      <section className="team-hero">
+        <Avatar src={current.shieldUrl} name={current.name} size={72} square />
+        <div className="stack-sm grow" style={{ minWidth: 0 }}>
+          <div className="row-between">
+            <h2>{current.name}</h2>
+            <button className={`star-button${favoriteTeams.has(id) ? " on" : ""}`} aria-pressed={favoriteTeams.has(id)} aria-label={favoriteTeams.has(id) ? "Dejar de seguir este equipo" : "Seguir este equipo"} onClick={() => { toggleFavoriteTeam(id); toast.success(favoriteTeams.has(id) ? `Dejaste de seguir ${current.name}` : `Ahora sigues ${current.name}`); }}>
+              <Star size={22} fill={favoriteTeams.has(id) ? "currentColor" : "none"} />
+            </button>
+          </div>
+          <div className="row-wrap" style={{ gap: 8 }}>
+            <span className="text-secondary">{current.playerCount ?? 0} jugadores</span>
             {!current.active && <Badge tone="neutral">Inactivo</Badge>}
           </div>
-          <span className="text-secondary">Delegado: {current.delegateName || "Sin asignar"}</span>
+          <span className="text-secondary text-small">Delegado: {current.delegateName || "Sin asignar"}</span>
         </div>
       </section>
 
-      <h2 style={{ marginBottom: "var(--space-md)" }}>Nómina</h2>
-      {roster.error ? (
-        <ErrorState message={roster.error.message} onRetry={roster.reload} />
-      ) : roster.loading && !roster.data ? (
-        <Loading />
-      ) : entries.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            icon={<Users size={28} />}
-            title="Este equipo aún no tiene jugadores"
-            description="Registra jugadores para armar la nómina."
-            action={<Link href={`/players/new?teamId=${id}`} className="btn primary">Agregar jugador</Link>}
-          />
-        </div>
-      ) : (
-        <div className="card flush">
-          <div className="table-wrap only-desktop">
-            <table className="table">
-              <thead>
-                <tr><th>Jugador</th><th>Número</th><th>Posición</th><th>Estado</th><th aria-label="Acciones" /></tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry._id}>
-                    <td>
-                      <Link href={`/players/${entry.playerId._id}`} className="row">
-                        <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={40} />
-                        <span className="text-strong">{entry.playerId.fullName}</span>
-                      </Link>
-                    </td>
-                    <td>#{entry.shirtNumber}</td>
-                    <td>{entry.position}</td>
-                    <td><StatusBadge status={entry.status} /></td>
-                    <td style={{ textAlign: "right" }}>
-                      <Button variant="ghost" size="small" onClick={() => setEditingEntry(entry)}>Editar</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="tabs-line" role="tablist" aria-label="Secciones del equipo">
+        {TABS.map((item) => (
+          <button key={item.id} role="tab" aria-selected={tab === item.id} className={`tab-line${tab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-          <div className="only-mobile">
-            {entries.map((entry) => (
-              <div key={entry._id} className="list-row">
-                <Link href={`/players/${entry.playerId._id}`} className="row grow">
-                  <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={48} />
-                  <div className="grow">
-                    <div className="text-strong truncate">#{entry.shirtNumber} · {entry.playerId.fullName}</div>
-                    <div className="text-secondary text-small">{entry.position}</div>
-                    <StatusBadge status={entry.status} />
-                  </div>
-                </Link>
-                <button className="icon-button" onClick={() => setEditingEntry(entry)} aria-label={`Editar inscripción de ${entry.playerId.fullName}`}>
-                  <Pencil size={20} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+      {tab === "results" && <TeamMatchesTab teamId={id} championshipId={current.championshipId} kind="results" />}
+      {tab === "fixtures" && <TeamMatchesTab teamId={id} championshipId={current.championshipId} kind="fixtures" />}
+      {tab === "stats" && <TeamStatsTab teamId={id} championshipId={current.championshipId} />}
+      {tab === "roster" && (
+        <TeamRosterTab teamId={id} entries={entries} loading={roster.loading} error={roster.error} onRetry={roster.reload} onEdit={can("roster.manage") ? setEditingEntry : undefined} linkPlayers={canAccess(role, "/players/x")} />
       )}
 
       <TeamFormModal
@@ -167,9 +148,4 @@ export default function TeamDetailPage() {
       />
     </>
   );
-}
-
-function StatusBadge({ status }: { status: RosterEntryDTO["status"] }) {
-  const { label, tone } = REGISTRATION_STATUS_LABEL[status];
-  return <Badge tone={tone}>{label}</Badge>;
 }

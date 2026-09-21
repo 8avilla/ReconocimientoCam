@@ -1,4 +1,4 @@
-import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, RegistrationStatus, SuspensionReason, SuspensionStatus } from "@/lib/constants";
+import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus } from "@/lib/constants";
 
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
 
@@ -24,7 +24,7 @@ export const REGISTRATION_STATUS_LABEL: Record<RegistrationStatus, { label: stri
 };
 
 export const MATCH_STATUS_LABEL: Record<MatchStatus, { label: string; tone: Tone }> = {
-  scheduled: { label: "Programado", tone: "info" },
+  scheduled: { label: "Por jugar", tone: "info" },
   live: { label: "En curso", tone: "success" },
   finished: { label: "Finalizado", tone: "neutral" },
   postponed: { label: "Aplazado", tone: "warning" },
@@ -63,7 +63,26 @@ export const SUSPENSION_STATUS_LABEL: Record<SuspensionStatus, { label: string; 
   lifted: { label: "Levantada", tone: "info" },
 };
 
-export function formatDateTime(value: string): string {
+export const PHASE_TYPE_LABEL: Record<PhaseType, string> = {
+  league: "Todos contra todos",
+  groups: "Grupos",
+  knockout: "Eliminatoria",
+};
+
+export const LEGS_LABEL: Record<1 | 2, string> = {
+  1: "Partido único",
+  2: "Ida y vuelta",
+};
+
+/** "Fase de grupos · Grupo A · Fecha 2": only the parts the match has. */
+export function matchLabel(match: { phaseId?: { name: string } | string | null; group?: string; matchdayId?: { name: string } | string | null }): string {
+  const phase = match.phaseId && typeof match.phaseId === "object" ? match.phaseId.name : "";
+  const matchday = match.matchdayId && typeof match.matchdayId === "object" ? match.matchdayId.name : "";
+  return [phase, match.group, matchday].filter(Boolean).join(" · ");
+}
+
+export function formatDateTime(value?: string | null): string {
+  if (!value) return "Sin fecha ni hora";
   return new Date(value).toLocaleString("es", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -80,3 +99,18 @@ export function initials(name: string): string {
     .map((part) => part[0]?.toUpperCase())
     .join("");
 }
+
+/** Colombian pesos, e.g. "$ 10.000". */
+export function formatMoney(value: number): string {
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value);
+}
+
+export const FINE_STATUS_LABEL: Record<"pending" | "partial" | "paid" | "waived" | "cancelled", { label: string; tone: Tone }> = {
+  pending: { label: "Por cobrar", tone: "warning" },
+  partial: { label: "Pago parcial", tone: "info" },
+  paid: { label: "Pagada", tone: "success" },
+  waived: { label: "Perdonada", tone: "neutral" },
+  cancelled: { label: "Cancelada", tone: "neutral" },
+};
+
+export const PAYMENT_METHOD_LABEL = { cash: "Efectivo", transfer: "Transferencia", nequi: "Nequi", daviplata: "Daviplata", other: "Otro" } as const;

@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep the dev-only badge from covering the mobile bottom navigation.
+  devIndicators: false,
   serverExternalPackages: ["onnxruntime-node", "sharp"],
   async headers() {
     return [

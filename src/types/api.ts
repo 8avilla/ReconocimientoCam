@@ -2,6 +2,7 @@ import type {
   ChampionshipFormat,
   MatchEventType,
   MatchPeriod,
+  PhaseType,
   SuspensionReason,
   SuspensionStatus,
   MatchStatus,
@@ -26,6 +27,8 @@ export interface ChampionshipRulesDTO {
   yellowCardsForSuspension?: number;
   yellowSuspensionMatches?: number;
   redCardSuspensionMatches?: number;
+  yellowCardFine?: number;
+  redCardFine?: number;
   verifyThreshold: number;
   reviewThreshold: number;
   allowManualReview: boolean;
@@ -109,8 +112,12 @@ export interface MatchDTO {
   awayTeamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
   scheduledAt: string;
   venue: string;
-  round: string;
+  /** Populated in list and detail responses: every match is played on a matchday (fecha). */
+  matchdayId: { _id: string; number: number; name: string };
   status: MatchStatus;
+  /** Populated in list and detail responses: every match belongs to a phase. */
+  phaseId: { _id: string; name: string; type: PhaseType };
+  group?: string;
   period: MatchPeriod;
   startedAt?: string;
   periodStartedAt?: string;
@@ -175,9 +182,43 @@ export interface AttendanceRowDTO {
   verificationId?: { result: VerificationResultDTO; confidence?: number; method: "face" | "manual_review"; performedAt: string } | null;
 }
 
+export interface SuspendedPlayerDTO {
+  _id: string;
+  teamId: string;
+  playerId: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "photoUrl">;
+  registrationId?: { shirtNumber: number } | null;
+  reason: SuspensionReason;
+  matchesToServe: number;
+  matchesServed: number;
+}
+
 export interface AttendanceDTO {
   checkIns: AttendanceRowDTO[];
   summary: { called: number; present: number; absent: number; pending: number; verified: number };
+  /** Players with an active suspension in either team: they cannot play this match. */
+  suspended: SuspendedPlayerDTO[];
+}
+
+/** What needs the organizer's attention in a championship, and how far its setup is. */
+export interface OverviewDTO {
+  setup: {
+    phases: number;
+    /** League and group phases with at least 2 teams / with matches. */
+    tablePhases: number;
+    phasesWithTeams: number;
+    phasesWithCalendar: number;
+    matches: number;
+    scheduledMatches: number;
+  };
+  unscheduledMatches: number;
+  teamsWithoutPhase: { _id: string; name: string }[];
+  playersWithoutFace: number;
+}
+
+export interface SearchDTO {
+  teams: Pick<TeamDTO, "_id" | "name" | "shieldUrl">[];
+  players: { _id: string; fullName: string; photoUrl: string; teamName: string | null; shirtNumber: number | null }[];
+  matches: { _id: string; label: string; phase: string; status: string }[];
 }
 
 export interface LookupDTO {
@@ -231,4 +272,128 @@ export interface PlayerStatsDTO {
   scorers: PlayerStatDTO[];
   assisters: PlayerStatDTO[];
   cards: PlayerStatDTO[];
+}
+
+export interface FixturePreviewDTO {
+  matches: {
+    round: number;
+    group?: string;
+    homeTeam: { _id: string; name: string };
+    awayTeam: { _id: string; name: string };
+  }[];
+  byes: { round: number; teams: string[] }[];
+  rounds: number;
+  /** Names of the matchdays when they are not "Fecha n" (e.g. Ida / Vuelta in a knockout round). */
+  roundLabels?: Record<string, string>;
+  /** Scheduled matches without attendance that already exist and would be replaced. */
+  replaceable: number;
+  kept: number;
+  created: number;
+}
+
+export interface PhaseDTO {
+  _id: string;
+  championshipId: string;
+  name: string;
+  order: number;
+  type: PhaseType;
+  legs: 1 | 2;
+  groupCount?: number;
+  teamIds: string[];
+  groups: { name: string; teamIds: string[] }[];
+  rounds: { _id: string; name: string; order: number; legs: 1 | 2 }[];
+  ties?: { total: number; decided: number };
+  matchdayCount: number;
+  teamCount: number;
+  matches: { total: number; finished: number };
+}
+
+export interface MatchdayDTO {
+  _id: string;
+  phaseId: string;
+  number: number;
+  name: string;
+  matches: { total: number; finished: number };
+  from: string | null;
+  to: string | null;
+}
+
+interface BracketTeam {
+  _id: string;
+  name: string;
+  shieldUrl: string;
+}
+
+export interface BracketTieDTO {
+  _id: string;
+  position: number;
+  homeTeam: BracketTeam | null;
+  awayTeam: BracketTeam | null;
+  /** The home team advances without playing. */
+  bye: boolean;
+  winnerTeamId: string | null;
+  aggregate: { home: number; away: number; played: number } | null;
+  /** Only a hint: the organizer always confirms who advances. */
+  suggestedWinnerTeamId: string | null;
+  matches: {
+    _id: string;
+    leg: 1 | 2;
+    status: string;
+    scheduledAt: string;
+    venue: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    homeScore: number | null;
+    awayScore: number | null;
+  }[];
+}
+
+export interface BracketRoundDTO {
+  _id: string;
+  name: string;
+  order: number;
+  legs: 1 | 2;
+  ties: BracketTieDTO[];
+}
+
+export interface BracketDTO {
+  phase: { _id: string; name: string; championshipId: string; teamIds: string[] };
+  rounds: BracketRoundDTO[];
+}
+
+export interface PhaseStandingsDTO {
+  phase: { _id: string; name: string; type: PhaseType };
+  tables: { group: string | null; rows: StandingsRowDTO[] }[];
+}
+
+export interface AuditLogDTO {
+  _id: string;
+  action: string;
+  entityType: string;
+  actorName: string;
+  actorRole: string;
+  summary: string;
+  createdAt: string;
+}
+
+export type FineStatusDTO = "pending" | "partial" | "paid" | "waived" | "cancelled";
+
+export interface FineDTO {
+  _id: string;
+  teamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
+  playerId?: Pick<PlayerDTO, "_id" | "fullName" | "photoUrl"> | null;
+  matchId?: { _id: string; homeTeamId: { name: string }; awayTeamId: { name: string } } | null;
+  type: "yellow_card" | "red_card" | "manual";
+  concept: string;
+  amount: number;
+  payments: { _id: string; amount: number; method: "cash" | "transfer" | "nequi" | "daviplata" | "other"; note?: string; receiptUrl?: string; paidAt: string; receivedBy: string }[];
+  paidAmount: number;
+  status: FineStatusDTO;
+  eventVoided: boolean;
+  note?: string;
+  createdAt: string;
+}
+
+export interface FinesDTO extends Paginated<FineDTO> {
+  summary: { owed: number; collected: number; byTeam: { teamId: string; name: string; shieldUrl: string; owed: number }[] };
 }

@@ -8,8 +8,9 @@ import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCard } from "@/components/player/PlayerIdCard";
 import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
-import { Avatar, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
+import { Avatar, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast, ActionMenu } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
+import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { formatDate } from "@/lib/labels";
 import type { PlayerCardDTO, PlayerDetailDTO } from "@/types/api";
@@ -22,6 +23,7 @@ export default function PlayerProfilePage() {
   const toast = useToast();
   const player = useFetch<PlayerDetailDTO>(`/players/${id}`);
   const card = useFetch<PlayerCardDTO>(`/players/${id}/card`);
+  const { can } = useRole();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
 
@@ -58,12 +60,15 @@ export default function PlayerProfilePage() {
       <PageHeader
         title={current.fullName}
         breadcrumb={[{ label: "Jugadores", href: "/players" }, { label: current.fullName }]}
-        actions={
-          <>
-            <Button variant="secondary" icon={<Pencil size={18} />} onClick={() => setDialog("edit")}>Editar</Button>
-            <Button variant="ghost" icon={<Trash2 size={18} />} onClick={() => setDialog("delete")} aria-label="Eliminar jugador" />
-          </>
-        }
+        actions={can("player.manage") && (
+          <ActionMenu
+            label="Más acciones del jugador"
+            actions={[
+              { label: "Editar jugador", icon: <Pencil size={18} />, onClick: () => setDialog("edit") },
+              { label: "Eliminar jugador", icon: <Trash2 size={18} />, danger: true, onClick: () => setDialog("delete") },
+            ]}
+          />
+        )}
       />
 
       <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start", gap: "var(--space-2xl)" }}>
@@ -90,7 +95,7 @@ export default function PlayerProfilePage() {
           <section className="card stack">
             <div className="row-between">
               <h3>Inscripciones</h3>
-              {liveRegistration && <Button variant="ghost" size="small" onClick={() => setDialog("registration")}>Editar</Button>}
+              {liveRegistration && can("roster.manage") && <Button variant="ghost" size="small" onClick={() => setDialog("registration")}>Editar</Button>}
             </div>
             {current.registrations.length === 0 ? (
               <p className="text-secondary">El jugador no está inscrito en ningún equipo.</p>
@@ -120,7 +125,7 @@ export default function PlayerProfilePage() {
                 ? `Consentimiento registrado el ${formatDate(current.biometricConsentAt)}.`
                 : "Registra el rostro del jugador para poder verificar su identidad en los partidos."}
             </p>
-            <div className="row-wrap">
+            {can("player.manage") && <div className="row-wrap">
               <Button icon={<Camera size={18} />} onClick={() => setDialog("face")}>
                 {current.hasFace ? "Actualizar rostro" : "Registrar rostro"}
               </Button>
@@ -129,7 +134,7 @@ export default function PlayerProfilePage() {
                   Eliminar datos biométricos
                 </Button>
               )}
-            </div>
+            </div>}
           </section>
         </div>
       </div>

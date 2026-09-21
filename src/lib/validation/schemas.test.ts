@@ -10,10 +10,16 @@ const id = "64b7f0f2a1b2c3d4e5f60718";
 const otherId = "64b7f0f2a1b2c3d4e5f60719";
 
 describe("matchCreateSchema", () => {
-  const base = { championshipId: id, homeTeamId: id, awayTeamId: otherId, scheduledAt: "2025-09-20T19:00:00Z" };
+  const base = { matchdayId: id, homeTeamId: id, awayTeamId: otherId, scheduledAt: "2025-09-20T19:00:00Z" };
 
   it("acepta equipos distintos", () => {
     expect(matchCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("exige que el partido pertenezca a una fecha", () => {
+    const { matchdayId, ...withoutMatchday } = base;
+    void matchdayId;
+    expect(matchCreateSchema.safeParse(withoutMatchday).success).toBe(false);
   });
 
   it("rechaza el mismo equipo como local y visitante", () => {

@@ -1,14 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, ChartColumn, ClipboardCheck, Gavel, Home, MoreHorizontal, ScanLine, Shield, Trophy, Users, Volleyball,
+  CalendarDays, ChartColumn, Eye, Gavel, Home, Lock, MoreHorizontal, Settings, Shield, Trophy, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { QR_VERIFICATION_ENABLED } from "@/lib/features";
+import { useIsMobile } from "@/lib/client/useMediaQuery";
+import { GlobalSearch } from "./GlobalSearch";
+import { RoleSwitcher } from "./RoleSwitcher";
+import { useRole } from "./RoleContext";
+import { canAccess, ROLE_LABEL } from "@/lib/roles";
+import { EmptyState } from "@/components/ui";
 import { useChampionship } from "./ChampionshipContext";
 import styles from "./AppShell.module.css";
 
@@ -20,17 +26,24 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/teams", label: "Equipos", icon: Shield },
   { href: "/players", label: "Jugadores", icon: Users },
   { href: "/matches", label: "Partidos", icon: CalendarDays },
-  { href: "/attendance", label: "Asistencia", icon: ClipboardCheck },
   { href: "/stats", label: "Estadísticas", icon: ChartColumn },
   { href: "/sanctions", label: "Sanciones", icon: Gavel },
+  { href: "/admin", label: "Administración", icon: Settings },
 ];
 
-const MORE_ITEMS = NAV_ITEMS.filter((item) => ["/championships", "/players", "/stats", "/sanctions"].includes(item.href));
+// Phone bottom bar: the main destinations the role can open; everything else lives behind "Más".
+const BOTTOM_HREFS = ["/", "/matches", "/stats", "/teams"];
 
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
+function SearchButton() {
+  const { current } = useChampionship();
+  return current ? <GlobalSearch championshipId={current._id} /> : null;
+}
+
 function ChampionshipSelect() {
-  const { championships, current, setCurrentId } = useChampionship();
+  const { championships, current, setCurrentId, favoriteIds } = useChampionship();
+  const isMobile = useIsMobile();
   if (championships.length === 0) return null;
   return (
     <select
@@ -39,8 +52,8 @@ function ChampionshipSelect() {
       value={current?._id ?? ""}
       onChange={(event) => setCurrentId(event.target.value)}
     >
-      {championships.map((item) => (
-        <option key={item._id} value={item._id}>{item.name} · {item.season}</option>
+      {[...championships].sort((a, b) => Number(favoriteIds.has(b._id)) - Number(favoriteIds.has(a._id))).map((item) => (
+        <option key={item._id} value={item._id}>{favoriteIds.has(item._id) ? "★ " : ""}{isMobile ? item.name : `${item.name} · ${item.season}`}</option>
       ))}
     </select>
   );
@@ -49,19 +62,22 @@ function ChampionshipSelect() {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { role } = useRole();
+
+  const visible = NAV_ITEMS.filter((item) => canAccess(role, item.href));
+  const isBottom = (item: NavItem) => BOTTOM_HREFS.includes(item.href);
+  const BOTTOM_ITEMS = visible.filter(isBottom);
+  const MORE_ITEMS = visible.filter((item) => !isBottom(item));
+  const allowed = canAccess(role, pathname);
 
   return (
     <div className={styles.container}>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span className={styles.brandLogo}><Volleyball size={24} /></span>
-          <div>
-            <span className={styles.brandTitle}>SUPER TORNEOS</span>
-            <span className={styles.brandSubtitle}>Fútbol que nos une</span>
-          </div>
+          <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={208} height={69} priority className={styles.brandLogo} />
         </div>
         <nav className={styles.nav} aria-label="Principal">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          {visible.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href} className={`${styles.navItem} ${isActive(pathname, href) ? styles.active : ""}`}>
               <Icon size={20} aria-hidden />
               {label}
@@ -72,25 +88,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className={styles.viewport}>
         <header className={styles.topbar}>
-          <span className={styles.topbarBrand}><Volleyball size={20} /> Super Torneos</span>
-          <ChampionshipSelect />
+          <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={96} height={32} priority className={styles.topbarLogo} />
+          <div className={styles.topbarActions}>
+            <SearchButton />
+            <RoleSwitcher />
+            <ChampionshipSelect />
+          </div>
         </header>
-        <main className={styles.content}>{children}</main>
+        <main className={styles.content}>
+          {role !== "admin" && (
+            <div className="role-banner" role="status">
+              <Eye size={16} aria-hidden /> Viendo la app como <strong>{ROLE_LABEL[role]}</strong>
+            </div>
+          )}
+          {allowed ? children : (
+            <EmptyState
+              icon={<Lock size={28} />}
+              title="Esta sección no está disponible para tu rol"
+              description={`Como ${ROLE_LABEL[role].toLowerCase()} no tienes acceso a esta pantalla. Cambia de rol con el ojo de la barra superior.`}
+              action={<Link href="/" className="btn primary">Ir al inicio</Link>}
+            />
+          )}
+        </main>
 
         <nav className={styles.bottomNav} aria-label="Principal">
-          <Link href="/" className={`${styles.bottomItem} ${isActive(pathname, "/") ? styles.active : ""}`}>
-            <Home size={24} aria-hidden /> Inicio
-          </Link>
-          <Link href="/matches" className={`${styles.bottomItem} ${isActive(pathname, "/matches") ? styles.active : ""}`}>
-            <CalendarDays size={24} aria-hidden /> Partidos
-          </Link>
-          <Link href="/attendance" className={styles.scanButton} aria-label="Asistencia">
-            {QR_VERIFICATION_ENABLED ? <ScanLine size={28} aria-hidden /> : <ClipboardCheck size={28} aria-hidden />}
-          </Link>
-          <Link href="/teams" className={`${styles.bottomItem} ${isActive(pathname, "/teams") ? styles.active : ""}`}>
-            <Shield size={24} aria-hidden /> Equipos
-          </Link>
-          <button className={styles.bottomItem} onClick={() => setMoreOpen(true)}>
+          {BOTTOM_ITEMS.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className={`${styles.bottomItem} ${isActive(pathname, href) ? styles.active : ""}`}>
+              <Icon size={24} aria-hidden /> {label}
+            </Link>
+          ))}
+          <button className={`${styles.bottomItem} ${MORE_ITEMS.some((item) => isActive(pathname, item.href)) ? styles.active : ""}`} onClick={() => setMoreOpen(true)}>
             <MoreHorizontal size={24} aria-hidden /> Más
           </button>
         </nav>

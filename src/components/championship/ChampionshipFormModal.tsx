@@ -28,6 +28,8 @@ interface FormValues {
   yellowCardsForSuspension: string;
   yellowSuspensionMatches: string;
   redCardSuspensionMatches: string;
+  yellowCardFine: string;
+  redCardFine: string;
   verifyThreshold: string;
   reviewThreshold: string;
   pointsPerWin: string;
@@ -49,6 +51,8 @@ function toValues(championship: ChampionshipDTO | null): FormValues {
     yellowCardsForSuspension: String(rules?.yellowCardsForSuspension ?? 3),
     yellowSuspensionMatches: String(rules?.yellowSuspensionMatches ?? 1),
     redCardSuspensionMatches: String(rules?.redCardSuspensionMatches ?? 1),
+    yellowCardFine: String(rules?.yellowCardFine ?? 0),
+    redCardFine: String(rules?.redCardFine ?? 0),
     verifyThreshold: String(rules?.verifyThreshold ?? 0.35),
     reviewThreshold: String(rules?.reviewThreshold ?? 0.25),
     pointsPerWin: String(rules?.pointsPerWin ?? 3),
@@ -105,6 +109,8 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
         yellowCardsForSuspension: Number(values.yellowCardsForSuspension),
         yellowSuspensionMatches: Number(values.yellowSuspensionMatches),
         redCardSuspensionMatches: Number(values.redCardSuspensionMatches),
+        yellowCardFine: Number(values.yellowCardFine),
+        redCardFine: Number(values.redCardFine),
         verifyThreshold: Number(values.verifyThreshold),
         reviewThreshold: Number(values.reviewThreshold),
         pointsPerWin: Number(values.pointsPerWin),
@@ -150,17 +156,29 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
         <Input label="Fecha de fin" type="date" error={errors.endDate} {...bind("endDate")} />
       </div>
 
+      <section className="stack-sm card" aria-label="Multas por tarjetas" style={{ background: "var(--color-background)" }}>
+        <h3>Multas por tarjetas</h3>
+        <p className="text-secondary text-small">
+          Valor que paga el equipo por cada tarjeta. Al registrar una tarjeta se genera la multa; los pagos (con comprobante opcional) se gestionan en Sanciones → Multas. Déjalo en 0 si no cobras multas por ese tipo de tarjeta.
+        </p>
+        <div className="form-grid two">
+          <Input label="Tarjeta amarilla ($)" type="number" min={0} step={1000} inputMode="numeric" error={errors["rules.yellowCardFine"]} {...bind("yellowCardFine")} />
+          <Input label="Tarjeta roja ($)" type="number" min={0} step={1000} inputMode="numeric" hint="Incluye la roja por doble amarilla." error={errors["rules.redCardFine"]} {...bind("redCardFine")} />
+        </div>
+      </section>
+
       <details>
         <summary className="text-strong" style={{ cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
           Reglas del campeonato
         </summary>
         <div className="form-grid two" style={{ marginTop: "var(--space-md)" }}>
-          <Input label="Máximo de jugadores por nómina" type="number" min={1} error={errors["rules.maxRosterSize"]} {...bind("maxRosterSize")} />
+          <Input label="Máximo de jugadores por plantilla" type="number" min={1} error={errors["rules.maxRosterSize"]} {...bind("maxRosterSize")} />
           <Input label="Mínimo de jugadores para iniciar" type="number" min={1} error={errors["rules.minPlayersToStart"]} {...bind("minPlayersToStart")} />
           <Input label="Amarillas para suspensión" type="number" min={1} hint="Se acumulan entre partidos." error={errors["rules.yellowCardsForSuspension"]} {...bind("yellowCardsForSuspension")} />
           <Input label="Partidos por acumulación de amarillas" type="number" min={1} error={errors["rules.yellowSuspensionMatches"]} {...bind("yellowSuspensionMatches")} />
           <Input label="Partidos por tarjeta roja" type="number" min={1} error={errors["rules.redCardSuspensionMatches"]} {...bind("redCardSuspensionMatches")} />
           <span />
+
           <Input label="Puntos por victoria" type="number" min={0} {...bind("pointsPerWin")} />
           <Input label="Puntos por empate" type="number" min={0} {...bind("pointsPerDraw")} />
           <Input label="Puntos por derrota" type="number" min={0} {...bind("pointsPerLoss")} />

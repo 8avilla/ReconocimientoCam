@@ -4,15 +4,16 @@
 
 .content {
   flex: 1; width: 100%; max-width: 1280px; margin: 0 auto;
-  padding: var(--space-lg) var(--space-lg) 96px;
+  padding: var(--space-lg) var(--space-lg) 120px;
 }
 
 .topbar {
   height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md);
   padding: 0 var(--space-lg); background: var(--color-navy); color: #fff;
 }
-.topbarBrand { display: flex; align-items: center; gap: var(--space-sm); font-weight: 700; color: #fff; }
-.championshipSelect { min-height: 36px; width: auto; max-width: 60%; }
+.topbarActions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-sm); min-width: 0; flex: 1; }
+.topbarLogo { height: 32px; width: auto; border-radius: var(--radius-sm); }
+.championshipSelect { min-height: 44px; width: auto; min-width: 0; max-width: 100%; }
 
 .sidebar { display: none; }
 
@@ -26,21 +27,15 @@
   gap: 2px; font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
 }
 .bottomItem.active { color: var(--color-primary); font-weight: 700; }
-.scanButton {
-  width: 56px; height: 56px; border-radius: 50%; margin-top: -24px; flex-shrink: 0;
-  background: var(--color-primary); color: #fff; display: flex; align-items: center; justify-content: center;
-  box-shadow: var(--shadow-lg);
-}
 
 @media (min-width: 1024px) {
   .sidebar {
     display: flex; flex-direction: column; width: 248px; flex-shrink: 0; height: 100vh; position: sticky; top: 0;
     background: var(--color-navy); color: #fff;
   }
-  .brand { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-2xl) var(--space-xl); border-bottom: 1px solid var(--color-navy-light); }
-  .brandLogo { width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); display: flex; align-items: center; justify-content: center; }
-  .brandTitle { display: block; font-weight: 800; letter-spacing: 0.5px; font-size: 15px; }
-  .brandSubtitle { display: block; font-size: 11px; color: var(--color-text-disabled); }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); padding: var(--space-xl); border-bottom: 1px solid var(--color-navy-light); }
+  .brandLogo { width: 100%; height: auto; border-radius: var(--radius-md); }
+  .brandSubtitle { font-size: 11px; color: var(--color-text-disabled); }
   .nav { display: flex; flex-direction: column; gap: 4px; padding: var(--space-lg) var(--space-md); }
   .navItem {
     display: flex; align-items: center; gap: var(--space-md); min-height: 44px; padding: 0 var(--space-lg);
@@ -50,7 +45,7 @@
   .navItem.active { background: rgba(22, 163, 74, 0.16); color: var(--color-primary); font-weight: 700; }
 
   .topbar { background: var(--color-surface); color: var(--color-text-primary); border-bottom: 1px solid var(--color-border); height: 64px; padding: 0 var(--space-3xl); justify-content: flex-end; }
-  .topbarBrand { display: none; }
+  .topbarLogo { display: none; }
   .championshipSelect { max-width: 280px; }
   .content { padding: var(--space-3xl); }
   .bottomNav { display: none; }

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Users } from "lucide-react";
+import { ChevronRight, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
 
@@ -16,6 +17,8 @@ export default function PlayersPage() {
 }
 
 function PlayersList({ championshipId }: { championshipId: string }) {
+  const { can } = useRole();
+  const manage = can("player.manage");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [teamId, setTeamId] = useState("");
@@ -41,7 +44,8 @@ function PlayersList({ championshipId }: { championshipId: string }) {
       <PageHeader
         title="Jugadores"
         description="Identidad, foto y estado de los jugadores del campeonato."
-        actions={<Link href="/players/new" className="btn primary"><Plus size={18} aria-hidden /> Nuevo jugador</Link>}
+        actions={manage && <Link href="/players/new" className="btn primary"><Plus size={18} aria-hidden /> Nuevo jugador</Link>}
+        mobileActions={manage ? [{ label: "Nuevo jugador", icon: <Plus size={20} />, href: "/players/new" }] : undefined}
       />
 
       <div className="row-wrap" style={{ marginBottom: "var(--space-lg)" }}>
@@ -71,12 +75,13 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             icon={<Users size={28} />}
             title={filtered ? "Sin resultados" : "Aún no hay jugadores"}
             description={filtered ? "Prueba con otros filtros." : "Registra el primer jugador de este campeonato."}
-            action={!filtered && <Link href="/players/new" className="btn primary">Registrar jugador</Link>}
+            action={manage && !filtered && <Link href="/players/new" className="btn primary">Registrar jugador</Link>}
           />
         </div>
       ) : (
         <>
-          <div className="card flush">
+          <div className="flush-list">
+            <h2 className="band band-muted band-small">Jugadores ({data?.meta.total ?? players.length})</h2>
             <div className="table-wrap only-desktop">
               <table className="table">
                 <thead>
@@ -107,18 +112,20 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             <div className="only-mobile">
               {players.map((player) => (
                 <Link key={player._id} href={`/players/${player._id}`} className="list-row">
-                  <Avatar src={player.photoUrl} name={player.fullName} size={52} />
-                  <div className="grow stack-sm" style={{ gap: 2 }}>
-                    <div className="text-strong truncate">{player.fullName}</div>
-                    <div className="text-secondary text-small truncate">
+                  <Avatar src={player.photoUrl} name={player.fullName} size={44} />
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div className="champ-caption truncate">
                       {player.registration?.team?.name ?? "Sin equipo"}
                       {player.registration && ` · #${player.registration.shirtNumber} · ${player.registration.position}`}
                     </div>
-                    <div className="row-wrap" style={{ gap: 6 }}>
-                      {player.registration && <RegistrationBadge status={player.registration.status} />}
-                      <FaceBadge hasFace={player.hasFace} />
-                    </div>
+                    <div className="champ-name truncate">{player.fullName}</div>
                   </div>
+                  {player.registration && player.registration.status !== "active" && <RegistrationBadge status={player.registration.status} />}
+                  {/* Icon only on phones so the name keeps its space. */}
+                  <span title={player.hasFace ? "Rostro registrado" : "Sin rostro"} aria-label={player.hasFace ? "Rostro registrado" : "Sin rostro"} style={{ display: "inline-flex", color: player.hasFace ? "var(--color-success)" : "var(--color-warning)" }}>
+                    {player.hasFace ? <ScanFace size={22} /> : <UserRound size={22} />}
+                  </span>
+                  <ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" />
                 </Link>
               ))}
             </div>

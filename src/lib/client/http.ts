@@ -31,13 +31,22 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/** Role chosen in the "view as" selector (only used to attribute audit entries). */
+function viewRole(): string {
+  try {
+    return window.localStorage.getItem("super-torneos:role") ?? "admin";
+  } catch {
+    return "admin";
+  }
+}
+
 /** Typed fetch against the app's REST API; throws HttpError with the Spanish message from the server. */
 export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
       method: options.method ?? (options.json !== undefined ? "POST" : "GET"),
-      headers: options.json !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers: { ...(options.json !== undefined ? { "Content-Type": "application/json" } : {}), "x-view-role": viewRole() },
       body: options.json !== undefined ? JSON.stringify(options.json) : undefined,
       signal: options.signal,
     });

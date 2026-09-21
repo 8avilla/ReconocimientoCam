@@ -4,7 +4,7 @@ import {
   CHAMPIONSHIP_STATUSES,
 } from "@/models/Championship";
 import { POSITIONS, REGISTRATION_STATUSES } from "@/models/TeamRegistration";
-import { MATCH_EVENT_TYPES, MATCH_STATUSES, SUSPENSION_STATUSES } from "@/lib/constants";
+import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES } from "@/lib/constants";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/models/AuditLog";
 import {
   hexColorSchema,
@@ -27,6 +27,8 @@ const rulesSchema = z
     yellowCardsForSuspension: z.number().int().min(1).max(20),
     yellowSuspensionMatches: z.number().int().min(1).max(20),
     redCardSuspensionMatches: z.number().int().min(1).max(20),
+    yellowCardFine: z.number().int().min(0).max(100_000_000),
+    redCardFine: z.number().int().min(0).max(100_000_000),
     verifyThreshold: z.number().min(0).max(1),
     reviewThreshold: z.number().min(0).max(1),
     allowManualReview: z.boolean(),
@@ -164,12 +166,14 @@ export const registrationListQuery = paginationSchema.extend({
 
 export const matchCreateSchema = z
   .object({
-    championshipId: objectIdSchema,
+    /** The matchday determines the phase and, through it, the championship. */
+    matchdayId: objectIdSchema,
     homeTeamId: objectIdSchema,
     awayTeamId: objectIdSchema,
-    scheduledAt: z.coerce.date(),
+    /** Optional: matches are usually created without day or time and scheduled later. */
+    scheduledAt: z.coerce.date().optional(),
     venue: optionalText().optional(),
-    round: optionalText(40).optional(),
+    group: optionalText(30).optional(),
   })
   .refine((value) => value.homeTeamId !== value.awayTeamId, {
     message: "El equipo local y el visitante deben ser distintos",
@@ -178,9 +182,12 @@ export const matchCreateSchema = z
 
 export const matchUpdateSchema = z
   .object({
-    scheduledAt: z.coerce.date(),
+    /** null clears the day and time (match back to "unscheduled"). */
+    scheduledAt: z.coerce.date().nullable(),
     venue: optionalText(),
-    round: optionalText(40),
+    /** Moves the match to another matchday (of the same championship). */
+    matchdayId: objectIdSchema,
+    group: optionalText(30).nullable(),
     // live/finished are reached through the match transitions; scores are derived from events.
     status: z.enum(["scheduled", "postponed", "suspended", "walkover"]),
   })
@@ -188,10 +195,87 @@ export const matchUpdateSchema = z
 
 export const matchListQuery = paginationSchema.extend({
   championshipId: objectIdSchema.optional(),
+  phaseId: objectIdSchema.optional(),
+  matchdayId: objectIdSchema.optional(),
   teamId: objectIdSchema.optional(),
   status: z.enum(MATCH_STATUSES).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  /** "false" = only matches without day and time; "true" = only the scheduled ones. */
+  scheduled: z.enum(["true", "false"]).optional(),
+  /** "matchday" (default): by phase and fecha; "date": by calendar day. */
+  order: z.enum(["matchday", "date"]).default("matchday"),
+});
+
+// ---------- Phases ----------
+
+const legsSchema = z.union([z.literal(1), z.literal(2)]);
+
+export const phaseCreateSchema = z.object({
+  name: requiredText(60),
+  type: z.enum(PHASE_TYPES),
+  legs: legsSchema,
+  groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26).optional(),
+});
+
+export const phaseUpdateSchema = z
+  .object({
+    name: requiredText(60),
+    type: z.enum(PHASE_TYPES),
+    legs: legsSchema,
+    groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26),
+  })
+  .partial();
+
+export const phaseTeamsSchema = z.object({
+  teamIds: z.array(objectIdSchema).max(200),
+  groups: z.array(z.object({ name: requiredText(30), teamIds: z.array(objectIdSchema).max(200) })).max(26).optional(),
+});
+
+// ---------- Matchdays ----------
+
+export const matchdayCreateSchema = z.object({
+  name: optionalText(40).optional(),
+  number: z.number().int().min(1).max(500).optional(),
+});
+
+export const matchdayUpdateSchema = z.object({ name: requiredText(40), number: z.number().int().min(1).max(500) }).partial();
+
+// ---------- Knockout ----------
+
+export const roundCreateSchema = z.object({ name: requiredText(40), legs: legsSchema });
+export const roundUpdateSchema = z.object({ name: requiredText(40), legs: legsSchema }).partial();
+
+export const tiesSchema = z.object({
+  ties: z
+    .array(z.object({ homeTeamId: objectIdSchema, awayTeamId: objectIdSchema.nullable() }))
+    .max(64)
+    .refine((ties) => ties.every((tie) => tie.homeTeamId !== tie.awayTeamId), { message: "Un equipo no puede jugar contra sí mismo" }),
+});
+
+export const winnerSchema = z.object({ teamId: objectIdSchema.nullable() });
+
+export const tieMatchSchema = z.object({
+  leg: legsSchema,
+  scheduledAt: z.coerce.date().optional(),
+  venue: optionalText().optional(),
+});
+
+// ---------- Fixture generation ----------
+
+export const fixtureSchema = z.object({
+  /** Delete the scheduled matches without attendance before creating the new ones. */
+  replaceScheduled: z.boolean().default(false),
+  /** Only compute the matches; nothing is saved. */
+  preview: z.boolean().default(false),
+});
+
+/** Sets or clears the day, time and venue of several matches of a matchday in one go. */
+export const matchdayScheduleSchema = z.object({
+  matches: z
+    .array(z.object({ matchId: objectIdSchema, scheduledAt: z.coerce.date().nullable(), venue: optionalText().optional() }))
+    .min(1)
+    .max(100),
 });
 
 // ---------- Check-ins ----------
@@ -285,3 +369,37 @@ export const auditListQuery = paginationSchema.extend({
   entityId: objectIdSchema.optional(),
   action: z.enum(AUDIT_ACTIONS).optional(),
 });
+
+// ---------- Search ----------
+
+export const searchQuery = z.object({
+  q: z.string().trim().min(2, "Escribe al menos 2 letras").max(60),
+  championshipId: objectIdSchema,
+});
+
+// ---------- Fines ----------
+
+export const fineListQuery = paginationSchema.extend({
+  championshipId: objectIdSchema,
+  teamId: objectIdSchema.optional(),
+  /** "open" = pending or partially paid. */
+  status: z.enum(["open", "paid", "waived", "cancelled"]).optional(),
+});
+
+export const fineCreateSchema = z.object({
+  championshipId: objectIdSchema,
+  teamId: objectIdSchema,
+  playerId: objectIdSchema.optional(),
+  amount: z.number().int().min(1, "Indica el valor de la multa").max(100_000_000),
+  concept: requiredText(200),
+});
+
+export const finePaymentSchema = z.object({
+  amount: z.number().int().min(1, "Indica cuánto se pagó").max(100_000_000),
+  method: z.enum(["cash", "transfer", "nequi", "daviplata", "other"]).default("cash"),
+  note: optionalText(200).optional(),
+  /** Optional proof of payment (image as data URL). */
+  receipt: imageDataUrlSchema.optional(),
+});
+
+export const fineNoteSchema = z.object({ note: optionalText(300).optional() });

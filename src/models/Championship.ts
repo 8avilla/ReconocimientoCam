@@ -28,6 +28,10 @@ export interface ChampionshipRules {
   yellowSuspensionMatches: number;
   /** Matches a player sits out after a red card. */
   redCardSuspensionMatches: number;
+  /** Fine (COP) charged for each yellow card; 0 = no fine. */
+  yellowCardFine: number;
+  /** Fine (COP) charged for each red card; 0 = no fine. */
+  redCardFine: number;
   /** Whether referees may resolve a failed verification manually. Fixed to true for now. */
   allowManualReview: boolean;
 }
@@ -58,6 +62,8 @@ export const DEFAULT_RULES: ChampionshipRules = {
   yellowCardsForSuspension: 3,
   yellowSuspensionMatches: 1,
   redCardSuspensionMatches: 1,
+  yellowCardFine: 0,
+  redCardFine: 0,
   allowManualReview: true,
 };
 
@@ -73,6 +79,8 @@ const RulesSchema = new Schema<ChampionshipRules>(
     yellowCardsForSuspension: { type: Number, default: DEFAULT_RULES.yellowCardsForSuspension, min: 1 },
     yellowSuspensionMatches: { type: Number, default: DEFAULT_RULES.yellowSuspensionMatches, min: 1 },
     redCardSuspensionMatches: { type: Number, default: DEFAULT_RULES.redCardSuspensionMatches, min: 1 },
+    yellowCardFine: { type: Number, default: DEFAULT_RULES.yellowCardFine, min: 0 },
+    redCardFine: { type: Number, default: DEFAULT_RULES.redCardFine, min: 0 },
     allowManualReview: { type: Boolean, default: DEFAULT_RULES.allowManualReview },
   },
   { _id: false }

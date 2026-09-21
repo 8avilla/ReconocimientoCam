@@ -5,6 +5,9 @@ import { championshipUpdateSchema } from "@/lib/validation/schemas";
 import { assertThresholdOrder } from "@/lib/rules/championship";
 import { Championship, IChampionship } from "@/models/Championship";
 import { Match } from "@/models/Match";
+import { Matchday } from "@/models/Matchday";
+import { Phase } from "@/models/Phase";
+import { Tie } from "@/models/Tie";
 import { Team } from "@/models/Team";
 
 type Params = { id: string };
@@ -68,6 +71,10 @@ export const DELETE = route<Params>(async (request, { id }) => {
   if (teams || matches) {
     throw conflict("El campeonato tiene equipos o partidos; no se puede eliminar", "championship_in_use");
   }
+  // Phases cannot outlive their championship: remove them (they have no matches at this point).
+  await Tie.deleteMany({ championshipId: id });
+  await Matchday.deleteMany({ championshipId: id });
+  await Phase.deleteMany({ championshipId: id });
   await championship.deleteOne();
   await recordAudit(getActor(request), {
     action: "delete",

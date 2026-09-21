@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { Avatar } from "@/components/ui";
 import { suggestedMinute } from "@/lib/rules/match";
-import { formatDateTime, MATCH_PERIOD_LABEL } from "@/lib/labels";
+import { formatDateTime, MATCH_PERIOD_LABEL, matchLabel } from "@/lib/labels";
 import { MatchStatusBadge } from "./MatchStatusBadge";
 import type { MatchDTO } from "@/types/api";
 
@@ -48,6 +48,7 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
           ) : (
             <span className="text-strong">{formatDateTime(match.scheduledAt)}</span>
           )}
+          {matchLabel(match) && <span className="text-secondary text-small">{matchLabel(match)}</span>}
           {match.venue && <span className="text-secondary text-small"><MapPin size={12} aria-hidden /> {match.venue}</span>}
         </div>
         <Side name={match.awayTeamId.name} shieldUrl={match.awayTeamId.shieldUrl} />

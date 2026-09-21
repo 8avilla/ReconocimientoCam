@@ -6,3 +6,5 @@ export { Modal, ConfirmDialog } from "./Modal";
 export { ToastProvider, useToast } from "./Toast";
 export { Loading, EmptyState, ErrorState } from "./States";
 export { PageHeader } from "./PageHeader";
+export { ActionMenu, type MenuAction } from "./ActionMenu";
+export { Fab } from "./Fab";

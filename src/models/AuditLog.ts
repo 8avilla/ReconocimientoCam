@@ -11,9 +11,13 @@ export const AUDIT_ENTITY_TYPES = [
   "verification",
   "match_event",
   "suspension",
+  "phase",
+  "tie",
+  "matchday",
+  "fine",
 ] as const;
 
-export const AUDIT_ACTIONS = ["create", "update", "delete", "call_up_change", "check_in", "face_enroll", "face_remove", "void", "transition", "lift"] as const;
+export const AUDIT_ACTIONS = ["create", "update", "delete", "call_up_change", "check_in", "face_enroll", "face_remove", "void", "transition", "lift", "pay"] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

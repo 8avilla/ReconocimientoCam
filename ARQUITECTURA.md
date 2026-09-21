@@ -59,18 +59,23 @@ ReconocimientoCam/
 │   ├── app/                      # NEXT.JS APP ROUTER (Vistas y API)
 │   │   ├── layout.tsx / page.tsx / globals.css
 │   │   ├── championships/ teams/ players/  # CRUD (Fase 3): listados, formularios, perfil y carnet
+│   │   ├── championships/[id]              # Configuración: fases (todos contra todos, grupos, eliminatoria), equipos por fase, calendario
+│   │   ├── phases/[id]                     # Llaves de una eliminatoria: rondas, cruces, partidos y ganadores
 │   │   ├── matches/[id]                    # Partido: pestañas Asistencia (plantilla completa, QR, verificación facial), Eventos y Resumen
 │   │   ├── attendance/                     # Índice de partidos abiertos; /[matchId] redirige al partido (pestaña Asistencia)
 │   │   ├── sanctions/                      # Suspensiones vigentes, cumplidas y manuales
 │   │   ├── stats/                          # Posiciones, goleadores, asistencias y tarjetas
 │   │   └── api/                  # BACKEND: Route Handlers REST
-│   │       ├── championships/    # CRUD de campeonatos, /[id]/standings y /[id]/stats
+│   │       ├── championships/    # CRUD de campeonatos, /[id]/stats y /[id]/phases
 │   │       ├── teams/            # CRUD de equipos, /[id]/shield, /[id]/roster
 │   │       ├── players/          # CRUD de identidad, /[id]/face, /[id]/card
 │   │       ├── registrations/    # Inscripción jugador ↔ equipo ↔ campeonato
 │   │       ├── matches/          # CRUD de partidos, /[id]/attendance (plantilla completa, sin convocatoria manual), /check-ins,
 │   │       │                     #   /lookup (QR/documento), /verifications, /verifications/manual,
 │   │       │                     #   /events (+ /[eventId]/void), /transition (inicio, medio tiempo, fin)
+│   │       ├── matchdays/        # Fechas: /[id] (renombrar, eliminar); se crean en /phases/[id]/matchdays; /championships/[id]/matchdays lista todas
+│   │       ├── phases/           # Fases: /[id], /teams, /draw-groups, /fixture, /standings, /bracket, /rounds (+ /ties, /fixture)
+│   │       ├── ties/             # Cruces de eliminatoria: /[id]/winner y /[id]/matches
 │   │       ├── suspensions/      # Sanciones: listado, manual y /[id]/lift
 │   │       └── audit-logs/       # Consulta de auditoría (solo lectura)
 │   ├── components/               # FRONTEND
@@ -88,12 +93,12 @@ ReconocimientoCam/
 │   │   ├── audit.ts              # recordAudit() + diffChanges()
 │   │   ├── azureBlob.ts          # uploadImage()/deleteImage() en Azure Blob
 │   │   ├── faceEngine/           # Detección SCRFD, alineación ArcFace, embedding ONNX, clasificación 1:1
-│   │   ├── rules/                # Reglas de negocio puras (partido, posiciones, campeonato)
+│   │   ├── rules/                # Reglas de negocio puras (partido, posiciones, calendario, campeonato)
 │   │   ├── services/             # Casos de uso: registrations, callups, checkins, players
 │   │   └── validation/           # Esquemas Zod (mensajes en español)
 │   └── models/                   # Mongoose: Championship, Team, Player, TeamRegistration,
 │                                 #   Match, MatchCallUp, PlayerCheckIn, IdentityVerification, AuditLog
-├── scripts/                      # seed (npm run seed), calibrate, reembed
+├── scripts/                      # seed, calibrate, reembed, integrity (npm run integrity [-- --fix])
 ├── docs/CALIBRACION_FACIAL.md    # Método y resultados de los umbrales de verificación
 ├── models_onnx/                  # Modelos ONNX de reconocimiento facial
 ├── .env.local / .env.example     # Variables de entorno
@@ -105,6 +110,9 @@ ReconocimientoCam/
 `Championship → Team → TeamRegistration ← Player` (la identidad del jugador es independiente de su inscripción).
 `Match → MatchCallUp → PlayerCheckIn → IdentityVerification`. No hay convocatoria manual: `syncMatchCallUps` convoca
 automáticamente a todos los jugadores activos de ambos equipos (al crear el partido y al consultar asistencia, QR o verificación).
+**Integridad:** todo partido pertenece a una **fecha** (`Matchday`: Fecha 1, Fecha 2...), la fecha a una fase y la fase a un campeonato (sin huérfanos): `Match.matchdayId` y `phaseId` son obligatorios, la fase y el campeonato del partido se toman de su fecha, las fechas las crea el usuario (o el generador, si se usa),
+no se puede borrar una fase con partidos ni un equipo que esté en una fase, y borrar un campeonato vacío elimina sus fases.
+`Championship → Phase` (liga, grupos o eliminatoria: rondas → `Tie`, cruces definidos y ganador marcado por el organizador; equipos elegidos a mano; sorteo de grupos con ajuste) `→ Match` (phaseId, group).
 `Match → MatchEvent` (goles, tarjetas, cambios, incidentes; se anulan, no se borran) → `Suspension`. El marcador se deriva de los eventos; la tabla y las estadísticas se calculan al consultar, solo con partidos finalizados
 (desempate: puntos, diferencia de gol, goles a favor, nombre; sin enfrentamiento directo). Toda acción crítica escribe un `AuditLog` inmutable.
 El QR del carnet solo contiene `Player.publicId` (opaco, sin datos personales).
@@ -192,3 +200,9 @@ El pipeline de verificación biométrica funciona de manera integrada dentro del
 - **Idioma**: Código, variables, comentarios técnicos y logs en **Inglés**. Interfaz de usuario, mensajes de alerta y documentación en **Español**.
 - **Linting**: Verificación continua mediante `npm run lint`.
 - **Manejo de Errores**: Todo bloque de comunicación externa o base de datos incluye `try/catch` explícito, devolviendo códigos de estado HTTP apropiados (`200`, `201`, `400`, `404`, `500`).
+
+**Programación de partidos:** los partidos (manuales o generados) pertenecen a una fecha pero se crean **sin día, hora ni cancha** (`Match.scheduledAt` opcional). El organizador los programa a mano y puede cambiarlos cuando quiera: por fecha con `PUT /matchdays/[id]/schedule` (asigna o quita día/hora/cancha en lote; el asistente "Asignar en orden" solo rellena un borrador) o partido a partido con `PATCH /matches/[id]` (`scheduledAt: null` lo quita). Los partidos en juego o finalizados no se reprograman. El generador solo agrega los cruces que faltan; reemplazar partidos programados es una opción explícita. Filtros de `/matches`: `scheduled=true|false`, `matchdayId`, `phaseId`, `order=matchday|date`.
+
+**Roles (vista previa, sin login):** tres roles, elegibles con «Ver como…» (ojo en la barra superior): **Visitante** (sigue campeonatos: solo lectura y favoritos; no ve jugadores ni asistencia ni pantallas de configuración), **Organizador** (lo del visitante + organizar el campeonato: fases, calendario, equipos, plantillas, jugadores, asistencia, eventos, sanciones) y **Administrador** (todo, más eliminar campeonatos y la pantalla `/admin` con el registro de actividad). El rol vive en `RoleContext` (localStorage); la matriz de permisos y de pantallas está en `src/lib/roles.ts` (probada en `roles.test.ts`). Solo afecta a la interfaz: la API no lo aplica; el cliente envía `x-view-role` únicamente para que la auditoría diga quién actuó. Pendiente al activar el login real: `getActor` debe leer la sesión, los endpoints deben validar esta misma matriz y cada organizador debe administrar solo sus campeonatos (hoy cualquier organizador ve todos).
+
+**Multas y pagos:** los equipos pagan multas, en especial por tarjetas. El campeonato define el valor de cada amarilla (sección visible «Multas por tarjetas» del formulario del campeonato) y de cada roja (`rules.yellowCardFine`, `rules.redCardFine`; 0 = sin multa). Al registrar la tarjeta se crea automáticamente una `Fine` (una por evento; la roja por doble amarilla también) y al anular la tarjeta se cancela si nadie ha pagado (si ya hubo pagos queda marcada `eventVoided`). El organizador registra pagos, parciales si hace falta, con tipo de pago (efectivo, transferencia, Nequi, Daviplata u otro) y comprobante opcional (foto que se guarda en Azure Blob `fines/receipts` y se borra al eliminar el pago) (`POST /fines/:id/payments`, `DELETE …/payments/:paymentId`), puede perdonar o reabrir una multa y crear multas manuales (`POST /fines`). `GET /fines` devuelve la lista y un resumen (por cobrar, recaudado y lo que debe cada equipo). En la UI está en Sanciones → Multas y solo la ven quienes gestionan sanciones. Modelo en `src/models/Fine.ts`, reglas puras en `src/lib/rules/fines.ts`, servicio en `src/lib/services/fines.ts`.

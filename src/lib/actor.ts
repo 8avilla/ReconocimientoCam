@@ -15,6 +15,9 @@ export interface Actor {
  * (cookie -> User) once credentials-based login is enabled.
  */
 export function getActor(request: NextRequest): Actor {
-  void request;
+  // The "view as" selector sends its role so the audit trail says who was acting; it grants nothing.
+  const viewRole = request.headers.get("x-view-role");
+  if (viewRole === "organizer") return { userId: null, name: "Sistema (Organizador)", role: "championship_admin" };
+  if (viewRole === "visitor") return { userId: null, name: "Sistema (Visitante)", role: "delegate" };
   return { userId: null, name: "Sistema", role: "admin" };
 }

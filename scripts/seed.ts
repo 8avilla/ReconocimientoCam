@@ -10,6 +10,8 @@ import { AuditLog } from "@/models/AuditLog";
 import { Championship } from "@/models/Championship";
 import { IdentityVerification } from "@/models/IdentityVerification";
 import { Match } from "@/models/Match";
+import { Matchday } from "@/models/Matchday";
+import { Phase } from "@/models/Phase";
 import { MatchCallUp } from "@/models/MatchCallUp";
 import { Player } from "@/models/Player";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
@@ -18,7 +20,7 @@ import { POSITIONS, TeamRegistration } from "@/models/TeamRegistration";
 
 const OWNED_COLLECTIONS = [
   "championships", "teams", "players", "teamregistrations", "matches", "matchcallups",
-  "playercheckins", "identityverifications", "auditlogs",
+  "playercheckins", "identityverifications", "auditlogs", "matchevents", "suspensions", "phases", "ties", "matchdays",
   // Legacy collections from the previous employee attendance prototype.
   "employees", "attendancerecords", "faceembeddings", "matchattendances",
 ];
@@ -85,6 +87,18 @@ async function seed() {
     }))
   );
 
+  // Every match belongs to a phase; the seed uses a single league phase with all the teams.
+  const phase = await Phase.create({
+    championshipId: championship._id,
+    name: "Fase regular",
+    order: 1,
+    type: "league",
+    legs: 1,
+    teamIds: teams.map((team) => team._id),
+  });
+
+  const matchday = await Matchday.create({ championshipId: championship._id, phaseId: phase._id, number: 1, name: "Fecha 1" });
+
   const nextSaturday = new Date();
   nextSaturday.setDate(nextSaturday.getDate() + ((6 - nextSaturday.getDay() + 7) % 7 || 7));
   nextSaturday.setHours(19, 0, 0, 0);
@@ -92,19 +106,21 @@ async function seed() {
   const [atlas, , brazuca] = teams;
   await Match.create({
     championshipId: championship._id,
+    phaseId: phase._id,
+    matchdayId: matchday._id,
     homeTeamId: atlas._id,
     awayTeamId: brazuca._id,
     scheduledAt: nextSaturday,
     venue: "Cancha La 10",
-    round: "Jornada 1",
   });
   await Match.create({
     championshipId: championship._id,
+    phaseId: phase._id,
+    matchdayId: matchday._id,
     homeTeamId: teams[1]._id,
     awayTeamId: teams[3]._id,
     scheduledAt: new Date(nextSaturday.getTime() + 2 * 60 * 60 * 1000),
     venue: "Cancha La 10",
-    round: "Jornada 1",
   });
 
   // Every match calls up the whole active squad of both teams.
@@ -121,7 +137,7 @@ async function main() {
   }
   // Ensure partial unique indexes exist before inserting.
   await Promise.all(
-    [AuditLog, Championship, IdentityVerification, Match, MatchCallUp, Player, PlayerCheckIn, Team, TeamRegistration].map(
+    [AuditLog, Championship, IdentityVerification, Match, Matchday, MatchCallUp, Phase, Player, PlayerCheckIn, Team, TeamRegistration].map(
       (model) => model.syncIndexes()
     )
   );

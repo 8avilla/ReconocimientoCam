@@ -6,6 +6,7 @@ import { Match } from "@/models/Match";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { MatchCallUp } from "@/models/MatchCallUp";
 import { IdentityVerification } from "@/models/IdentityVerification";
+import { Suspension } from "@/models/Suspension";
 import { CheckInMethod, PlayerCheckIn } from "@/models/PlayerCheckIn";
 
 export interface RegisterCheckInInput {
@@ -110,5 +111,15 @@ export async function getAttendance(matchId: string) {
     const verification = row.verificationId as unknown as { result?: string } | undefined;
     if (row.status === "present" && (row.method === "face" || verification?.result === "verified")) summary.verified += 1;
   }
-  return { checkIns: rows, summary };
+
+  // Suspended players are not called up; listing them explains why they are missing from the squad.
+  const match = await Match.findById(matchId).select("homeTeamId awayTeamId").lean();
+  const suspended = match
+    ? await Suspension.find({ teamId: { $in: [match.homeTeamId, match.awayTeamId] }, status: "active" })
+        .populate({ path: "playerId", select: "publicId fullName photoUrl" })
+        .populate({ path: "registrationId", select: "shirtNumber" })
+        .select("teamId playerId registrationId reason matchesToServe matchesServed")
+        .lean()
+    : [];
+  return { checkIns: rows, summary, suspended };
 }

@@ -6,18 +6,18 @@ import { Pencil, Trash2 } from "lucide-react";
 import { AttendancePanel } from "@/components/attendance/AttendancePanel";
 import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { EventComposerModal, type PresentPlayer } from "@/components/match/EventComposerModal";
-import { EventIcon } from "@/components/match/EventIcon";
 import { EventTimeline } from "@/components/match/EventTimeline";
 import { MatchControls } from "@/components/match/MatchControls";
+import { MatchRoster } from "@/components/match/MatchRoster";
 import { MatchScoreboard } from "@/components/match/MatchScoreboard";
 import { MatchSummary } from "@/components/match/MatchSummary";
-import { Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
+import { ActionMenu, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import type { MatchEventType } from "@/lib/constants";
 import { errorMessage, http } from "@/lib/client/http";
+import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
-import { EVENT_TYPE_LABEL } from "@/lib/labels";
 import { suggestedMinute } from "@/lib/rules/match";
-import type { AttendanceDTO, MatchDTO, MatchEventDTO, Paginated, SuspensionDTO } from "@/types/api";
+import type { AttendanceDTO, MatchDTO, MatchEventDTO, Paginated, PhaseDTO, SuspensionDTO } from "@/types/api";
 
 export type MatchTab = "attendance" | "events" | "summary";
 const TABS: { id: MatchTab; label: string }[] = [
@@ -25,7 +25,6 @@ const TABS: { id: MatchTab; label: string }[] = [
   { id: "events", label: "Eventos" },
   { id: "summary", label: "Resumen" },
 ];
-const QUICK_EVENTS: MatchEventType[] = ["goal", "yellow_card", "red_card", "substitution"];
 
 export function MatchDetail({ id, initialTab }: { id: string; initialTab?: MatchTab }) {
   const router = useRouter();
@@ -34,6 +33,10 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const events = useFetch<{ data: MatchEventDTO[] }>(`/matches/${id}/events`);
   const attendance = useFetch<AttendanceDTO>(`/matches/${id}/attendance`);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?matchId=${id}&limit=50`);
+  const phases = useFetch<{ data: PhaseDTO[] }>(match.data ? `/championships/${match.data.championshipId}/phases` : null);
+  const { can } = useRole();
+  const manage = can("match.manage");
+  const operate = can("match.operate");
   const [tab, setTab] = useState<MatchTab | null>(initialTab ?? null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -45,7 +48,9 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const current = match.data;
 
   const inPlay = current.status === "live" || current.status === "finished";
-  const activeTab = tab ?? (inPlay ? "events" : "attendance");
+  const tabs = operate ? TABS : TABS.filter((item) => item.id !== "attendance");
+  const requested = tab ?? (inPlay ? "events" : operate ? "attendance" : "summary");
+  const activeTab = tabs.some((item) => item.id === requested) ? requested : tabs[0].id;
 
   const teams: [MatchDTO["homeTeamId"], MatchDTO["awayTeamId"]] = [current.homeTeamId, current.awayTeamId];
   const teamNames = Object.fromEntries(teams.map((team) => [team._id, team.name]));
@@ -85,23 +90,26 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
       <PageHeader
         title={`${current.homeTeamId.name} vs ${current.awayTeamId.name}`}
         breadcrumb={[{ label: "Partidos", href: "/matches" }, { label: `${current.homeTeamId.name} vs ${current.awayTeamId.name}` }]}
-        actions={
-          <>
-            <Button variant="secondary" icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>Editar</Button>
-            <Button variant="ghost" icon={<Trash2 size={18} />} onClick={() => setDeleteOpen(true)} aria-label="Eliminar partido" />
-          </>
-        }
+        actions={manage && (
+          <ActionMenu
+            label="Más acciones del partido"
+            actions={[
+              { label: "Editar partido", icon: <Pencil size={18} />, onClick: () => setEditOpen(true) },
+              { label: "Eliminar partido", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleteOpen(true) },
+            ]}
+          />
+        )}
       />
 
       <div style={{ marginBottom: "var(--space-2xl)" }}>
         <MatchScoreboard match={current} />
       </div>
 
-      <div className="row-wrap" role="tablist" aria-label="Secciones del partido" style={{ marginBottom: "var(--space-lg)" }}>
-        {TABS.map((item) => (
-          <Button key={item.id} role="tab" aria-selected={activeTab === item.id} variant={activeTab === item.id ? "primary" : "secondary"} onClick={() => setTab(item.id)}>
+      <div className="tabs-line" role="tablist" aria-label="Secciones del partido">
+        {tabs.map((item) => (
+          <button key={item.id} role="tab" aria-selected={activeTab === item.id} className={`tab-line${activeTab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>
             {item.label}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -111,39 +119,29 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
         ) : !attendance.data ? (
           <Loading />
         ) : (
-          <AttendancePanel matchId={id} match={current} attendance={attendance.data} onChanged={reloadAll} />
+          <AttendancePanel matchId={id} match={current} attendance={attendance.data} onChanged={reloadAll} readOnly={!operate} />
         ))}
 
       {activeTab === "events" && (
         <div className="stack" style={{ gap: "var(--space-2xl)" }}>
-          <MatchControls match={current} onChanged={reloadAll} />
+          {operate && <MatchControls match={current} onChanged={reloadAll} />}
 
-          {inPlay && (
-            <section className="stack" aria-label="Registrar evento">
-              <h2>Registrar evento</h2>
-              <div className="row-wrap">
-                {QUICK_EVENTS.map((type) => (
-                  <Button key={type} size="large" variant="secondary" icon={<EventIcon type={type} />} onClick={() => openComposer(type)}>
-                    {EVENT_TYPE_LABEL[type]}
-                  </Button>
-                ))}
-                <Button size="large" variant="ghost" onClick={() => openComposer("incident")}>Otro evento</Button>
-              </div>
-              {current.status === "finished" && (
-                <p className="text-secondary text-small">El partido finalizó: registrar o anular eventos corrige el marcador y la disciplina.</p>
-              )}
-            </section>
+          {operate && inPlay && (
+            <MatchRoster match={current} events={eventList} players={presentPlayers} sentOff={sentOff} onChanged={reloadAll} onOther={openComposer} onGoToAttendance={() => setTab("attendance")} />
+          )}
+          {operate && inPlay && current.status === "finished" && (
+            <p className="text-secondary text-small">El partido finalizó: registrar o anular eventos corrige el marcador y la disciplina.</p>
           )}
 
           <section aria-label="Cronología">
-            <h2 style={{ marginBottom: "var(--space-md)" }}>Cronología</h2>
-            <div className="card flush">
+            <div className="flush-list">
+              <h2 className="band band-muted band-small">Cronología</h2>
               {events.error ? (
                 <ErrorState message={events.error.message} onRetry={events.reload} />
               ) : !events.data ? (
                 <Loading />
               ) : (
-                <EventTimeline matchId={id} events={eventList} teamNames={teamNames} shirtByPlayer={shirtByPlayer} canVoid={inPlay} onChanged={reloadAll} />
+                <EventTimeline matchId={id} events={eventList} teamNames={teamNames} shirtByPlayer={shirtByPlayer} canVoid={inPlay && operate} onChanged={reloadAll} />
               )}
             </div>
           </section>
@@ -171,6 +169,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
       <MatchFormModal
         open={editOpen}
         championshipId={current.championshipId}
+        phases={phases.data?.data ?? []}
         match={current}
         onClose={() => setEditOpen(false)}
         onSaved={() => {

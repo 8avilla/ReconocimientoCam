@@ -2,10 +2,26 @@ import React from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "./Button";
 
-export function Loading({ label = "Cargando..." }: { label?: string }) {
+/** Placeholder while data loads: greyed rows shaped like a list (default) or a plain spinner. */
+export function Loading({ label = "Cargando...", variant = "list", rows = 5 }: { label?: string; variant?: "list" | "spinner"; rows?: number }) {
+  if (variant === "spinner") {
+    return (
+      <div className="loading-block" role="status" aria-label={label}>
+        <span className="spinner large" />
+      </div>
+    );
+  }
   return (
-    <div className="loading-block" role="status" aria-label={label}>
-      <span className="spinner large" />
+    <div className="skeleton-list" role="status" aria-label={label} aria-busy="true">
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="skeleton-row">
+          <span className="skeleton skeleton-avatar" />
+          <span className="skeleton-lines">
+            <span className="skeleton skeleton-line short" />
+            <span className="skeleton skeleton-line" />
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { diffChanges, recordAudit } from "@/lib/audit";
 import { deleteImage } from "@/lib/azureBlob";
 import { teamUpdateSchema } from "@/lib/validation/schemas";
 import { Match } from "@/models/Match";
+import { Phase } from "@/models/Phase";
 import { ITeam, Team } from "@/models/Team";
 import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegistration";
 
@@ -51,6 +52,9 @@ export const DELETE = route<Params>(async (request, { id }) => {
   const team = await Team.findById(id);
   if (!team) throw notFound("Equipo no encontrado");
 
+  if (await Phase.exists({ teamIds: team._id })) {
+    throw conflict("El equipo participa en una fase; quítalo de la fase primero", "team_in_phase");
+  }
   const [registrations, matches] = await Promise.all([
     TeamRegistration.exists({ teamId: id }),
     Match.exists({ $or: [{ homeTeamId: id }, { awayTeamId: id }] }),

@@ -5,12 +5,16 @@
  */
 export { AuditLog } from "./AuditLog";
 export { Championship } from "./Championship";
+export { Fine } from "./Fine";
 export { IdentityVerification } from "./IdentityVerification";
 export { Match } from "./Match";
+export { Matchday } from "./Matchday";
 export { MatchCallUp } from "./MatchCallUp";
 export { MatchEvent } from "./MatchEvent";
+export { Phase } from "./Phase";
 export { Player } from "./Player";
 export { PlayerCheckIn } from "./PlayerCheckIn";
 export { Suspension } from "./Suspension";
 export { Team } from "./Team";
 export { TeamRegistration } from "./TeamRegistration";
+export { Tie } from "./Tie";

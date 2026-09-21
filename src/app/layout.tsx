@@ -4,11 +4,12 @@ import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ChampionshipProvider } from "@/components/layout/ChampionshipContext";
+import { RoleProvider } from "@/components/layout/RoleContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Super Torneos - Fútbol que nos une",
+  title: "Super Torneos",
   description: "Plataforma de gestión de campeonatos, partidos y verificación de jugadores.",
 };
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ToastProvider>
           <ChampionshipProvider>
-            <AppShell>{children}</AppShell>
+            <RoleProvider>
+              <AppShell>{children}</AppShell>
+            </RoleProvider>
           </ChampionshipProvider>
         </ToastProvider>
       </body>

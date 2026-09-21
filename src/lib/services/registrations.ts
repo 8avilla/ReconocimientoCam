@@ -34,7 +34,7 @@ async function assertRosterHasRoom(teamId: Types.ObjectId, championshipId: Types
   });
   if (liveCount >= championship.rules.maxRosterSize) {
     throw conflict(
-      `La nómina del equipo alcanzó el máximo de ${championship.rules.maxRosterSize} jugadores`,
+      `La plantilla del equipo alcanzó el máximo de ${championship.rules.maxRosterSize} jugadores`,
       "roster_full"
     );
   }

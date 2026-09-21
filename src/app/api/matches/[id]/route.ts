@@ -1,6 +1,8 @@
-import { conflict, json, notFound, parseBody, route } from "@/lib/api";
+import { badRequest, conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { diffChanges, recordAudit } from "@/lib/audit";
+import { assertMatchFitsPhase } from "@/lib/services/phases";
+import { Matchday } from "@/models/Matchday";
 import { matchUpdateSchema } from "@/lib/validation/schemas";
 import { IMatch, Match } from "@/models/Match";
 import { MatchCallUp } from "@/models/MatchCallUp";
@@ -10,6 +12,8 @@ type Params = { id: string };
 
 export const GET = route<Params>(async (_request, { id }) => {
   const match = await Match.findById(id)
+    .populate({ path: "phaseId", select: "name type" })
+    .populate({ path: "matchdayId", select: "name number" })
     .populate({ path: "homeTeamId", select: "name shieldUrl primaryColor" })
     .populate({ path: "awayTeamId", select: "name shieldUrl primaryColor" })
     .lean();
@@ -31,11 +35,28 @@ export const PATCH = route<Params>(async (request, { id }) => {
   }
 
   const before = match.toObject() as IMatch;
-  match.set(input);
+  if (match.tieId && (input.matchdayId !== undefined || input.group !== undefined)) {
+    throw conflict("Este partido pertenece a un cruce de eliminatoria; no se puede mover de fecha", "match_in_tie");
+  }
+  const { matchdayId, group: requestedGroup, ...fields } = input;
+  match.set(fields);
+  if (fields.scheduledAt === null) match.set("scheduledAt", undefined); // back to "unscheduled"
+  if (matchdayId !== undefined || requestedGroup !== undefined) {
+    const matchday = await Matchday.findById(matchdayId ?? match.matchdayId).select("phaseId championshipId").lean();
+    if (!matchday) throw notFound("Fecha no encontrada");
+    const nextGroup = requestedGroup === undefined ? match.group : requestedGroup ?? undefined;
+    const fit = await assertMatchFitsPhase({
+      phaseId: matchday.phaseId.toString(), homeTeamId: match.homeTeamId.toString(), awayTeamId: match.awayTeamId.toString(), group: nextGroup,
+    });
+    if (matchday.championshipId.toString() !== match.championshipId.toString()) throw badRequest("La fecha debe ser del mismo campeonato del partido");
+    match.set({ matchdayId: matchday._id, phaseId: matchday.phaseId, group: fit.group });
+  }
   await match.save();
 
-  const changes = diffChanges(before, input, [
-    "scheduledAt", "venue", "round", "status",
+  const { scheduledAt: requestedDate, ...otherFields } = fields;
+  const patch: Partial<IMatch> = { ...otherFields, ...(requestedDate !== undefined ? { scheduledAt: requestedDate ?? undefined } : {}) };
+  const changes = diffChanges(before, patch, [
+    "scheduledAt", "venue", "status",
   ]);
   if (Object.keys(changes).length > 0) {
     await recordAudit(getActor(request), {

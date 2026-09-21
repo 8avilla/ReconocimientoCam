@@ -10,6 +10,7 @@ export const MATCH_EVENT_TYPES = [
 ] as const;
 export const SUSPENSION_REASONS = ["red_card", "yellow_accumulation", "manual"] as const;
 export const SUSPENSION_STATUSES = ["active", "served", "lifted"] as const;
+export const PHASE_TYPES = ["league", "groups", "knockout"] as const;
 export const REGISTRATION_STATUSES = ["pending", "active", "suspended", "inactive"] as const;
 
 export type ChampionshipStatus = (typeof CHAMPIONSHIP_STATUSES)[number];
@@ -21,3 +22,4 @@ export type MatchPeriod = (typeof MATCH_PERIODS)[number];
 export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 export type SuspensionReason = (typeof SUSPENSION_REASONS)[number];
 export type SuspensionStatus = (typeof SUSPENSION_STATUSES)[number];
+export type PhaseType = (typeof PHASE_TYPES)[number];

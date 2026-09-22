@@ -21,7 +21,7 @@ const isLive = (status: RegistrationStatus) => LIVE_REGISTRATION_STATUSES.includ
 export interface CreateRegistrationInput {
   teamId: string;
   playerId: string;
-  shirtNumber: number;
+  shirtNumber?: number;
   position?: Position;
   status?: RegistrationStatus;
 }
@@ -61,13 +61,15 @@ export async function createRegistration(actor: Actor, input: CreateRegistration
     if (existing) {
       throw conflict("El jugador ya pertenece a un equipo en este campeonato", "player_already_registered");
     }
-    const numberTaken = await TeamRegistration.exists({
-      teamId: team._id,
-      shirtNumber: input.shirtNumber,
-      status: { $in: LIVE_REGISTRATION_STATUSES },
-    });
-    if (numberTaken) {
-      throw conflict(`El número ${input.shirtNumber} ya está en uso en este equipo`, "shirt_number_taken");
+    if (input.shirtNumber !== undefined) {
+      const numberTaken = await TeamRegistration.exists({
+        teamId: team._id,
+        shirtNumber: input.shirtNumber,
+        status: { $in: LIVE_REGISTRATION_STATUSES },
+      });
+      if (numberTaken) {
+        throw conflict(`El número ${input.shirtNumber} ya está en uso en este equipo`, "shirt_number_taken");
+      }
     }
     await assertRosterHasRoom(team._id, team.championshipId);
   }
@@ -77,7 +79,7 @@ export async function createRegistration(actor: Actor, input: CreateRegistration
     teamId: team._id,
     playerId: player._id,
     shirtNumber: input.shirtNumber,
-    position: input.position ?? "Delantero",
+    position: input.position,
     status,
   });
 
@@ -86,7 +88,7 @@ export async function createRegistration(actor: Actor, input: CreateRegistration
     entityType: "registration",
     entityId: registration._id,
     championshipId: team.championshipId,
-    summary: `Inscripción de ${player.fullName} en ${team.name} (#${input.shirtNumber})`,
+    summary: `Inscripción de ${player.fullName} en ${team.name}${input.shirtNumber !== undefined ? ` (#${input.shirtNumber})` : ""}`,
   });
   return registration;
 }
@@ -108,7 +110,7 @@ export async function updateRegistration(actor: Actor, id: string, input: Update
   const nextNumber = input.shirtNumber ?? registration.shirtNumber;
 
   if (isLive(nextStatus)) {
-    if (input.shirtNumber !== undefined || !isLive(registration.status)) {
+    if (nextNumber !== undefined && (input.shirtNumber !== undefined || !isLive(registration.status))) {
       const numberTaken = await TeamRegistration.exists({
         _id: { $ne: registration._id },
         teamId: registration.teamId,

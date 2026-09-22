@@ -149,7 +149,7 @@ export const playerCardQuery = z.object({ championshipId: objectIdSchema.optiona
 export const registrationCreateSchema = z.object({
   teamId: objectIdSchema,
   playerId: objectIdSchema,
-  shirtNumber: z.number().int().min(0).max(999),
+  shirtNumber: z.number().int().min(0).max(999).optional(),
   position: z.enum(POSITIONS).optional(),
   status: z.enum(REGISTRATION_STATUSES).optional(),
 });

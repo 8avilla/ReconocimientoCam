@@ -11,7 +11,7 @@ interface Props {
   open: boolean;
   registrationId: string;
   playerName: string;
-  initial: { shirtNumber: number; position: Position; status: RegistrationStatus };
+  initial: { shirtNumber?: number; position?: Position; status: RegistrationStatus };
   onClose: () => void;
   onSaved: () => void;
 }
@@ -26,8 +26,8 @@ export function RegistrationFormModal({ open, ...props }: Props) {
 
 function RegistrationForm({ registrationId, initial, onClose, onSaved }: Omit<Props, "open" | "playerName">) {
   const toast = useToast();
-  const [shirtNumber, setShirtNumber] = useState(String(initial.shirtNumber));
-  const [position, setPosition] = useState<Position>(initial.position);
+  const [shirtNumber, setShirtNumber] = useState(initial.shirtNumber != null ? String(initial.shirtNumber) : "");
+  const [position, setPosition] = useState<Position | "">(initial.position ?? "");
   const [status, setStatus] = useState<RegistrationStatus>(initial.status);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
@@ -41,7 +41,7 @@ function RegistrationForm({ registrationId, initial, onClose, onSaved }: Omit<Pr
     try {
       await http(`/registrations/${registrationId}`, {
         method: "PATCH",
-        json: { shirtNumber: Number(shirtNumber), position, status },
+        json: { shirtNumber: shirtNumber.trim() ? Number(shirtNumber) : undefined, position: position || undefined, status },
       });
       toast.success("Inscripción actualizada");
       onSaved();
@@ -57,8 +57,9 @@ function RegistrationForm({ registrationId, initial, onClose, onSaved }: Omit<Pr
     <form onSubmit={handleSubmit} className="stack" noValidate>
       {formError && <div className="alert error" role="alert"><AlertCircle size={18} /> {formError}</div>}
       <div className="form-grid two">
-        <Input label="Número de camiseta" type="number" min={0} max={999} required value={shirtNumber} onChange={(e) => setShirtNumber(e.target.value)} error={errors.shirtNumber} />
-        <Select label="Posición" value={position} onChange={(e) => setPosition(e.target.value as Position)}>
+        <Input label="Número de camiseta (opcional)" type="number" min={0} max={999} value={shirtNumber} onChange={(e) => setShirtNumber(e.target.value)} error={errors.shirtNumber} />
+        <Select label="Posición (opcional)" value={position} onChange={(e) => setPosition(e.target.value as Position | "")}>
+          <option value="">Sin especificar</option>
           {POSITIONS.map((item) => <option key={item} value={item}>{item}</option>)}
         </Select>
       </div>

@@ -38,14 +38,20 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onEdit
       </div>
     );
   }
+  const byPosition = (position?: Position) =>
+    entries.filter((entry) => entry.position === position).sort((a, b) => (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
+  const groups = [
+    ...POSITIONS.map((position) => ({ key: position as string, title: POSITION_TITLE[position], list: byPosition(position) })),
+    { key: "unspecified", title: "Sin posición", list: byPosition(undefined) },
+  ];
+
   return (
     <div className="stack" style={{ gap: 0 }}>
-      {POSITIONS.map((position) => {
-        const list = entries.filter((entry) => entry.position === position).sort((a, b) => a.shirtNumber - b.shirtNumber);
+      {groups.map(({ key, title, list }) => {
         if (list.length === 0) return null;
         return (
-          <section key={position} aria-label={POSITION_TITLE[position]}>
-            <h3 className="band">{POSITION_TITLE[position]} <span className="text-secondary">({list.length})</span></h3>
+          <section key={key} aria-label={title}>
+            <h3 className="band">{title} <span className="text-secondary">({list.length})</span></h3>
             <ul style={{ listStyle: "none", background: "var(--color-surface)" }}>
               {list.map((entry) => {
                 const status = REGISTRATION_STATUS_LABEL[entry.status];
@@ -54,7 +60,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onEdit
                     <PlayerLink href={`/players/${entry.playerId._id}`} enabled={linkPlayers}>
                       <span className="shirt-photo">
                         <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={48} />
-                        <span className="shirt-number">{entry.shirtNumber}</span>
+                        <span className="shirt-number">{entry.shirtNumber ?? "–"}</span>
                       </span>
                       <div className="grow" style={{ minWidth: 0 }}>
                         <div className="text-strong truncate">{entry.playerId.fullName}</div>

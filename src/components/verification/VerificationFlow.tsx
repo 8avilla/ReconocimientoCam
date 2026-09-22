@@ -308,7 +308,7 @@ function PlayerSummary({ player, similarity }: { player: LookupDTO; similarity?:
       <div className="grow stack-sm">
         <div className="text-strong" style={{ fontSize: 16 }}>{player.player.fullName}</div>
         <div className="text-secondary">{player.team.name}</div>
-        <div className="text-secondary">#{player.shirtNumber} · {player.position}</div>
+        <div className="text-secondary">{player.shirtNumber != null ? `#${player.shirtNumber} · ` : ""}{player.position ?? "Sin posición"}</div>
         {percent !== null && (
           <div>
             <div className="text-small">Similitud: <strong>{percent.toFixed(1)}%</strong></div>

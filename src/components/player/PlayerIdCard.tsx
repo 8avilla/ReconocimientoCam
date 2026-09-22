@@ -37,10 +37,10 @@ export function PlayerIdCard({ card }: { card: PlayerCardDTO }) {
             {card.team.name}
           </div>
         )}
-        {card.shirtNumber !== null && (
+        {(card.shirtNumber !== null || card.position !== null) && (
           <div>
-            <div className={styles.number}>#{card.shirtNumber}</div>
-            <div className="text-secondary">{card.position}</div>
+            {card.shirtNumber !== null && <div className={styles.number}>#{card.shirtNumber}</div>}
+            {card.position !== null && <div className="text-secondary">{card.position}</div>}
           </div>
         )}
         {qr ? (

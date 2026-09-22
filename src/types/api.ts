@@ -67,8 +67,8 @@ export interface RegistrationDTO {
   championshipId: string;
   teamId: string;
   playerId: string;
-  shirtNumber: number;
-  position: Position;
+  shirtNumber?: number;
+  position?: Position;
   status: RegistrationStatus;
 }
 
@@ -229,8 +229,8 @@ export interface SearchDTO {
 export interface LookupDTO {
   player: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "photoUrl" | "hasFace">;
   team: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
-  shirtNumber: number;
-  position: Position;
+  shirtNumber?: number;
+  position?: Position;
   registrationStatus: RegistrationStatus;
   checkInStatus: CheckInStatusDTO;
   allowManualReview: boolean;

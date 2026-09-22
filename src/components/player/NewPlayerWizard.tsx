@@ -20,7 +20,7 @@ interface Values {
   birthDate: string;
   teamId: string;
   shirtNumber: string;
-  position: Position;
+  position: Position | "";
 }
 
 export function NewPlayerWizard({ initialTeamId }: { initialTeamId: string }) {
@@ -38,7 +38,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
 
   const [step, setStep] = useState<Step>(1);
   const [values, setValues] = useState<Values>({
-    fullName: "", documentId: "", birthDate: "", teamId: initialTeamId, shirtNumber: "", position: "Delantero",
+    fullName: "", documentId: "", birthDate: "", teamId: initialTeamId, shirtNumber: "", position: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
@@ -56,7 +56,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     const next: Record<string, string> = {};
     if (!values.fullName.trim()) next.fullName = "Este campo es obligatorio";
     if (!values.teamId) next.teamId = "Selecciona un equipo";
-    if (values.shirtNumber === "" || !Number.isInteger(Number(values.shirtNumber)) || Number(values.shirtNumber) < 0) {
+    // Shirt number is optional; only validate its shape if one was typed.
+    if (values.shirtNumber !== "" && (!Number.isInteger(Number(values.shirtNumber)) || Number(values.shirtNumber) < 0)) {
       next.shirtNumber = "Ingresa un número de camiseta válido";
     }
     setErrors(next);
@@ -77,7 +78,12 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
       });
       playerId = player._id;
       await http("/registrations", {
-        json: { teamId: values.teamId, playerId, shirtNumber: Number(values.shirtNumber), position: values.position },
+        json: {
+          teamId: values.teamId,
+          playerId,
+          ...(values.shirtNumber !== "" ? { shirtNumber: Number(values.shirtNumber) } : {}),
+          ...(values.position ? { position: values.position } : {}),
+        },
       });
     } catch (error) {
       // Roll back the identity so a failed registration does not leave an orphan player behind.
@@ -143,8 +149,9 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
               </Select>
             )}
             <div className="form-grid two">
-              <Input label="Número de camiseta" required type="number" min={0} max={999} inputMode="numeric" value={values.shirtNumber} onChange={set("shirtNumber")} error={errors.shirtNumber} />
-              <Select label="Posición" value={values.position} onChange={set("position")}>
+              <Input label="Número de camiseta (opcional)" type="number" min={0} max={999} inputMode="numeric" value={values.shirtNumber} onChange={set("shirtNumber")} error={errors.shirtNumber} />
+              <Select label="Posición (opcional)" value={values.position} onChange={set("position")}>
+                <option value="">Sin especificar</option>
                 {POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}
               </Select>
             </div>
@@ -175,7 +182,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
               <SummaryRow label="Documento" value={values.documentId || "—"} />
               <SummaryRow label="Fecha de nacimiento" value={values.birthDate || "—"} />
               <SummaryRow label="Equipo" value={selectedTeam?.name ?? "—"} />
-              <SummaryRow label="Camiseta" value={`#${values.shirtNumber} · ${values.position}`} />
+              <SummaryRow label="Camiseta" value={`${values.shirtNumber ? `#${values.shirtNumber}` : "Sin número"} · ${values.position || "Sin posición"}`} />
               <SummaryRow label="Rostro" value={image ? "Capturado" : "Pendiente"} />
             </dl>
             {!image && (

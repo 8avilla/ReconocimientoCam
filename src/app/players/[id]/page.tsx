@@ -104,9 +104,9 @@ export default function PlayerProfilePage() {
                 <div key={registration._id} className="row">
                   <Avatar src={registration.teamId?.shieldUrl} name={registration.teamId?.name ?? "Equipo"} size={40} square />
                   <div className="grow">
-                    <div className="text-strong">{registration.teamId?.name} · #{registration.shirtNumber}</div>
+                    <div className="text-strong">{registration.teamId?.name}{registration.shirtNumber != null && ` · #${registration.shirtNumber}`}</div>
                     <div className="text-secondary text-small">
-                      {registration.position} · {registration.championshipId?.name} {registration.championshipId?.season}
+                      {registration.position ?? "Sin posición"} · {registration.championshipId?.name} {registration.championshipId?.season}
                     </div>
                   </div>
                   <RegistrationBadge status={registration.status} />

@@ -14,8 +14,10 @@ export interface ITeamRegistration {
   championshipId: Types.ObjectId;
   teamId: Types.ObjectId;
   playerId: Types.ObjectId;
-  shirtNumber: number;
-  position: Position;
+  /** Optional: not every player has one assigned yet. */
+  shirtNumber?: number;
+  /** Optional: same reason as `shirtNumber`. */
+  position?: Position;
   status: RegistrationStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -26,8 +28,8 @@ const TeamRegistrationSchema = new Schema<ITeamRegistration>(
     championshipId: { type: Schema.Types.ObjectId, ref: "Championship", required: true },
     teamId: { type: Schema.Types.ObjectId, ref: "Team", required: true },
     playerId: { type: Schema.Types.ObjectId, ref: "Player", required: true },
-    shirtNumber: { type: Number, required: true, min: 0, max: 999 },
-    position: { type: String, enum: POSITIONS, default: "Delantero" },
+    shirtNumber: { type: Number, min: 0, max: 999 },
+    position: { type: String, enum: POSITIONS },
     status: { type: String, enum: REGISTRATION_STATUSES, default: "active" },
   },
   { timestamps: true }
@@ -38,10 +40,11 @@ TeamRegistrationSchema.index(
   { championshipId: 1, playerId: 1 },
   { unique: true, partialFilterExpression: { status: { $in: LIVE_REGISTRATION_STATUSES } } }
 );
-// A shirt number is unique inside a team while the registration is live.
+// A shirt number is unique inside a team while the registration is live; registrations without
+// one yet (shirtNumber not set) are excluded so several of them don't collide with each other.
 TeamRegistrationSchema.index(
   { teamId: 1, shirtNumber: 1 },
-  { unique: true, partialFilterExpression: { status: { $in: LIVE_REGISTRATION_STATUSES } } }
+  { unique: true, partialFilterExpression: { status: { $in: LIVE_REGISTRATION_STATUSES }, shirtNumber: { $exists: true } } }
 );
 TeamRegistrationSchema.index({ teamId: 1, status: 1 });
 

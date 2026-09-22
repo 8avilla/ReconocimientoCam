@@ -99,7 +99,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                           </div>
                         </Link>
                       </td>
-                      <td>{player.registration?.team?.name ?? "—"}{player.registration && ` · #${player.registration.shirtNumber}`}</td>
+                      <td>{player.registration?.team?.name ?? "—"}{player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber}` : "sin número"}`}</td>
                       <td>{player.registration?.position ?? "—"}</td>
                       <td>{player.registration && <RegistrationBadge status={player.registration.status} />}</td>
                       <td><FaceBadge hasFace={player.hasFace} /></td>
@@ -116,7 +116,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="champ-caption truncate">
                       {player.registration?.team?.name ?? "Sin equipo"}
-                      {player.registration && ` · #${player.registration.shirtNumber} · ${player.registration.position}`}
+                      {player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber} · ` : ""}${player.registration.position ?? "Sin posición"}`}
                     </div>
                     <div className="champ-name truncate">{player.fullName}</div>
                   </div>

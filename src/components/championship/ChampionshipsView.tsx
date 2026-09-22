@@ -17,8 +17,7 @@ export function ChampionshipsView() {
   const toast = useToast();
   const router = useRouter();
   const { championships, favoriteIds, toggleFavorite, loading, error, reload } = useChampionship();
-  const { can } = useRole();
-  const manage = can("championship.manage");
+  const { user, isSignedIn, canManageChampionship } = useRole();
   const [editing, setEditing] = useState<ChampionshipDTO | null>(null);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -53,6 +52,7 @@ export function ChampionshipsView() {
   const renderRow = (championship: ChampionshipDTO) => {
     const status = CHAMPIONSHIP_STATUS_LABEL[championship.status];
     const followed = favoriteIds.has(championship._id);
+    const manageThis = canManageChampionship(championship);
     return (
       <div key={championship._id} className="champ-row">
         {/* Tapping a championship always does the same for everyone: go into it. */}
@@ -74,15 +74,15 @@ export function ChampionshipsView() {
         >
           <Star size={22} fill={followed ? "currentColor" : "none"} />
         </button>
-        {(manage || can("championship.delete")) && (
+        {(manageThis || user?.isAdmin) && (
           <ActionMenu
             label={`Más acciones de ${championship.name}`}
             actions={[
-              ...(manage ? [
+              ...(manageThis ? [
                 { label: "Gestionar", icon: <Layers size={18} />, href: championshipPath(championship._id, "gestionar") },
                 { label: "Editar", icon: <Pencil size={18} />, onClick: () => openForm(championship) },
               ] : []),
-              ...(can("championship.delete") ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
+              ...(user?.isAdmin ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
             ]}
           />
         )}
@@ -95,8 +95,8 @@ export function ChampionshipsView() {
       <PageHeader
         title="Campeonatos"
         description="Elige un campeonato para entrar. Con la estrella marcas los que sigues."
-        actions={manage && <Button icon={<Plus size={18} />} onClick={() => openForm(null)}>Nuevo campeonato</Button>}
-        mobileActions={manage ? [{ label: "Nuevo campeonato", icon: <Plus size={20} />, onClick: () => openForm(null) }] : undefined}
+        actions={isSignedIn && <Button icon={<Plus size={18} />} onClick={() => openForm(null)}>Nuevo campeonato</Button>}
+        mobileActions={isSignedIn ? [{ label: "Nuevo campeonato", icon: <Plus size={20} />, onClick: () => openForm(null) }] : undefined}
       />
 
       {error ? (
@@ -107,8 +107,8 @@ export function ChampionshipsView() {
         <EmptyState
           icon={<Trophy size={28} />}
           title="Aún no hay campeonatos"
-          description="Crea tu primer campeonato para comenzar."
-          action={manage && <Button onClick={() => openForm(null)}>Crear campeonato</Button>}
+          description={isSignedIn ? "Crea tu primer campeonato para comenzar." : "Inicia sesión con Google para crear el primero."}
+          action={isSignedIn && <Button onClick={() => openForm(null)}>Crear campeonato</Button>}
         />
       ) : (
         <>

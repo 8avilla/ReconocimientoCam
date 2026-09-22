@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { Button, Input, Modal, Select, useToast } from "@/components/ui";
+import { Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { PHASE_TYPES, type PhaseType } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import { LEGS_LABEL, PHASE_TYPE_LABEL } from "@/lib/labels";
 import type { PhaseDTO } from "@/types/api";
 
@@ -34,6 +35,12 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const dirty =
+    name.trim() !== (phase?.name ?? "") ||
+    type !== (phase?.type ?? "league") ||
+    legs !== String(phase?.legs ?? 1) ||
+    groupCount !== String(phase?.groupCount ?? 2);
+  const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   // The format cannot change once the phase has a calendar.
   const locked = (phase?.matches.total ?? 0) > 0;
@@ -91,9 +98,10 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
         </div>
       )}
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button type="submit" loading={saving}>{phase ? "Guardar cambios" : "Crear fase"}</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </form>
   );
 }

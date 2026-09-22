@@ -6,6 +6,7 @@ import type { PhaseType } from "@/lib/constants";
 import { drawGroups, type GroupAssignment } from "@/lib/rules/fixture";
 import { computeStandings } from "@/lib/rules/standings";
 import { Championship, DEFAULT_RULES } from "@/models/Championship";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { Match } from "@/models/Match";
 import { Matchday } from "@/models/Matchday";
 import { IPhase, Phase } from "@/models/Phase";
@@ -19,6 +20,10 @@ async function loadPhase(id: string) {
   if (!phase) throw notFound("Fase no encontrada");
   return phase;
 }
+
+/** Loads the phase's (or matchday's, tie's...) championship and throws unless the actor organizes it. */
+export const assertOrganizerOfPhase = (actor: Actor, owned: { championshipId: Types.ObjectId }) =>
+  requireOrganizerOfChampionship(actor, owned.championshipId);
 
 async function assertNoMatches(phaseId: Types.ObjectId, action: string) {
   if (await Match.exists({ phaseId })) {
@@ -62,6 +67,7 @@ export interface PhaseInput {
 
 export async function createPhase(actor: Actor, championshipId: string, input: PhaseInput) {
   if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Campeonato no encontrado");
+  await requireOrganizerOfChampionship(actor, championshipId);
   if (await Phase.exists({ championshipId, name: input.name })) throw conflict("Ya existe una fase con ese nombre", "duplicate");
   if (input.type === "groups" && !input.groupCount) throw badRequest("Indica cuántos grupos tendrá la fase");
 
@@ -86,6 +92,7 @@ export async function createPhase(actor: Actor, championshipId: string, input: P
 
 export async function updatePhase(actor: Actor, id: string, input: Partial<PhaseInput>) {
   const phase = await loadPhase(id);
+  await assertOrganizerOfPhase(actor, phase);
   const before = phase.toObject() as IPhase;
 
   if (input.name && input.name !== phase.name && (await Phase.exists({ championshipId: phase.championshipId, name: input.name, _id: { $ne: phase._id } }))) {
@@ -122,6 +129,7 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
 
 export async function deletePhase(actor: Actor, id: string) {
   const phase = await loadPhase(id);
+  await assertOrganizerOfPhase(actor, phase);
   await assertNoMatches(phase._id, "elimínala");
   await Tie.deleteMany({ phaseId: phase._id });
   await Matchday.deleteMany({ phaseId: phase._id });
@@ -137,6 +145,7 @@ export interface PhaseTeamsInput {
 /** Sets the participants (and, for group phases, their distribution). The organizer decides both. */
 export async function setPhaseTeams(actor: Actor, id: string, input: PhaseTeamsInput) {
   const phase = await loadPhase(id);
+  await assertOrganizerOfPhase(actor, phase);
 
   const teamIds = [...new Set(input.teamIds)];
   // Teams can be added at any time (the fixture generator then creates the missing matches); a team that
@@ -201,6 +210,7 @@ export async function setPhaseTeams(actor: Actor, id: string, input: PhaseTeamsI
 /** Random, even draw of the phase teams into its groups. The result can be adjusted by hand afterwards. */
 export async function drawPhaseGroups(actor: Actor, id: string) {
   const phase = await loadPhase(id);
+  await assertOrganizerOfPhase(actor, phase);
   if (phase.type !== "groups" || !phase.groupCount) throw badRequest("Solo las fases de grupos se sortean");
   await assertNoMatches(phase._id, "sortea de nuevo");
   if (phase.teamIds.length < phase.groupCount * MIN_TEAMS_PER_GROUP) {

@@ -1,5 +1,6 @@
 import { conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireAdmin, requireOrganizer } from "@/lib/permissions";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { championshipUpdateSchema } from "@/lib/validation/schemas";
 import { assertThresholdOrder } from "@/lib/rules/championship";
@@ -23,9 +24,11 @@ export const GET = route<Params>(async (_request, { id }) => {
 });
 
 export const PATCH = route<Params>(async (request, { id }) => {
+  const actor = getActor(request);
   const { rules, ...fields } = await parseBody(request, championshipUpdateSchema);
   const championship = await Championship.findById(id);
   if (!championship) throw notFound("Campeonato no encontrado");
+  requireOrganizer(actor, championship);
 
   const before = championship.toObject() as IChampionship;
   const beforeRules = { ...before.rules };
@@ -61,8 +64,11 @@ export const PATCH = route<Params>(async (request, { id }) => {
 });
 
 export const DELETE = route<Params>(async (request, { id }) => {
+  const actor = getActor(request);
   const championship = await Championship.findById(id);
   if (!championship) throw notFound("Campeonato no encontrado");
+  // Deleting is destructive enough to reserve for admins, even though editing is open to any organizer.
+  requireAdmin(actor);
 
   const [teams, matches] = await Promise.all([
     Team.exists({ championshipId: id }),
@@ -76,7 +82,7 @@ export const DELETE = route<Params>(async (request, { id }) => {
   await Matchday.deleteMany({ championshipId: id });
   await Phase.deleteMany({ championshipId: id });
   await championship.deleteOne();
-  await recordAudit(getActor(request), {
+  await recordAudit(actor, {
     action: "delete",
     entityType: "championship",
     entityId: championship._id,

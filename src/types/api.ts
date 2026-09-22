@@ -43,6 +43,10 @@ export interface ChampionshipDTO {
   startDate?: string;
   endDate?: string;
   rules: ChampionshipRulesDTO;
+  ownerUserId?: string;
+  organizerUserIds: string[];
+  /** Invited by email, not signed in yet (organizer/admin only; empty for anyone else). */
+  organizerInviteEmails?: string[];
   counts?: { teams: number; matches: number };
 }
 
@@ -438,4 +442,17 @@ export interface VenueDTO {
   notes?: string;
   active: boolean;
   matchCount: number;
+}
+
+export interface OrganizerPersonDTO {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+}
+
+export interface ChampionshipOrganizersDTO {
+  owner: OrganizerPersonDTO | null;
+  organizers: OrganizerPersonDTO[];
+  invited: string[];
 }

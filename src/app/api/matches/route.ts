@@ -1,6 +1,7 @@
 import type mongoose from "mongoose";
 import { badRequest, json, notFound, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { assertMatchFitsPhase } from "@/lib/services/phases";
@@ -61,11 +62,13 @@ export const GET = route(async (request) => {
 });
 
 export const POST = route(async (request) => {
+  const actor = getActor(request);
   const input = await parseBody(request, matchCreateSchema);
   // The matchday determines the phase, and the phase the championship.
   const matchday = await Matchday.findById(input.matchdayId).select("phaseId championshipId").lean();
   if (!matchday) throw notFound("Fecha no encontrada");
   const championshipId = matchday.championshipId.toString();
+  await requireOrganizerOfChampionship(actor, championshipId);
 
   const teams = await Team.find({ _id: { $in: [input.homeTeamId, input.awayTeamId] } }).lean();
   if (teams.length !== 2) throw notFound("Alguno de los equipos no existe");
@@ -78,7 +81,7 @@ export const POST = route(async (request) => {
   // The whole squad of both teams is called up automatically.
   await syncMatchCallUps(match._id.toString());
   const names = teams.map((team) => team.name).join(" vs ");
-  await recordAudit(getActor(request), {
+  await recordAudit(actor, {
     action: "create",
     entityType: "match",
     entityId: match._id,

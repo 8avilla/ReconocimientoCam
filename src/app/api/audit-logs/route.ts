@@ -1,9 +1,12 @@
 import { json, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
+import { getActor } from "@/lib/actor";
+import { requireAdmin } from "@/lib/permissions";
 import { auditListQuery } from "@/lib/validation/schemas";
 import { skipFor } from "@/lib/validation/common";
 import { AuditLog, IAuditLog } from "@/models/AuditLog";
 
 export const GET = route(async (request) => {
+  requireAdmin(getActor(request));
   const query = parseQuery(request, auditListQuery);
   const filter = {
     ...(query.championshipId ? { championshipId: toObjectId(query.championshipId) } : {}),

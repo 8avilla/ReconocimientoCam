@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { AlertCircle, ImagePlus } from "lucide-react";
-import { Avatar, Button, Input, Modal, Select, useToast } from "@/components/ui";
+import { Avatar, Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fileToResizedDataUrl } from "@/lib/client/image";
 import { useFetch } from "@/lib/client/useFetch";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import { currentPhase } from "@/lib/rules/currentPhase";
 import type { PhaseDTO, TeamDTO } from "@/types/api";
 
@@ -43,6 +44,15 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const dirty =
+    name.trim() !== (team?.name ?? "") ||
+    delegateName.trim() !== (team?.delegateName ?? "") ||
+    primaryColor !== (team?.primaryColor ?? "#16A34A") ||
+    secondaryColor !== (team?.secondaryColor ?? "#0F172A") ||
+    active !== (team?.active ?? true) ||
+    shield !== null ||
+    phaseChoice !== null;
+  const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   async function handleShieldChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -128,9 +138,10 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
       )}
 
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button type="submit" loading={saving}>{team ? "Guardar cambios" : "Crear equipo"}</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </form>
   );
 }

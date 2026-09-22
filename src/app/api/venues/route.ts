@@ -1,5 +1,6 @@
 import { conflict, json, notFound, parseBody, parseQuery, route, toObjectId } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { venueCreateSchema, venueListQuery } from "@/lib/validation/schemas";
 import { Championship } from "@/models/Championship";
@@ -20,10 +21,12 @@ export const GET = route(async (request) => {
 });
 
 export const POST = route(async (request) => {
+  const actor = getActor(request);
   const input = await parseBody(request, venueCreateSchema);
   if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Campeonato no encontrado");
+  await requireOrganizerOfChampionship(actor, input.championshipId);
   if (await Venue.exists({ championshipId: input.championshipId, name: input.name })) throw conflict("Ya existe un sitio con ese nombre", "duplicate");
   const venue = await Venue.create(input);
-  await recordAudit(getActor(request), { action: "create", entityType: "venue", entityId: venue._id, championshipId: venue.championshipId, summary: `Sitio creado: ${venue.name}` });
+  await recordAudit(actor, { action: "create", entityType: "venue", entityId: venue._id, championshipId: venue.championshipId, summary: `Sitio creado: ${venue.name}` });
   return json(venue, 201);
 });

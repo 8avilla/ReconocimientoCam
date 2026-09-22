@@ -5,17 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, ChartColumn, ChevronDown, Eye, Gavel, Home, Lock, MoreHorizontal, Settings, Shield, SlidersHorizontal, Trophy, Users,
+  CalendarDays, ChartColumn, ChevronDown, Gavel, Home, Lock, LogIn, MoreHorizontal, Settings, Shield, SlidersHorizontal, Trophy, Users,
   type LucideIcon,
 } from "lucide-react";
-import { EmptyState, Modal } from "@/components/ui";
+import { Avatar, EmptyState, Modal } from "@/components/ui";
 import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/paths";
-import { canAccess, ROLE_LABEL } from "@/lib/roles";
+import { canAccess } from "@/lib/roles";
 import { useChampionship } from "./ChampionshipContext";
 import { ChampionshipSwitcher } from "./ChampionshipSwitcher";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
-import { RoleModal } from "./RoleSwitcher";
+import { AccountModal } from "./RoleSwitcher";
 import styles from "./AppShell.module.css";
 
 interface NavItem {
@@ -48,16 +48,12 @@ const isActive = (pathname: string, item: NavItem) => {
   return exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 };
 
-function SearchButton({ championshipId }: { championshipId: string }) {
-  return <GlobalSearch championshipId={championshipId} />;
-}
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
-  const [roleOpen, setRoleOpen] = useState(false);
-  const { role } = useRole();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const { role, user, isSignedIn } = useRole();
   const { current } = useChampionship();
 
   // Inside a championship (its own address, or one of its detail pages) the menu is that championship's sections.
@@ -100,10 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {scoped && canAccess(role, "/admin") && (
             <Link href="/admin" className={styles.navItem}><Settings size={20} aria-hidden /> Administración</Link>
           )}
-          <button className="btn secondary block role-menu-button" onClick={() => setRoleOpen(true)}>
-            <Eye size={20} aria-hidden /> Ver como: {ROLE_LABEL[role]}
-            {role !== "admin" && <span className="role-dot-inline" aria-hidden />}
-          </button>
+          <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => setAccountOpen(true)} />
         </div>
       </aside>
 
@@ -113,7 +106,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={96} height={32} priority className={styles.topbarLogo} />
           </Link>
           <div className={styles.topbarActions}>
-            {scopeId && <SearchButton championshipId={scopeId} />}
+            <GlobalSearch championshipId={scopeId ?? undefined} />
             {scoped && (
               <button className={styles.scopeChip} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de campeonato">
                 <span className="truncate">{current?.name ?? "Campeonato"}</span>
@@ -123,17 +116,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className={styles.content}>
-          {role !== "admin" && (
-            <div className="role-banner" role="status">
-              <Eye size={16} aria-hidden /> Viendo la app como <strong>{ROLE_LABEL[role]}</strong>
-            </div>
-          )}
           {allowed ? children : (
             <EmptyState
               icon={<Lock size={28} />}
-              title="Esta sección no está disponible para tu rol"
-              description={`Como ${ROLE_LABEL[role].toLowerCase()} no tienes acceso a esta pantalla. Puedes cambiar de rol en «Ver como».`}
-              action={<Link href={scopeId ? championshipPath(scopeId) : "/"} className="btn primary">Volver</Link>}
+              title={isSignedIn ? "Esta sección no está disponible para ti" : "Inicia sesión para ver esto"}
+              description={
+                isSignedIn
+                  ? "No administras este campeonato, así que esta pantalla no es para ti."
+                  : "Esta pantalla es para quien organiza el campeonato. Inicia sesión con Google si te invitaron a organizarlo."
+              }
+              action={
+                isSignedIn ? (
+                  <Link href={scopeId ? championshipPath(scopeId) : "/"} className="btn primary">Volver</Link>
+                ) : (
+                  <button className="btn primary" onClick={() => setAccountOpen(true)}><LogIn size={18} aria-hidden /> Iniciar sesión</button>
+                )
+              }
             />
           )}
         </main>
@@ -168,17 +166,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {scoped && canAccess(role, "/admin") && (
             <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
           )}
-          <button className="btn secondary block role-menu-button" onClick={() => { setMoreOpen(false); setRoleOpen(true); }}>
-            <Eye size={20} aria-hidden /> Ver como: {ROLE_LABEL[role]}
-            {role !== "admin" && <span className="role-dot-inline" aria-hidden />}
-          </button>
+          <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => { setMoreOpen(false); setAccountOpen(true); }} />
         </div>
       </Modal>
 
       {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
-      <RoleModal open={roleOpen} onClose={() => setRoleOpen(false)} />
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
 
       <ChampionshipSwitcher open={switchOpen} section={routed?.section ?? null} onClose={() => setSwitchOpen(false)} />
     </div>
+  );
+}
+
+function AccountButton({ user, isSignedIn, onClick }: { user: { name: string; image?: string | null } | null; isSignedIn: boolean; onClick: () => void }) {
+  return (
+    <button className="btn secondary block account-button" onClick={onClick}>
+      {isSignedIn && user ? (
+        <>
+          <Avatar src={user.image ?? undefined} name={user.name} size={24} />
+          <span className="truncate">{user.name}</span>
+        </>
+      ) : (
+        <>
+          <LogIn size={20} aria-hidden /> Iniciar sesión
+        </>
+      )}
+    </button>
   );
 }

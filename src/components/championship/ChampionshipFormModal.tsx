@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { Button, Input, Modal, Select, useToast } from "@/components/ui";
+import { Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { CHAMPIONSHIP_FORMATS, CHAMPIONSHIP_STATUSES } from "@/lib/constants";
 import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import type { ChampionshipDTO } from "@/types/api";
 
 interface Props {
@@ -76,6 +77,8 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const dirty = JSON.stringify(values) !== JSON.stringify(toValues(championship));
+  const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   const bind = (field: keyof FormValues) => ({
     value: values[field],
@@ -195,9 +198,10 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
       </details>
 
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button type="submit" loading={saving}>{championship ? "Guardar cambios" : "Crear campeonato"}</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </form>
   );
 }

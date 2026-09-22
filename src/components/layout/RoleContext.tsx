@@ -1,55 +1,65 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import { can as roleCan, ROLES, type Permission, type Role } from "@/lib/roles";
+import React, { createContext, useContext, useMemo } from "react";
+import { useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react";
+import { can as roleCan, type Permission, type Role } from "@/lib/roles";
+import { useChampionship } from "./ChampionshipContext";
 
-export const ROLE_STORAGE_KEY = "super-torneos:role";
+export interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  isAdmin: boolean;
+}
+
+interface Organized {
+  ownerUserId?: string;
+  organizerUserIds: string[];
+}
 
 interface RoleContextValue {
+  status: "loading" | "unauthenticated" | "authenticated";
+  user: SessionUser | null;
+  /** Any signed-in Google account: enough to start a new championship (they become its owner). */
+  isSignedIn: boolean;
+  /** The signed-in person's role for the championship currently in view (from `useChampionship().current`). */
   role: Role;
-  setRole: (role: Role) => void;
   can: (permission: Permission) => boolean;
+  /** For lists that show many championships at once (not just "current"): can this signed-in person manage that one? */
+  canManageChampionship: (item: Organized) => boolean;
+  signIn: () => void;
+  signOut: () => void;
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
-function read(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function write(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Not remembered when storage is unavailable.
-  }
-}
-
-const ROLE_EVENT = "super-torneos:role-change";
-
-function subscribe(notify: () => void) {
-  window.addEventListener(ROLE_EVENT, notify);
-  window.addEventListener("storage", notify);
-  return () => {
-    window.removeEventListener(ROLE_EVENT, notify);
-    window.removeEventListener("storage", notify);
-  };
-}
-
+/** Real roles, from the Google session (see `src/auth.ts`) and who owns/organizes the championship in view. Replaces the old "Ver como…" preview: what you can do here is what the server will actually let you do. */
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  // Read through useSyncExternalStore so the server render (admin) and the first client render agree; the stored role applies right after hydration.
-  const stored = useSyncExternalStore(subscribe, () => read(ROLE_STORAGE_KEY), () => null);
-  const role: Role = ROLES.find((item) => item === stored) ?? "admin";
+  const { data: session, status } = useSession();
+  const { current } = useChampionship();
 
-  const setRole = useCallback((next: Role) => {
-    write(ROLE_STORAGE_KEY, next);
-    window.dispatchEvent(new Event(ROLE_EVENT));
-  }, []);
+  const value = useMemo<RoleContextValue>(() => {
+    const sessionUser = session?.user;
+    const user: SessionUser | null = sessionUser?.id ? { id: sessionUser.id, name: sessionUser.name ?? sessionUser.email ?? "", email: sessionUser.email ?? "", image: sessionUser.image, isAdmin: sessionUser.isAdmin } : null;
 
-  const value = useMemo<RoleContextValue>(() => ({ role, setRole, can: (permission) => roleCan(role, permission) }), [role, setRole]);
+    const canManageChampionship = (item: Organized) =>
+      Boolean(user) && (user!.isAdmin || item.ownerUserId === user!.id || (item.organizerUserIds ?? []).includes(user!.id));
+
+    const role: Role = user?.isAdmin ? "admin" : user && current && canManageChampionship(current) ? "organizer" : "visitor";
+
+    return {
+      status,
+      user,
+      isSignedIn: Boolean(user),
+      role,
+      can: (permission) => roleCan(role, permission),
+      canManageChampionship,
+      signIn: () => void nextAuthSignIn("google"),
+      signOut: () => void nextAuthSignOut(),
+    };
+  }, [session, status, current]);
+
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 }
 

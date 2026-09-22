@@ -19,4 +19,5 @@ export { Referee } from "./Referee";
 export { Team } from "./Team";
 export { TeamRegistration } from "./TeamRegistration";
 export { Tie } from "./Tie";
+export { User } from "./User";
 export { Venue } from "./Venue";

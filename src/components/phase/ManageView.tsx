@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight, Gavel, Users } from "lucide-react";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
+import { OrganizersManager } from "@/components/manage/OrganizersManager";
 import { RefereesManager } from "@/components/manage/RefereesManager";
 import { RulesSummary } from "@/components/manage/RulesSummary";
 import { ShareLink } from "@/components/manage/ShareLink";
@@ -16,6 +17,7 @@ const TABS = [
   { id: "phases", label: "Fases" },
   { id: "referees", label: "Árbitros" },
   { id: "venues", label: "Sitios" },
+  { id: "organizers", label: "Organizadores" },
   { id: "rules", label: "Reglas" },
   { id: "share", label: "Compartir" },
 ] as const;
@@ -24,7 +26,7 @@ type Tab = (typeof TABS)[number]["id"];
 /** Organizer's workspace for one championship: phases, referees, venues, rules and the link to share it. */
 export function ManageView({ championshipId }: { championshipId: string }) {
   const { current } = useChampionship();
-  const [tab, setTab] = useStoredState<Tab>("super-torneos:manage:tab", "phases", (value) => TABS.some((item) => item.id === value));
+  const [tab, setTab] = useStoredState<Tab>(`super-torneos:manage:tab:${championshipId}`, "phases", (value) => TABS.some((item) => item.id === value));
 
   return (
     <>
@@ -41,6 +43,7 @@ export function ManageView({ championshipId }: { championshipId: string }) {
       {tab === "phases" && <PhasesManager championshipId={championshipId} />}
       {tab === "referees" && <RefereesManager championshipId={championshipId} />}
       {tab === "venues" && <VenuesManager championshipId={championshipId} />}
+      {tab === "organizers" && <OrganizersManager championshipId={championshipId} />}
       {tab === "rules" && <RulesSummary />}
       {tab === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el campeonato"} />}
 

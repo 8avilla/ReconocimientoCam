@@ -7,6 +7,7 @@ import { applyMatchAction, computeScore, reachesYellowThreshold, type MatchActio
 import { createCardFine, voidFinesForEvents } from "@/lib/services/fines";
 import { createSuspension, liftSuspensionsFromEvents, serveSuspensions } from "@/lib/services/suspensions";
 import { Championship, DEFAULT_RULES, IChampionship } from "@/models/Championship";
+import { requireOrganizer } from "@/lib/permissions";
 import { IMatch, Match } from "@/models/Match";
 import { IMatchEvent, MatchEvent } from "@/models/MatchEvent";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
@@ -14,11 +15,12 @@ import { Suspension } from "@/models/Suspension";
 
 const PLAYER_REQUIRED: MatchEventType[] = ["goal", "own_goal", "penalty_goal", "penalty_missed", "yellow_card", "red_card", "substitution"];
 
-async function loadMatch(matchId: string) {
+async function loadMatch(matchId: string, actor?: Actor) {
   const match = await Match.findById(matchId);
   if (!match) throw notFound("Partido no encontrado");
   const championship = await Championship.findById(match.championshipId).lean();
   if (!championship) throw notFound("Campeonato no encontrado");
+  if (actor) requireOrganizer(actor, championship);
   return { match, championship };
 }
 
@@ -58,7 +60,7 @@ export interface CreateEventInput {
 }
 
 export async function createEvent(actor: Actor, matchId: string, input: CreateEventInput) {
-  const { match, championship } = await loadMatch(matchId);
+  const { match, championship } = await loadMatch(matchId, actor);
   if (match.status !== "live" && match.status !== "finished") {
     throw conflict("El partido no está en juego", "match_not_live");
   }
@@ -175,7 +177,7 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
 
 /** Voids an event (kept for the record), recomputing the score and lifting the bans it caused. */
 export async function voidEvent(actor: Actor, matchId: string, eventId: string) {
-  const { match } = await loadMatch(matchId);
+  const { match } = await loadMatch(matchId, actor);
   if (match.status !== "live" && match.status !== "finished") {
     throw conflict("El partido no admite cambios en sus eventos", "match_not_live");
   }
@@ -222,7 +224,7 @@ export async function listEvents(matchId: string) {
 
 /** Starts, pauses, resumes or ends the match following the state machine. */
 export async function transitionMatch(actor: Actor, matchId: string, action: MatchAction, options: { force?: boolean; reason?: string } = {}) {
-  const { match, championship } = await loadMatch(matchId);
+  const { match, championship } = await loadMatch(matchId, actor);
   const next = applyMatchAction(action, { status: match.status, period: match.period ?? "not_started" });
   if (!next) throw conflict("Esa acción no está disponible en el estado actual del partido", "invalid_transition");
 

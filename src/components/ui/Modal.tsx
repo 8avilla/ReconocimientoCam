@@ -28,7 +28,23 @@ export function Modal({ title, open, onClose, wide, children, footer }: ModalPro
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCloseRef.current();
+      if (event.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      // Keep keyboard focus inside the dialog (background content must not be tabbable while it's open).
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey ? active === first || !dialogRef.current.contains(active) : active === last) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
     };
     // With the on-screen keyboard open, keep the field being edited visible.
     const onFocusIn = (event: FocusEvent) => {

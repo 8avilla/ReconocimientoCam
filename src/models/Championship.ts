@@ -45,6 +45,12 @@ export interface IChampionship {
   startDate?: Date;
   endDate?: Date;
   rules: ChampionshipRules;
+  /** Who created it (the first organizer); absent for championships that predate accounts. */
+  ownerUserId?: Types.ObjectId;
+  /** Co-organizers, in addition to the owner. */
+  organizerUserIds: Types.ObjectId[];
+  /** Emails invited as organizer that have not signed in yet; resolved into `organizerUserIds` on their first login. */
+  organizerInviteEmails: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,6 +101,9 @@ const ChampionshipSchema = new Schema<IChampionship>(
     startDate: { type: Date },
     endDate: { type: Date },
     rules: { type: RulesSchema, default: () => ({}) },
+    ownerUserId: { type: Schema.Types.ObjectId, ref: "User" },
+    organizerUserIds: { type: [Schema.Types.ObjectId], ref: "User", default: [] },
+    organizerInviteEmails: { type: [String], default: [] },
   },
   { timestamps: true }
 );

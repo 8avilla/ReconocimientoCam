@@ -74,6 +74,11 @@ export const championshipListQuery = paginationSchema.extend({
   q: z.string().trim().max(60).optional(),
 });
 
+/** Adds a co-organizer by email (Google account); resolved right away if they already signed in once, or on their first sign-in otherwise. */
+export const organizerInviteSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Escribe un correo válido"),
+});
+
 // ---------- Teams ----------
 
 export const teamCreateSchema = z.object({

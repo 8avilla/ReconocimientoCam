@@ -1,5 +1,6 @@
 import { badRequest, conflict, escapeRegex, json, notFound, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { teamCreateSchema, teamListQuery } from "@/lib/validation/schemas";
 import { skipFor } from "@/lib/validation/common";
@@ -32,9 +33,11 @@ export const GET = route(async (request) => {
 });
 
 export const POST = route(async (request) => {
+  const actor = getActor(request);
   const input = await parseBody(request, teamCreateSchema);
   const championship = await Championship.exists({ _id: input.championshipId });
   if (!championship) throw notFound("Campeonato no encontrado");
+  await requireOrganizerOfChampionship(actor, input.championshipId);
 
   const duplicate = await Team.exists({ championshipId: input.championshipId, name: input.name });
   if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el campeonato", "duplicate");
@@ -49,7 +52,7 @@ export const POST = route(async (request) => {
   if (phase) {
     await Phase.updateOne({ _id: phase._id }, { $addToSet: { teamIds: team._id } });
   }
-  await recordAudit(getActor(request), {
+  await recordAudit(actor, {
     action: "create",
     entityType: "team",
     entityId: team._id,

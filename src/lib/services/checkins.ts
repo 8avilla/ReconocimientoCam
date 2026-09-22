@@ -1,5 +1,6 @@
 import type { Actor } from "@/lib/actor";
 import { conflict, notFound } from "@/lib/api";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { recordAudit } from "@/lib/audit";
 import { Match } from "@/models/Match";
@@ -28,6 +29,7 @@ export async function registerCheckIn(actor: Actor, matchId: string, input: Regi
   await syncMatchCallUps(matchId);
   const match = await Match.findById(matchId).lean();
   if (!match) throw notFound("Partido no encontrado");
+  await requireOrganizerOfChampionship(actor, match.championshipId);
   if (match.status !== "scheduled" && match.status !== "live") {
     throw conflict("El partido no admite registro de asistencia", "match_not_open");
   }

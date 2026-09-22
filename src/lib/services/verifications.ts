@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { ApiError, conflict, notFound } from "@/lib/api";
+import { requireOrganizer, requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { cosineSimilarity, EMBEDDING_VERSION, warmFaceEngine } from "@/lib/faceEngine/embedding";
 import { getGallery, type GalleryEntry } from "@/lib/services/faceGallery";
@@ -29,7 +30,7 @@ interface MatchPlayerContext {
 }
 
 /** Loads everything needed to identify a called-up player of a match. */
-async function loadContext(matchId: string, playerId: string, withEmbedding = false): Promise<MatchPlayerContext> {
+async function loadContext(matchId: string, playerId: string, withEmbedding = false, actor?: Actor): Promise<MatchPlayerContext> {
   await syncMatchCallUps(matchId);
   const match = await Match.findById(matchId).lean();
   if (!match) throw notFound("Partido no encontrado");
@@ -49,6 +50,7 @@ async function loadContext(matchId: string, playerId: string, withEmbedding = fa
     Team.findById(callUp.teamId).lean(),
   ]);
   if (!registration || !team) throw notFound("Inscripción del jugador no encontrada");
+  if (actor) requireOrganizer(actor, championship);
   return { match, championship, player, checkIn, registration, team };
 }
 
@@ -92,7 +94,7 @@ export async function lookupPlayer(matchId: string, code: string) {
 
 /** Compares a captured face against the player's registered face (1:1) and records the outcome. */
 export async function verifyFace(actor: Actor, matchId: string, playerId: string, image: string) {
-  const context = await loadContext(matchId, playerId, true);
+  const context = await loadContext(matchId, playerId, true, actor);
   assertCanVerify(context);
 
   if (!context.player.faceEmbedding || context.player.faceEmbedding.length === 0) {
@@ -149,7 +151,7 @@ export async function verifyFace(actor: Actor, matchId: string, playerId: string
 
 /** A referee overrides a non-conclusive or failed automatic result; requires a reason and is audited. */
 export async function approveManually(actor: Actor, matchId: string, playerId: string, reason: string) {
-  const context = await loadContext(matchId, playerId);
+  const context = await loadContext(matchId, playerId, false, actor);
   assertCanVerify(context);
   if (!context.championship.rules.allowManualReview) {
     throw new ApiError(403, "Este campeonato no permite la revisión manual", "manual_review_disabled");
@@ -199,6 +201,7 @@ export async function identifyFace(actor: Actor, matchId: string, image: string)
   const started = performance.now();
   const { gallery, cached } = await getGallery(matchId);
   const galleryMs = performance.now() - started;
+  await requireOrganizerOfChampionship(actor, gallery.championshipId);
   if (gallery.matchStatus !== "scheduled" && gallery.matchStatus !== "live") throw conflict("El partido no admite registro de asistencia", "match_not_open");
 
   const statuses = new Map((await PlayerCheckIn.find({ matchId }).select("playerId status").lean()).map((row) => [row.playerId.toString(), row.status]));

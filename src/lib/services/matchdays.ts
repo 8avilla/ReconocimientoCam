@@ -6,6 +6,7 @@ import { Match } from "@/models/Match";
 import { Referee } from "@/models/Referee";
 import { IMatchday, Matchday } from "@/models/Matchday";
 import { Phase } from "@/models/Phase";
+import { assertOrganizerOfPhase } from "@/lib/services/phases";
 
 const isDuplicateKey = (error: unknown) => error instanceof Error && error.message.includes("E11000");
 
@@ -27,6 +28,7 @@ export async function listMatchdays(phaseId: string) {
 export async function createMatchday(actor: Actor, phaseId: string, input: { name?: string; number?: number }) {
   const phase = await Phase.findById(phaseId).lean();
   if (!phase) throw notFound("Fase no encontrada");
+  await assertOrganizerOfPhase(actor, phase);
   const last = await Matchday.findOne({ phaseId }).sort({ number: -1 }).select("number").lean();
   const number = input.number ?? (last?.number ?? 0) + 1;
   if (await Matchday.exists({ phaseId, number })) throw conflict(`Ya existe la fecha número ${number} en esta fase`, "duplicate");
@@ -39,6 +41,7 @@ export async function createMatchday(actor: Actor, phaseId: string, input: { nam
 export async function updateMatchday(actor: Actor, id: string, input: { name?: string; number?: number }) {
   const matchday = await Matchday.findById(id);
   if (!matchday) throw notFound("Fecha no encontrada");
+  await assertOrganizerOfPhase(actor, matchday);
   if (matchday.roundId && input.number !== undefined && input.number !== matchday.number) {
     throw badRequest("Las fechas de una eliminatoria siguen el orden de sus rondas");
   }
@@ -54,6 +57,7 @@ export async function updateMatchday(actor: Actor, id: string, input: { name?: s
 export async function deleteMatchday(actor: Actor, id: string) {
   const matchday = await Matchday.findById(id);
   if (!matchday) throw notFound("Fecha no encontrada");
+  await assertOrganizerOfPhase(actor, matchday);
   if (await Match.exists({ matchdayId: matchday._id })) throw conflict("La fecha tiene partidos; elimínalos o muévelos a otra fecha primero", "matchday_has_matches");
   await matchday.deleteOne();
   await recordAudit(actor, { action: "delete", entityType: "matchday", entityId: matchday._id, championshipId: matchday.championshipId, summary: `Fecha eliminada: ${matchday.name}` });
@@ -108,6 +112,7 @@ export interface ScheduleEntry {
 export async function scheduleMatchday(actor: Actor, matchdayId: string, entries: ScheduleEntry[]) {
   const matchday = await Matchday.findById(matchdayId).lean();
   if (!matchday) throw notFound("Fecha no encontrada");
+  await assertOrganizerOfPhase(actor, matchday);
 
   const matches = await Match.find({ matchdayId, _id: { $in: entries.map((entry) => entry.matchId) } }).select("status").lean();
   if (matches.length !== new Set(entries.map((entry) => entry.matchId)).size) throw badRequest("Algún partido no pertenece a esta fecha");

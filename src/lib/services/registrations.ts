@@ -2,6 +2,7 @@ import { invalidateGalleries } from "@/lib/services/faceGallery";
 import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { conflict, notFound } from "@/lib/api";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { Championship } from "@/models/Championship";
 import { MatchCallUp } from "@/models/MatchCallUp";
@@ -45,6 +46,7 @@ export async function createRegistration(actor: Actor, input: CreateRegistration
   invalidateGalleries();
   const team = await Team.findById(input.teamId).lean();
   if (!team) throw notFound("Equipo no encontrado");
+  await requireOrganizerOfChampionship(actor, team.championshipId);
   const player = await Player.findById(input.playerId).lean();
   if (!player) throw notFound("Jugador no encontrado");
 
@@ -99,6 +101,7 @@ export async function updateRegistration(actor: Actor, id: string, input: Update
   invalidateGalleries();
   const registration = await TeamRegistration.findById(id);
   if (!registration) throw notFound("Inscripción no encontrada");
+  await requireOrganizerOfChampionship(actor, registration.championshipId);
 
   const before = registration.toObject() as ITeamRegistration;
   const nextStatus = input.status ?? registration.status;
@@ -148,6 +151,7 @@ export async function deleteRegistration(actor: Actor, id: string) {
   invalidateGalleries();
   const registration = await TeamRegistration.findById(id);
   if (!registration) throw notFound("Inscripción no encontrada");
+  await requireOrganizerOfChampionship(actor, registration.championshipId);
 
   const usedInCallUp = await MatchCallUp.exists({ registrationId: registration._id });
   if (usedInCallUp) {

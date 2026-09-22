@@ -4,6 +4,7 @@ import type { Actor } from "@/lib/actor";
 import { badRequest, conflict, notFound } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { deleteImage, uploadImage } from "@/lib/azureBlob";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { fineBalance, fineStatus } from "@/lib/rules/fines";
 import { Fine, type FineStatus, type IFine, type PaymentMethod } from "@/models/Fine";
 import { Team } from "@/models/Team";
@@ -123,6 +124,7 @@ function refresh(fine: InstanceType<typeof Fine>) {
 
 export async function addPayment(actor: Actor, id: string, input: { amount: number; method: PaymentMethod; note?: string; receipt?: string }) {
   const fine = await loadFine(id);
+  await requireOrganizerOfChampionship(actor, fine.championshipId);
   if (fine.status === "cancelled" || fine.status === "waived") throw conflict("Esta multa ya no se cobra", "fine_closed");
   const balance = fineBalance(fine.status, fine.amount, fine.paidAmount);
   if (balance <= 0) throw conflict("La multa ya está pagada", "fine_paid");
@@ -148,6 +150,7 @@ export async function addPayment(actor: Actor, id: string, input: { amount: numb
 /** Removes a registered payment (e.g. it was a mistake or the money was returned). */
 export async function removePayment(actor: Actor, id: string, paymentId: string) {
   const fine = await loadFine(id);
+  await requireOrganizerOfChampionship(actor, fine.championshipId);
   const payment = fine.payments.find((item) => item._id.toString() === paymentId);
   if (!payment) throw notFound("Pago no encontrado");
   const amount = payment.amount;
@@ -163,6 +166,7 @@ export async function removePayment(actor: Actor, id: string, paymentId: string)
 
 export async function waiveFine(actor: Actor, id: string, note?: string) {
   const fine = await loadFine(id);
+  await requireOrganizerOfChampionship(actor, fine.championshipId);
   if (fine.status === "paid" || fine.status === "cancelled") throw conflict("Esta multa no se puede perdonar", "fine_closed");
   fine.status = "waived";
   if (note) fine.note = note;
@@ -173,6 +177,7 @@ export async function waiveFine(actor: Actor, id: string, note?: string) {
 
 export async function reopenFine(actor: Actor, id: string) {
   const fine = await loadFine(id);
+  await requireOrganizerOfChampionship(actor, fine.championshipId);
   if (fine.status !== "waived") throw conflict("Solo se reabre una multa perdonada", "fine_not_waived");
   fine.status = "pending";
   refresh(fine);
@@ -182,6 +187,7 @@ export async function reopenFine(actor: Actor, id: string) {
 }
 
 export async function createManualFine(actor: Actor, input: { championshipId: string; teamId: string; playerId?: string; amount: number; concept: string }) {
+  await requireOrganizerOfChampionship(actor, input.championshipId);
   const team = await Team.findOne({ _id: input.teamId, championshipId: input.championshipId }).select("_id").lean();
   if (!team) throw notFound("El equipo no pertenece a este campeonato");
   const fine = await Fine.create({ ...input, type: "manual", createdBy: actor.name });

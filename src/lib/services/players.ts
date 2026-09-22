@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import sharp from "sharp";
 import type { Actor } from "@/lib/actor";
 import { badRequest, notFound, unprocessable } from "@/lib/api";
+import { requireOrganizerOfPlayer } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { deleteImage, uploadImage } from "@/lib/azureBlob";
 import { EMBEDDING_VERSION, embedFaceFromPhoto, FaceDetectionError } from "@/lib/faceEngine/embedding";
@@ -53,6 +54,7 @@ export async function enrollPlayerFace(
   input: { image: string; consent?: boolean }
 ) {
   invalidateGalleries();
+  await requireOrganizerOfPlayer(actor, playerId);
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 
@@ -92,6 +94,7 @@ export async function enrollPlayerFace(
 /** Removes the photo, embedding and consent of a player (privacy / retention). */
 export async function removePlayerFace(actor: Actor, playerId: string) {
   invalidateGalleries();
+  await requireOrganizerOfPlayer(actor, playerId);
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 

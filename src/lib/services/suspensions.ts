@@ -2,6 +2,7 @@ import { invalidateGalleries } from "@/lib/services/faceGallery";
 import type { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { conflict, notFound } from "@/lib/api";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import type { SuspensionReason } from "@/lib/constants";
 import { IMatch } from "@/models/Match";
@@ -27,6 +28,7 @@ async function releaseRegistration(registrationId: Types.ObjectId) {
 
 export async function createSuspension(actor: Actor, input: CreateSuspensionInput) {
   invalidateGalleries();
+  await requireOrganizerOfChampionship(actor, input.championshipId);
   const registration = await TeamRegistration.findOne({
     championshipId: input.championshipId,
     playerId: input.playerId,
@@ -59,6 +61,7 @@ export async function liftSuspension(actor: Actor, suspensionId: string, note?: 
   invalidateGalleries();
   const suspension = await Suspension.findById(suspensionId);
   if (!suspension) throw notFound("Suspensión no encontrada");
+  await requireOrganizerOfChampionship(actor, suspension.championshipId);
   if (suspension.status !== "active") throw conflict("La suspensión ya no está vigente", "suspension_not_active");
 
   suspension.set({ status: "lifted", liftedBy: actor.name, liftedAt: new Date(), note: note ?? suspension.note });

@@ -1,5 +1,6 @@
 import { badRequest, conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { assertMatchFitsPhase } from "@/lib/services/phases";
 import { Matchday } from "@/models/Matchday";
@@ -28,9 +29,11 @@ export const GET = route<Params>(async (_request, { id }) => {
 });
 
 export const PATCH = route<Params>(async (request, { id }) => {
+  const actor = getActor(request);
   const input = await parseBody(request, matchUpdateSchema);
   const match = await Match.findById(id);
   if (!match) throw notFound("Partido no encontrado");
+  await requireOrganizerOfChampionship(actor, match.championshipId);
 
   if (input.status && (match.status === "live" || match.status === "finished")) {
     throw conflict("El estado de un partido en juego o finalizado se cambia desde la gestión del partido", "use_transitions");
@@ -64,7 +67,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
     "scheduledAt", "venue", "status",
   ]);
   if (Object.keys(changes).length > 0) {
-    await recordAudit(getActor(request), {
+    await recordAudit(actor, {
       action: "update",
       entityType: "match",
       entityId: match._id,
@@ -77,8 +80,10 @@ export const PATCH = route<Params>(async (request, { id }) => {
 });
 
 export const DELETE = route<Params>(async (request, { id }) => {
+  const actor = getActor(request);
   const match = await Match.findById(id);
   if (!match) throw notFound("Partido no encontrado");
+  await requireOrganizerOfChampionship(actor, match.championshipId);
   if (match.status !== "scheduled") {
     throw conflict("Solo se pueden eliminar partidos programados", "match_not_deletable");
   }
@@ -88,7 +93,7 @@ export const DELETE = route<Params>(async (request, { id }) => {
   await PlayerCheckIn.deleteMany({ matchId: id });
   await MatchCallUp.deleteMany({ matchId: id });
   await match.deleteOne();
-  await recordAudit(getActor(request), {
+  await recordAudit(actor, {
     action: "delete",
     entityType: "match",
     entityId: match._id,

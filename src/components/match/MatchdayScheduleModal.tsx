@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { AlertCircle, CalendarClock, Eraser, Wand2 } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, Input, Loading, Modal, Select, useToast } from "@/components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, Input, Loading, Modal, Select, useToast } from "@/components/ui";
 import { fromDateTimeLocal, toDateTimeLocal } from "@/lib/client/datetime";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO, Paginated, RefereeDTO, VenueDTO } from "@/types/api";
 
@@ -55,6 +56,7 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
 
   const editable = matches.filter((match) => match.status !== "live" && match.status !== "finished");
   const changed = editable.filter((match) => rows[match._id].when !== initial[match._id].when || rows[match._id].venue !== initial[match._id].venue || rows[match._id].refereeId !== initial[match._id].refereeId);
+  const { requestClose, confirmProps } = useUnsavedGuard(changed.length > 0, onClose);
   const setRow = (id: string, patch: Partial<Row>) => setRows((current) => ({ ...current, [id]: { ...current[id], ...patch } }));
 
   /** Optional helper: puts the given times, in order, on the chosen day. The organizer reviews and saves. */
@@ -156,9 +158,10 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
       </div>
 
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button size="large" loading={saving} disabled={changed.length === 0} onClick={save}>Guardar programación{changed.length > 0 ? ` (${changed.length})` : ""}</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </div>
   );
 }

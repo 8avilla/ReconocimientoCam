@@ -3,12 +3,13 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
-import { Button, Input, Loading, Modal, Select, useToast } from "@/components/ui";
+import { Button, ConfirmDialog, Input, Loading, Modal, Select, useToast } from "@/components/ui";
 import { MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fromDateTimeLocal, toDateTimeLocal } from "@/lib/client/datetime";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, RefereeDTO, TeamDTO, VenueDTO } from "@/types/api";
 
@@ -52,6 +53,15 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const dirty = match
+    ? group !== (match.group ?? "") ||
+      scheduledAt !== toDateTimeLocal(match.scheduledAt) ||
+      venue !== (match.venue ?? "") ||
+      refereeId !== (match.refereeId?._id ?? "") ||
+      matchdayId !== (match.matchdayId?._id ?? "") ||
+      status !== (match.status ?? "scheduled")
+    : Boolean(homeTeamId || awayTeamId || scheduledAt || venue || refereeId || matchdayId || group);
+  const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   const selectedPhase = phases.find((item) => item._id === phaseId);
   const matchdays = useFetch<{ data: MatchdayDTO[] }>(inKnockout || !phaseId ? null : `/phases/${phaseId}/matchdays`);
@@ -197,9 +207,10 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
         </Select>
       )}
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button type="submit" loading={saving}>{match ? "Guardar cambios" : "Crear partido"}</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </form>
   );
 }

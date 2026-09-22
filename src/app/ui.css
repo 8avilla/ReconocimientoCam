@@ -431,14 +431,6 @@ a.list-row:hover { background: var(--color-background); }
 .topbar-search { color: #fff; }
 @media (min-width: 1024px) { .topbar-search { color: var(--color-text-secondary); } }
 
-/* ---------- Role selector ---------- */
-.role-button { position: relative; }
-.role-dot { position: absolute; top: 8px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; border: 2px solid var(--color-navy); }
-@media (min-width: 1024px) { .role-dot { border-color: var(--color-surface); } }
-.role-option { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: var(--space-md) var(--space-lg); border: 2px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
-.role-option.active { border-color: var(--color-primary); background: rgba(22, 163, 74, 0.06); }
-.role-banner { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-lg); padding: 8px 12px; border-radius: var(--radius-md); background: #fef3c7; color: #92400e; font-size: 13px; }
-
 /* ---------- Fines ---------- */
 .fine-summary { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg); }
 .fine-row { width: 100%; text-align: left; align-items: flex-start; background: var(--color-surface); }
@@ -461,9 +453,10 @@ a.list-row:hover { background: var(--color-background); }
 
 .switch-row { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-sm) var(--space-md); border: 2px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); width: 100%; }
 .switch-row.active { border-color: var(--color-primary); background: rgba(22, 163, 74, 0.06); }
-.role-dot-inline { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; margin-left: 4px; }
+/* ---------- Account button (sidebar / "Más" sheet) ---------- */
+.account-button { display: inline-flex; align-items: center; gap: var(--space-sm); }
 @media (min-width: 1024px) {
-  .role-menu-button { background: transparent; border-color: var(--color-navy-light); color: var(--color-text-disabled); justify-content: flex-start; }
-  .role-menu-button:hover:not(:disabled) { background: var(--color-navy-light); color: #fff; }
+  .account-button { background: transparent; border-color: var(--color-navy-light); color: #fff; justify-content: flex-start; }
+  .account-button:hover:not(:disabled) { background: var(--color-navy-light); }
 }
 .team-hero.rounded { border-bottom: 1px solid var(--color-border); border-radius: var(--radius-lg); }

@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { Button, Input, Modal, Select, useToast } from "@/components/ui";
+import { Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
+import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import type { Paginated, RosterEntryDTO, TeamDTO } from "@/types/api";
 
 interface Props {
@@ -33,6 +34,8 @@ function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const dirty = Boolean(teamId || registrationId || note.trim() || matches !== "1");
+  const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -71,9 +74,10 @@ function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
       <Input label="Partidos de suspensión" required type="number" min={1} max={20} value={matches} onChange={(e) => setMatches(e.target.value)} error={errors.matches} />
       <Input label="Motivo" required value={note} onChange={(e) => setNote(e.target.value)} error={errors.note} />
       <div className="action-bar">
-        <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
         <Button type="submit" loading={saving}>Suspender</Button>
       </div>
+      <ConfirmDialog {...confirmProps} />
     </form>
   );
 }

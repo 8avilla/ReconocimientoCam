@@ -1,6 +1,7 @@
 import type { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { badRequest, notFound } from "@/lib/api";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { roundRobin, roundRobinGroups } from "@/lib/rules/fixture";
 import { Championship } from "@/models/Championship";
@@ -35,6 +36,7 @@ export async function generateFixture(actor: Actor, phaseId: string, options: Fi
   const championshipId = phase.championshipId;
   const championship = await Championship.findById(championshipId).lean();
   if (!championship) throw notFound("Campeonato no encontrado");
+  await requireOrganizerOfChampionship(actor, championshipId);
 
   if (phase.type === "knockout") throw badRequest("Las eliminatorias se programan por ronda desde sus llaves");
 

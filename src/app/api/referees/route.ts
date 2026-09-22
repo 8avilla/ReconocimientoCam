@@ -1,5 +1,6 @@
 import { json, notFound, parseBody, parseQuery, route, toObjectId } from "@/lib/api";
 import { getActor } from "@/lib/actor";
+import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { refereeCreateSchema, refereeListQuery } from "@/lib/validation/schemas";
 import { Championship } from "@/models/Championship";
@@ -20,9 +21,11 @@ export const GET = route(async (request) => {
 });
 
 export const POST = route(async (request) => {
+  const actor = getActor(request);
   const input = await parseBody(request, refereeCreateSchema);
   if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Campeonato no encontrado");
+  await requireOrganizerOfChampionship(actor, input.championshipId);
   const referee = await Referee.create(input);
-  await recordAudit(getActor(request), { action: "create", entityType: "referee", entityId: referee._id, championshipId: referee.championshipId, summary: `Árbitro creado: ${referee.fullName}` });
+  await recordAudit(actor, { action: "create", entityType: "referee", entityId: referee._id, championshipId: referee.championshipId, summary: `Árbitro creado: ${referee.fullName}` });
   return json(referee, 201);
 });

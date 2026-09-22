@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AuthSessionProvider } from "@/components/layout/AuthSessionProvider";
 import { ChampionshipProvider } from "@/components/layout/ChampionshipContext";
 import { RoleProvider } from "@/components/layout/RoleContext";
 
@@ -17,13 +18,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es" className={inter.variable}>
       <body>
-        <ToastProvider>
-          <ChampionshipProvider>
-            <RoleProvider>
-              <AppShell>{children}</AppShell>
-            </RoleProvider>
-          </ChampionshipProvider>
-        </ToastProvider>
+        <AuthSessionProvider>
+          <ToastProvider>
+            <ChampionshipProvider>
+              <RoleProvider>
+                <AppShell>{children}</AppShell>
+              </RoleProvider>
+            </ChampionshipProvider>
+          </ToastProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

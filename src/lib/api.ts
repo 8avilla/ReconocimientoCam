@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
+import { auth } from "@/auth";
 import { connectToDatabase } from "@/lib/db";
+import type { Actor } from "@/lib/actor";
+import { runWithActor } from "@/lib/requestContext";
 
 /** Error carrying an HTTP status and a user-facing (Spanish) message. */
 export class ApiError extends Error {
@@ -39,10 +42,23 @@ export function route<P = Record<string, never>>(handler: RouteHandler<P>) {
     try {
       await connectToDatabase();
       const params = await context.params;
-      return await handler(request, params);
+      const actor = await resolveActor();
+      return await runWithActor(actor, () => handler(request, params));
     } catch (error) {
       return toErrorResponse(error, request);
     }
+  };
+}
+
+/** Resolves who is making this request from the real Google session (see `src/auth.ts`). */
+async function resolveActor(): Promise<Actor> {
+  const session = await auth();
+  if (!session?.user) return { userId: null, name: "Visitante", role: "visitor", isAdmin: false };
+  return {
+    userId: session.user.id,
+    name: session.user.name ?? session.user.email ?? "Usuario",
+    role: session.user.isAdmin ? "admin" : "organizer",
+    isAdmin: session.user.isAdmin,
   };
 }
 

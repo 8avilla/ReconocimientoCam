@@ -4,6 +4,7 @@ import { badRequest, conflict, notFound } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { aggregateScore, suggestWinner } from "@/lib/rules/knockout";
 import { ensureKnockoutMatchday } from "@/lib/services/matchdays";
+import { assertOrganizerOfPhase } from "@/lib/services/phases";
 import { Matchday } from "@/models/Matchday";
 import { IPhase, IPhaseRound, Phase } from "@/models/Phase";
 import { Match } from "@/models/Match";
@@ -12,10 +13,11 @@ import { PlayerCheckIn } from "@/models/PlayerCheckIn";
 import { Team } from "@/models/Team";
 import { ITie, Tie } from "@/models/Tie";
 
-async function loadKnockout(phaseId: string) {
+async function loadKnockout(actor: Actor, phaseId: string) {
   const phase = await Phase.findById(phaseId);
   if (!phase) throw notFound("Fase no encontrada");
   if (phase.type !== "knockout") throw badRequest("Esta fase no es una eliminatoria");
+  await assertOrganizerOfPhase(actor, phase);
   return phase;
 }
 
@@ -33,7 +35,7 @@ async function roundHasMatches(roundId: Types.ObjectId | string, phaseId: Types.
 // ---------- Rounds ----------
 
 export async function addRound(actor: Actor, phaseId: string, input: { name: string; legs: 1 | 2 }) {
-  const phase = await loadKnockout(phaseId);
+  const phase = await loadKnockout(actor, phaseId);
   if (phase.rounds.some((round) => round.name === input.name)) throw conflict("Ya existe una ronda con ese nombre", "duplicate");
   phase.rounds.push({ name: input.name, legs: input.legs, order: Math.max(0, ...phase.rounds.map((round) => round.order)) + 1 } as IPhaseRound);
   await phase.save();
@@ -42,7 +44,7 @@ export async function addRound(actor: Actor, phaseId: string, input: { name: str
 }
 
 export async function updateRound(actor: Actor, phaseId: string, roundId: string, input: { name?: string; legs?: 1 | 2 }) {
-  const phase = await loadKnockout(phaseId);
+  const phase = await loadKnockout(actor, phaseId);
   const round = findRound(phase, roundId);
   if (input.name && input.name !== round.name && phase.rounds.some((entry) => entry.name === input.name)) throw conflict("Ya existe una ronda con ese nombre", "duplicate");
   if (input.legs && input.legs !== round.legs && (await roundHasMatches(round._id, phase._id))) {
@@ -60,7 +62,7 @@ export async function updateRound(actor: Actor, phaseId: string, roundId: string
 }
 
 export async function deleteRound(actor: Actor, phaseId: string, roundId: string) {
-  const phase = await loadKnockout(phaseId);
+  const phase = await loadKnockout(actor, phaseId);
   const round = findRound(phase, roundId);
   if (await roundHasMatches(round._id, phase._id)) throw conflict("La ronda ya tiene partidos; elimínalos primero", "round_has_matches");
   await Tie.deleteMany({ phaseId: phase._id, roundId: round._id });
@@ -80,7 +82,7 @@ export interface TieInput {
 
 /** Replaces the ties of a round with the ones the organizer defined (by hand or from a proposal). */
 export async function setTies(actor: Actor, phaseId: string, roundId: string, ties: TieInput[]) {
-  const phase = await loadKnockout(phaseId);
+  const phase = await loadKnockout(actor, phaseId);
   const round = findRound(phase, roundId);
   if (await roundHasMatches(round._id, phase._id)) throw conflict("La ronda ya tiene partidos; elimínalos para cambiar los cruces", "round_has_matches");
 
@@ -117,6 +119,7 @@ export async function setTies(actor: Actor, phaseId: string, roundId: string, ti
 export async function setWinner(actor: Actor, tieId: string, teamId: string | null) {
   const tie = await Tie.findById(tieId);
   if (!tie) throw notFound("Cruce no encontrado");
+  await assertOrganizerOfPhase(actor, tie);
   if (!tie.awayTeamId) throw conflict("Un cruce con descanso avanza automáticamente", "tie_is_bye");
   if (teamId && teamId !== tie.homeTeamId.toString() && teamId !== tie.awayTeamId.toString()) {
     throw badRequest("El ganador debe ser uno de los equipos del cruce");
@@ -135,6 +138,7 @@ const legLabel = (round: IPhaseRound, leg: 1 | 2) => (round.legs === 2 ? `${roun
 export async function createTieMatch(actor: Actor, tieId: string, input: { leg: 1 | 2; scheduledAt?: Date; venue?: string }) {
   const tie = await Tie.findById(tieId).lean();
   if (!tie) throw notFound("Cruce no encontrado");
+  await assertOrganizerOfPhase(actor, tie);
   if (!tie.awayTeamId) throw conflict("Un cruce con descanso no tiene partidos", "tie_is_bye");
   const phase = await Phase.findById(tie.phaseId).lean();
   const round = phase?.rounds.find((entry) => entry._id.equals(tie.roundId));
@@ -172,7 +176,7 @@ export interface RoundFixtureOptions {
  * Existing matches are kept; only the missing ones are added unless replacing is requested.
  */
 export async function generateRoundFixture(actor: Actor, phaseId: string, roundId: string, options: RoundFixtureOptions) {
-  const phase = await loadKnockout(phaseId);
+  const phase = await loadKnockout(actor, phaseId);
   const round = findRound(phase, roundId);
   const ties = await Tie.find({ phaseId: phase._id, roundId: round._id }).sort({ position: 1 }).lean();
   const playable = ties.filter((tie) => tie.awayTeamId);

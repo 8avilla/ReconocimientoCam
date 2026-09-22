@@ -1,6 +1,7 @@
-import { PhasesManager } from "@/components/phase/PhasesManager";
+import { redirect } from "next/navigation";
 
-export default async function ChampionshipConfigPage({ params }: { params: Promise<{ id: string }> }) {
+/** The championship setup now lives at /c/<id>/gestionar. */
+export default async function LegacyChampionshipConfig({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PhasesManager championshipId={id} />;
+  redirect(`/c/${id}/gestionar`);
 }

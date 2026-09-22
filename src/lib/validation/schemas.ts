@@ -79,6 +79,8 @@ export const championshipListQuery = paginationSchema.extend({
 export const teamCreateSchema = z.object({
   championshipId: objectIdSchema,
   name: requiredText(),
+  /** Phase the new team joins (a league or groups phase); null or absent leaves it without a phase. */
+  phaseId: objectIdSchema.nullable().optional(),
   delegateName: optionalText().optional(),
   primaryColor: hexColorSchema.optional(),
   secondaryColor: hexColorSchema.optional(),
@@ -173,6 +175,7 @@ export const matchCreateSchema = z
     /** Optional: matches are usually created without day or time and scheduled later. */
     scheduledAt: z.coerce.date().optional(),
     venue: optionalText().optional(),
+    refereeId: objectIdSchema.optional(),
     group: optionalText(30).optional(),
   })
   .refine((value) => value.homeTeamId !== value.awayTeamId, {
@@ -185,6 +188,8 @@ export const matchUpdateSchema = z
     /** null clears the day and time (match back to "unscheduled"). */
     scheduledAt: z.coerce.date().nullable(),
     venue: optionalText(),
+    /** null removes the referee. */
+    refereeId: objectIdSchema.nullable(),
     /** Moves the match to another matchday (of the same championship). */
     matchdayId: objectIdSchema,
     group: optionalText(30).nullable(),
@@ -273,7 +278,7 @@ export const fixtureSchema = z.object({
 /** Sets or clears the day, time and venue of several matches of a matchday in one go. */
 export const matchdayScheduleSchema = z.object({
   matches: z
-    .array(z.object({ matchId: objectIdSchema, scheduledAt: z.coerce.date().nullable(), venue: optionalText().optional() }))
+    .array(z.object({ matchId: objectIdSchema, scheduledAt: z.coerce.date().nullable(), venue: optionalText().optional(), refereeId: objectIdSchema.nullable().optional() }))
     .min(1)
     .max(100),
 });
@@ -403,3 +408,24 @@ export const finePaymentSchema = z.object({
 });
 
 export const fineNoteSchema = z.object({ note: optionalText(300).optional() });
+
+
+// ---------- Referees and venues (championship management) ----------
+
+export const refereeCreateSchema = z.object({
+  championshipId: objectIdSchema,
+  fullName: requiredText(120),
+  phone: optionalText(30).optional(),
+  documentId: optionalText(30).optional(),
+});
+export const refereeUpdateSchema = z.object({ fullName: requiredText(120), phone: optionalText(30), documentId: optionalText(30), active: z.boolean() }).partial();
+export const refereeListQuery = z.object({ championshipId: objectIdSchema, active: z.enum(["true", "false"]).optional() });
+
+export const venueCreateSchema = z.object({
+  championshipId: objectIdSchema,
+  name: requiredText(80),
+  address: optionalText(200).optional(),
+  notes: optionalText(300).optional(),
+});
+export const venueUpdateSchema = z.object({ name: requiredText(80), address: optionalText(200), notes: optionalText(300), active: z.boolean() }).partial();
+export const venueListQuery = z.object({ championshipId: objectIdSchema, active: z.enum(["true", "false"]).optional() });

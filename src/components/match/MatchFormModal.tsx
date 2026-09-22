@@ -7,9 +7,10 @@ import { Button, Input, Loading, Modal, Select, useToast } from "@/components/ui
 import { MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fromDateTimeLocal, toDateTimeLocal } from "@/lib/client/datetime";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
-import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, TeamDTO } from "@/types/api";
+import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, RefereeDTO, TeamDTO, VenueDTO } from "@/types/api";
 
 interface Props {
   open: boolean;
@@ -43,6 +44,9 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
   const [awayTeamId, setAwayTeamId] = useState("");
   const [scheduledAt, setScheduledAt] = useState(toDateTimeLocal(match?.scheduledAt));
   const [venue, setVenue] = useState(match?.venue ?? "");
+  const [refereeId, setRefereeId] = useState(match?.refereeId?._id ?? "");
+  const referees = useFetch<{ data: RefereeDTO[] }>(`/referees?championshipId=${championshipId}&active=true`);
+  const venues = useFetch<{ data: VenueDTO[] }>(`/venues?championshipId=${championshipId}&active=true`);
   const [matchdayId, setMatchdayId] = useState(match?.matchdayId?._id ?? "");
   const [status, setStatus] = useState<MatchStatus>(match?.status ?? "scheduled");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,6 +97,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
           json: {
             scheduledAt: scheduledAt ? fromDateTimeLocal(scheduledAt) : null,
             venue: venue.trim(),
+            refereeId: refereeId || null,
             ...(inKnockout ? {} : { matchdayId, group: isGroups ? group : null }),
             ...(match.status === "live" || match.status === "finished" ? {} : { status }),
           },
@@ -103,6 +108,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
             matchdayId, homeTeamId, awayTeamId,
             ...(scheduledAt ? { scheduledAt: fromDateTimeLocal(scheduledAt) } : {}),
             venue: venue.trim(),
+            ...(refereeId ? { refereeId } : {}),
             ...(isGroups ? { group } : {}),
           },
         });
@@ -126,7 +132,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
         </div>
         <div className="action-bar">
           <Button variant="secondary" onClick={onClose}>Cerrar</Button>
-          <Link href={`/championships/${championshipId}`} className="btn primary">Configurar fases</Link>
+          <Link href={championshipPath(championshipId, "gestionar")} className="btn primary">Configurar fases</Link>
         </div>
       </div>
     );
@@ -175,7 +181,16 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
         </div>
       )}
       <Input label="Día y hora (opcional)" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} error={errors.scheduledAt} hint="Puedes dejarlo vacío y programarlo después; también puedes cambiarlo cuando quieras." />
-      <Input label="Cancha" value={venue} onChange={(e) => setVenue(e.target.value)} error={errors.venue} />
+      <Input label="Cancha" list="match-venues" value={venue} onChange={(e) => setVenue(e.target.value)} error={errors.venue} hint={(venues.data?.data.length ?? 0) > 0 ? "Elige una de tus canchas o escribe otra." : undefined} />
+      <datalist id="match-venues">
+        {venues.data?.data.map((item) => <option key={item._id} value={item.name} />)}
+      </datalist>
+      {(referees.data?.data.length ?? 0) > 0 && (
+        <Select label="Árbitro (opcional)" value={refereeId} onChange={(e) => setRefereeId(e.target.value)}>
+          <option value="">Sin árbitro</option>
+          {referees.data?.data.map((referee) => <option key={referee._id} value={referee._id}>{referee.fullName}</option>)}
+        </Select>
+      )}
       {match && match.status !== "live" && match.status !== "finished" && (
         <Select label="Estado" value={status} onChange={(e) => setStatus(e.target.value as MatchStatus)} hint="El inicio y el cierre se gestionan desde la pestaña Eventos.">
           {MATCH_STATUSES.filter((item) => item !== "live" && item !== "finished").map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}

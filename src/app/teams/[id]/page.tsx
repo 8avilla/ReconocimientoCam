@@ -13,6 +13,7 @@ import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHead
 import { errorMessage, http } from "@/lib/client/http";
 import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
 import { useRole } from "@/components/layout/RoleContext";
+import { championshipPath } from "@/lib/paths";
 import { canAccess } from "@/lib/roles";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
@@ -50,7 +51,7 @@ export default function TeamDetailPage() {
     try {
       await http(`/teams/${id}`, { method: "DELETE" });
       toast.success("Equipo eliminado");
-      router.push("/teams");
+      router.push(championshipPath(current.championshipId, "equipos"));
     } catch (error) {
       toast.error(errorMessage(error));
       setDeleting(false);
@@ -67,7 +68,7 @@ export default function TeamDetailPage() {
     <>
       <PageHeader
         title={current.name}
-        breadcrumb={[{ label: "Equipos", href: "/teams" }, { label: current.name }]}
+        breadcrumb={[{ label: "Equipos", href: championshipPath(current.championshipId, "equipos") }, { label: current.name }]}
         actions={
           <>
             {can("roster.manage") && <Link href={`/players/new?teamId=${id}`} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>}

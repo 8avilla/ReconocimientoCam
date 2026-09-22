@@ -15,6 +15,8 @@ export { Phase } from "./Phase";
 export { Player } from "./Player";
 export { PlayerCheckIn } from "./PlayerCheckIn";
 export { Suspension } from "./Suspension";
+export { Referee } from "./Referee";
 export { Team } from "./Team";
 export { TeamRegistration } from "./TeamRegistration";
 export { Tie } from "./Tie";
+export { Venue } from "./Venue";

@@ -6,6 +6,7 @@ import { Matchday } from "@/models/Matchday";
 import { matchUpdateSchema } from "@/lib/validation/schemas";
 import { IMatch, Match } from "@/models/Match";
 import { MatchCallUp } from "@/models/MatchCallUp";
+import { Referee } from "@/models/Referee";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
 
 type Params = { id: string };
@@ -16,6 +17,7 @@ export const GET = route<Params>(async (_request, { id }) => {
     .populate({ path: "matchdayId", select: "name number" })
     .populate({ path: "homeTeamId", select: "name shieldUrl primaryColor" })
     .populate({ path: "awayTeamId", select: "name shieldUrl primaryColor" })
+    .populate({ path: "refereeId", select: "fullName" })
     .lean();
   if (!match) throw notFound("Partido no encontrado");
   const [calledUp, present] = await Promise.all([
@@ -39,7 +41,9 @@ export const PATCH = route<Params>(async (request, { id }) => {
     throw conflict("Este partido pertenece a un cruce de eliminatoria; no se puede mover de fecha", "match_in_tie");
   }
   const { matchdayId, group: requestedGroup, ...fields } = input;
+  if (fields.refereeId && !(await Referee.exists({ _id: fields.refereeId, championshipId: match.championshipId }))) throw badRequest("El árbitro no pertenece a este campeonato");
   match.set(fields);
+  if (fields.refereeId === null) match.set("refereeId", undefined); // referee removed
   if (fields.scheduledAt === null) match.set("scheduledAt", undefined); // back to "unscheduled"
   if (matchdayId !== undefined || requestedGroup !== undefined) {
     const matchday = await Matchday.findById(matchdayId ?? match.matchdayId).select("phaseId championshipId").lean();
@@ -53,7 +57,8 @@ export const PATCH = route<Params>(async (request, { id }) => {
   }
   await match.save();
 
-  const { scheduledAt: requestedDate, ...otherFields } = fields;
+  const { scheduledAt: requestedDate, refereeId: _referee, ...otherFields } = fields;
+  void _referee; // the referee is audited through its own summary below
   const patch: Partial<IMatch> = { ...otherFields, ...(requestedDate !== undefined ? { scheduledAt: requestedDate ?? undefined } : {}) };
   const changes = diffChanges(before, patch, [
     "scheduledAt", "venue", "status",

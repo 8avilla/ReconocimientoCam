@@ -40,8 +40,21 @@ export function can(role: Role, permission: Permission): boolean {
 
 const within = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
+/** Section pages inside a championship, mapped to the legacy paths the access rules were written for. */
+const SECTION_AS_LEGACY: Record<string, string> = {
+  partidos: "/matches",
+  clasificacion: "/stats",
+  equipos: "/teams",
+  jugadores: "/players",
+  sanciones: "/sanctions",
+  gestionar: "/championships/manage",
+};
+
 /** Screens each role can open. */
-export function canAccess(role: Role, pathname: string): boolean {
+export function canAccess(role: Role, rawPath: string): boolean {
+  let pathname = rawPath;
+  const scoped = /^\/c\/[^/]+(?:\/([^/]+))?/.exec(rawPath);
+  if (scoped) pathname = scoped[1] ? SECTION_AS_LEGACY[scoped[1]] ?? "/" : "/";
   if (within(pathname, "/admin")) return role === "admin";
   if (role !== "visitor") return true;
   // A visitor reads the championship: no setup pages, no personal data of players.

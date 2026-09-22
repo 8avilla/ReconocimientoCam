@@ -1,5 +1,7 @@
 "use client";
 
+import { championshipPath } from "@/lib/paths";
+
 import { useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarPlus } from "lucide-react";
@@ -76,7 +78,7 @@ function FixtureWizard({ championshipId, phases, initialPhaseId, target, onClose
         </div>
         <div className="action-bar">
           <Button variant="secondary" onClick={onClose}>Cerrar</Button>
-          <Link href={`/championships/${championshipId}`} className="btn primary">Configurar fases</Link>
+          <Link href={championshipPath(championshipId, "gestionar")} className="btn primary">Configurar fases</Link>
         </div>
       </div>
     );

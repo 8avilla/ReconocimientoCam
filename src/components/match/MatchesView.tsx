@@ -11,6 +11,7 @@ import { MatchList } from "@/components/match/MatchList";
 import { Button, EmptyState, ErrorState, Loading, Modal, PageHeader } from "@/components/ui";
 import { MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { useRole } from "@/components/layout/RoleContext";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
 import { useIsMobile } from "@/lib/client/useMediaQuery";
@@ -122,7 +123,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
       {manage && phases.data && phaseList.length === 0 && (
         <div className="alert warning" role="note" style={{ marginBottom: "var(--space-lg)" }}>
           <span className="grow">Todo partido pertenece a una fase de un campeonato. Crea primero una fase (liga, grupos o eliminatoria) para poder programar partidos.</span>
-          <Link href={`/championships/${championshipId}`} className="btn secondary small">Configurar fases</Link>
+          <Link href={championshipPath(championshipId, "gestionar")} className="btn secondary small">Configurar fases</Link>
         </div>
       )}
       <div className="stack-sm" style={{ marginBottom: "var(--space-lg)" }}>

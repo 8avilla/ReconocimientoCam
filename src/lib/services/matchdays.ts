@@ -3,6 +3,7 @@ import type { Actor } from "@/lib/actor";
 import { badRequest, conflict, notFound } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { Match } from "@/models/Match";
+import { Referee } from "@/models/Referee";
 import { IMatchday, Matchday } from "@/models/Matchday";
 import { Phase } from "@/models/Phase";
 
@@ -96,6 +97,8 @@ export interface ScheduleEntry {
   /** null clears the day and time. */
   scheduledAt: Date | null;
   venue?: string;
+  /** null removes the referee; absent leaves it. */
+  refereeId?: string | null;
 }
 
 /**
@@ -112,15 +115,26 @@ export async function scheduleMatchday(actor: Actor, matchdayId: string, entries
     throw conflict("No se puede reprogramar un partido en juego o finalizado", "match_not_reschedulable");
   }
 
+  const refereeIds = entries.flatMap((entry) => (entry.refereeId ? [entry.refereeId] : []));
+  if (refereeIds.length > 0 && (await Referee.countDocuments({ _id: { $in: refereeIds }, championshipId: matchday.championshipId })) !== new Set(refereeIds).size) {
+    throw badRequest("Algún árbitro no pertenece a este campeonato");
+  }
   await Match.bulkWrite(
-    entries.map((entry) => ({
-      updateOne: {
-        filter: { _id: entry.matchId, matchdayId: matchday._id },
-        update: {
-          ...(entry.scheduledAt ? { $set: { scheduledAt: entry.scheduledAt, ...(entry.venue !== undefined ? { venue: entry.venue } : {}) } } : { $unset: { scheduledAt: "" }, ...(entry.venue !== undefined ? { $set: { venue: entry.venue } } : {}) }),
+    entries.map((entry) => {
+      const set: Record<string, unknown> = {};
+      const unset: Record<string, ""> = {};
+      if (entry.scheduledAt) set.scheduledAt = entry.scheduledAt;
+      else unset.scheduledAt = "";
+      if (entry.venue !== undefined) set.venue = entry.venue;
+      if (entry.refereeId) set.refereeId = entry.refereeId;
+      else if (entry.refereeId === null) unset.refereeId = "";
+      return {
+        updateOne: {
+          filter: { _id: entry.matchId, matchdayId: matchday._id },
+          update: { ...(Object.keys(set).length > 0 ? { $set: set } : {}), ...(Object.keys(unset).length > 0 ? { $unset: unset } : {}) },
         },
-      },
-    }))
+      };
+    })
   );
   await recordAudit(actor, {
     action: "update",

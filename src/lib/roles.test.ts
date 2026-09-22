@@ -31,6 +31,16 @@ describe("screen access", () => {
     expect(canAccess("visitor", "/players")).toBe(false);
     expect(canAccess("visitor", "/players/new")).toBe(false);
   });
+  it("understands the championship-scoped addresses", () => {
+    expect(canAccess("visitor", "/c/abc")).toBe(true);
+    expect(canAccess("visitor", "/c/abc/partidos")).toBe(true);
+    expect(canAccess("visitor", "/c/abc/clasificacion")).toBe(true);
+    expect(canAccess("visitor", "/c/abc/equipos")).toBe(true);
+    expect(canAccess("visitor", "/c/abc/sanciones")).toBe(true);
+    expect(canAccess("visitor", "/c/abc/jugadores")).toBe(false);
+    expect(canAccess("visitor", "/c/abc/gestionar")).toBe(false);
+    expect(canAccess("organizer", "/c/abc/gestionar")).toBe(true);
+  });
   it("lets the organizer open everything except the administration", () => {
     expect(canAccess("organizer", "/championships/abc")).toBe(true);
     expect(canAccess("organizer", "/players/new")).toBe(true);

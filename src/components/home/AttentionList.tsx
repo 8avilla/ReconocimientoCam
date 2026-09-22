@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CalendarClock, ChevronRight, CircleDot, ScanFace, Shield, Swords } from "lucide-react";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import type { MatchDTO, OverviewDTO, Paginated } from "@/types/api";
 
@@ -33,17 +34,17 @@ export function AttentionList({ championshipId, overview }: { championshipId: st
       href: `/matches/${match._id}?tab=attendance`, action: "Asistencia",
     })),
     ...(overview.unscheduledMatches > 0
-      ? [{ key: "unscheduled", icon: <CalendarClock size={20} />, tone: "todo" as const, text: `${overview.unscheduledMatches} ${overview.unscheduledMatches === 1 ? "partido sin día ni hora" : "partidos sin día ni hora"}`, href: "/matches?programacion=sin", action: "Programar" }]
+      ? [{ key: "unscheduled", icon: <CalendarClock size={20} />, tone: "todo" as const, text: `${overview.unscheduledMatches} ${overview.unscheduledMatches === 1 ? "partido sin día ni hora" : "partidos sin día ni hora"}`, href: championshipPath(championshipId, "partidos", "?programacion=sin"), action: "Programar" }]
       : []),
     ...(overview.teamsWithoutPhase.length > 0
       ? [{
           key: "no-phase", icon: <Shield size={20} />, tone: "todo" as const,
           text: `${overview.teamsWithoutPhase.length} ${overview.teamsWithoutPhase.length === 1 ? "equipo no está" : "equipos no están"} en ninguna fase`,
-          detail: overview.teamsWithoutPhase.map((team) => team.name).join(", "), href: `/championships/${championshipId}`, action: "Agregar",
+          detail: overview.teamsWithoutPhase.map((team) => team.name).join(", "), href: championshipPath(championshipId, "gestionar"), action: "Agregar",
         }]
       : []),
     ...(overview.playersWithoutFace > 0
-      ? [{ key: "faces", icon: <ScanFace size={20} />, tone: "todo" as const, text: `${overview.playersWithoutFace} ${overview.playersWithoutFace === 1 ? "jugador sin rostro registrado" : "jugadores sin rostro registrado"}`, href: "/players", action: "Ver" }]
+      ? [{ key: "faces", icon: <ScanFace size={20} />, tone: "todo" as const, text: `${overview.playersWithoutFace} ${overview.playersWithoutFace === 1 ? "jugador sin rostro registrado" : "jugadores sin rostro registrado"}`, href: championshipPath(championshipId, "jugadores"), action: "Ver" }]
       : []),
   ];
   if (items.length === 0) return null;

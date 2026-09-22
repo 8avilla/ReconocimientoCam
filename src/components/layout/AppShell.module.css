@@ -13,7 +13,12 @@
 }
 .topbarActions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-sm); min-width: 0; flex: 1; }
 .topbarLogo { height: 32px; width: auto; border-radius: var(--radius-sm); }
-.championshipSelect { min-height: 44px; width: auto; min-width: 0; max-width: 100%; }
+.topbarLogoLink { display: inline-flex; flex-shrink: 0; }
+.scopeChip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; max-width: 100%; min-width: 0; padding: 0 12px;
+  border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.12); color: #fff; font-weight: 600; font-size: 14px;
+}
+.scopeBlock { padding: var(--space-md) var(--space-md) 0; }
 
 .sidebar { display: none; }
 
@@ -29,6 +34,18 @@
 .bottomItem.active { color: var(--color-primary); font-weight: 700; }
 
 @media (min-width: 1024px) {
+  .scopeChip { display: none; }
+  .scopeBlock { display: flex; flex-direction: column; gap: var(--space-sm); }
+  .scopeBack { color: var(--color-text-disabled); font-size: 12px; padding: 4px var(--space-sm); }
+  .scopeBack:hover { color: #fff; }
+  .scopeButton {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; text-align: left; gap: 0 var(--space-sm);
+    padding: var(--space-md); border-radius: var(--radius-md); background: var(--color-navy-light); color: #fff;
+  }
+  .scopeName { font-weight: 700; grid-column: 1; }
+  .scopeSeason { font-size: 12px; color: var(--color-text-disabled); grid-column: 1; }
+  .scopeButton svg { grid-column: 2; grid-row: 1 / span 2; }
+  .sidebarFoot { margin-top: auto; padding: var(--space-md); display: flex; flex-direction: column; gap: 4px; }
   .sidebar {
     display: flex; flex-direction: column; width: 248px; flex-shrink: 0; height: 100vh; position: sticky; top: 0;
     background: var(--color-navy); color: #fff;

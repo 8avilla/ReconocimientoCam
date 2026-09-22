@@ -1,16 +1,26 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
+import { useFavoriteSet } from "@/lib/client/favorites";
 import { useFetch } from "@/lib/client/useFetch";
+import { parseChampionshipPath } from "@/lib/paths";
 import type { ChampionshipDTO, Paginated } from "@/types/api";
 
 const STORAGE_KEY = "super-torneos:championship";
-const FAVORITES_KEY = "super-torneos:favorites";
+const SELECTION_EVENT = "super-torneos:championship-change";
+export const FAVORITES_KEY = "super-torneos:favorites";
 
 interface ChampionshipContextValue {
   championships: ChampionshipDTO[];
-  /** Championship every list screen is scoped to; null until one exists. */
+  /**
+   * The championship being looked at: the one in the address (`/c/<id>/…`) or, on detail pages that have no
+   * championship in their address, the last one visited. Null until one exists (or when the address has an unknown id).
+   */
   current: ChampionshipDTO | null;
+  /** Id in the address, if any (so a wrong link can be told apart from "no championship yet"). */
+  routeId: string | null;
+  /** Remembers a championship as the last visited. */
   setCurrentId: (id: string) => void;
   /** Championships the user follows (kept in this browser until accounts exist). */
   favoriteIds: ReadonlySet<string>;
@@ -22,7 +32,16 @@ interface ChampionshipContextValue {
 
 const ChampionshipContext = createContext<ChampionshipContextValue | null>(null);
 
-function readStoredId(): string | null {
+function subscribeSelection(notify: () => void) {
+  window.addEventListener(SELECTION_EVENT, notify);
+  window.addEventListener("storage", notify);
+  return () => {
+    window.removeEventListener(SELECTION_EVENT, notify);
+    window.removeEventListener("storage", notify);
+  };
+}
+
+function readSelection(): string | null {
   try {
     return window.localStorage.getItem(STORAGE_KEY);
   } catch {
@@ -30,50 +49,37 @@ function readStoredId(): string | null {
   }
 }
 
-function readFavorites(): Set<string> {
+function rememberSelection(id: string) {
   try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
-    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : []);
+    if (window.localStorage.getItem(STORAGE_KEY) === id) return;
+    window.localStorage.setItem(STORAGE_KEY, id);
   } catch {
-    return new Set();
+    // Storage may be unavailable (private mode); it just won't be remembered.
   }
+  window.dispatchEvent(new Event(SELECTION_EVENT));
 }
 
 export function ChampionshipProvider({ children }: { children: React.ReactNode }) {
   const { data, loading, error, reload } = useFetch<Paginated<ChampionshipDTO>>("/championships?limit=100");
-  const [selectedId, setSelectedId] = useState<string | null>(() => (typeof window === "undefined" ? null : readStoredId()));
+  const [favoriteIds, toggleFavorite] = useFavoriteSet(FAVORITES_KEY);
+  const pathname = usePathname();
+  const routeId = parseChampionshipPath(pathname)?.id ?? null;
+  const selectedId = useSyncExternalStore(subscribeSelection, readSelection, () => null);
 
-  const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(() => (typeof window === "undefined" ? new Set() : readFavorites()));
+  // Visiting a championship makes it the "last visited" one, which detail pages (a match, a team...) fall back to.
+  useEffect(() => {
+    if (routeId) rememberSelection(routeId);
+  }, [routeId]);
 
-  const toggleFavorite = useCallback((id: string) => {
-    setFavoriteIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      try {
-        window.localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-      } catch {
-        // Not persisted when storage is unavailable.
-      }
-      return next;
-    });
-  }, []);
-
-  const setCurrentId = useCallback((id: string) => {
-    setSelectedId(id);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      // Storage may be unavailable (private mode); the selection just won't persist.
-    }
-  }, []);
+  const setCurrentId = useCallback((id: string) => rememberSelection(id), []);
 
   const value = useMemo<ChampionshipContextValue>(() => {
     const championships = data?.data ?? [];
-    // Without a remembered choice the app opens on a followed championship, then on the first one.
-    const current = championships.find((item) => item._id === selectedId) ?? championships.find((item) => favoriteIds.has(item._id)) ?? championships[0] ?? null;
-    return { championships, current, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload };
-  }, [data, selectedId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload]);
+    const current = routeId
+      ? championships.find((item) => item._id === routeId) ?? null
+      : championships.find((item) => item._id === selectedId) ?? championships.find((item) => favoriteIds.has(item._id)) ?? championships[0] ?? null;
+    return { championships, current, routeId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload };
+  }, [data, routeId, selectedId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload]);
 
   return <ChampionshipContext.Provider value={value}>{children}</ChampionshipContext.Provider>;
 }

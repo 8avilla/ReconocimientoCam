@@ -9,6 +9,7 @@ import { matchCreateSchema, matchListQuery } from "@/lib/validation/schemas";
 import { Matchday } from "@/models/Matchday";
 import { Phase } from "@/models/Phase";
 import { IMatch, Match } from "@/models/Match";
+import { Referee } from "@/models/Referee";
 import { Team } from "@/models/Team";
 
 export const GET = route(async (request) => {
@@ -53,6 +54,7 @@ export const GET = route(async (request) => {
     { path: "matchdayId", select: "name number" },
     { path: "homeTeamId", select: "name shieldUrl" },
     { path: "awayTeamId", select: "name shieldUrl" },
+    { path: "refereeId", select: "fullName" },
   ]);
   const body: Paginated<IMatch> = { data: data as unknown as IMatch[], meta: { page: query.page, limit: query.limit, total } };
   return json(body);
@@ -70,6 +72,7 @@ export const POST = route(async (request) => {
   if (teams.some((team) => team.championshipId.toString() !== championshipId)) {
     throw badRequest("Los equipos deben pertenecer al campeonato de la fecha");
   }
+  if (input.refereeId && !(await Referee.exists({ _id: input.refereeId, championshipId }))) throw badRequest("El árbitro no pertenece a este campeonato");
   const fit = await assertMatchFitsPhase({ phaseId: matchday.phaseId.toString(), homeTeamId: input.homeTeamId, awayTeamId: input.awayTeamId, group: input.group });
   const match = await Match.create({ ...input, championshipId, phaseId: matchday.phaseId, group: fit.group });
   // The whole squad of both teams is called up automatically.

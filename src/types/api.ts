@@ -112,6 +112,7 @@ export interface MatchDTO {
   awayTeamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
   scheduledAt: string;
   venue: string;
+  refereeId?: { _id: string; fullName: string } | null;
   /** Populated in list and detail responses: every match is played on a matchday (fecha). */
   matchdayId: { _id: string; number: number; name: string };
   status: MatchStatus;
@@ -417,4 +418,24 @@ export interface IdentifyDTO {
   message?: string;
   /** Milliseconds spent by the server in each stage of this frame (for measuring on real devices). */
   timings?: { galleryMs: number; embedMs?: number; registerMs?: number; totalMs: number; galleryCached: boolean };
+}
+
+export interface RefereeDTO {
+  _id: string;
+  championshipId: string;
+  fullName: string;
+  phone?: string;
+  documentId?: string;
+  active: boolean;
+  matchCount: number;
+}
+
+export interface VenueDTO {
+  _id: string;
+  championshipId: string;
+  name: string;
+  address?: string;
+  notes?: string;
+  active: boolean;
+  matchCount: number;
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChartColumn } from "lucide-react";
 import { StandingsTable } from "@/components/stats/StatsView";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { currentPhase } from "@/lib/rules/currentPhase";
 import type { PhaseDTO, PhaseStandingsDTO } from "@/types/api";
@@ -31,7 +32,7 @@ export function TeamStandingsTab({ teamId, championshipId, maxRows, phaseSelecto
           icon={<ChartColumn size={28} />}
           title={teamId ? "El equipo no está en ninguna tabla" : "Aún no hay clasificación"}
           description={teamId ? "Agrégalo a una fase de liga o de grupos para ver su clasificación." : "Crea una fase de liga o de grupos, elige sus equipos y juega partidos para ver la tabla."}
-          action={<Link href={`/championships/${championshipId}`} className="btn primary">Configurar fases</Link>}
+          action={<Link href={championshipPath(championshipId, "gestionar")} className="btn primary">Configurar fases</Link>}
         />
       </div>
     );

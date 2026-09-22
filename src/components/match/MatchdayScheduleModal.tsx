@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { AlertCircle, CalendarClock, Eraser, Wand2 } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, Input, Loading, Modal, useToast } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, Input, Loading, Modal, Select, useToast } from "@/components/ui";
 import { fromDateTimeLocal, toDateTimeLocal } from "@/lib/client/datetime";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
-import type { MatchDTO, Paginated } from "@/types/api";
+import type { MatchDTO, Paginated, RefereeDTO, VenueDTO } from "@/types/api";
 
 interface Props {
   open: boolean;
@@ -27,6 +27,8 @@ export function MatchdayScheduleModal({ open, ...props }: Props) {
 interface Row {
   when: string; // datetime-local, "" = no day/time
   venue: string;
+  /** "" = no referee. */
+  refereeId: string;
 }
 
 /** Loads the matches of the matchday and mounts the editor with them. */
@@ -39,7 +41,10 @@ function Schedule({ matchday, onClose, onSaved }: Omit<Props, "open">) {
 
 function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Props["matchday"]; matches: MatchDTO[]; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
-  const initial = Object.fromEntries(matches.map((match): [string, Row] => [match._id, { when: toDateTimeLocal(match.scheduledAt ?? undefined), venue: match.venue }]));
+  const championshipId = matches[0]?.championshipId;
+  const referees = useFetch<{ data: RefereeDTO[] }>(championshipId ? `/referees?championshipId=${championshipId}&active=true` : null);
+  const venues = useFetch<{ data: VenueDTO[] }>(championshipId ? `/venues?championshipId=${championshipId}&active=true` : null);
+  const initial = Object.fromEntries(matches.map((match): [string, Row] => [match._id, { when: toDateTimeLocal(match.scheduledAt ?? undefined), venue: match.venue, refereeId: match.refereeId?._id ?? "" }]));
   const [rows, setRows] = useState<Record<string, Row>>(initial);
   const [day, setDay] = useState("");
   const [times, setTimes] = useState("");
@@ -49,7 +54,7 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
   const [error, setError] = useState("");
 
   const editable = matches.filter((match) => match.status !== "live" && match.status !== "finished");
-  const changed = editable.filter((match) => rows[match._id].when !== initial[match._id].when || rows[match._id].venue !== initial[match._id].venue);
+  const changed = editable.filter((match) => rows[match._id].when !== initial[match._id].when || rows[match._id].venue !== initial[match._id].venue || rows[match._id].refereeId !== initial[match._id].refereeId);
   const setRow = (id: string, patch: Partial<Row>) => setRows((current) => ({ ...current, [id]: { ...current[id], ...patch } }));
 
   /** Optional helper: puts the given times, in order, on the chosen day. The organizer reviews and saves. */
@@ -62,7 +67,7 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
     setRows((current) => {
       const next = { ...current };
       editable.forEach((match, index) => {
-        if (index < slots.length) next[match._id] = { when: `${day}T${slots[index]}`, venue: venue.trim() || next[match._id].venue };
+        if (index < slots.length) next[match._id] = { ...next[match._id], when: `${day}T${slots[index]}`, venue: venue.trim() || next[match._id].venue };
       });
       return next;
     });
@@ -75,7 +80,7 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
     try {
       await http(`/matchdays/${matchday._id}/schedule`, {
         method: "PUT",
-        json: { matches: changed.map((match) => ({ matchId: match._id, scheduledAt: rows[match._id].when ? fromDateTimeLocal(rows[match._id].when) : null, venue: rows[match._id].venue.trim() })) },
+        json: { matches: changed.map((match) => ({ matchId: match._id, scheduledAt: rows[match._id].when ? fromDateTimeLocal(rows[match._id].when) : null, venue: rows[match._id].venue.trim(), refereeId: rows[match._id].refereeId || null })) },
       });
       toast.success("Programación guardada");
       onSaved();
@@ -107,7 +112,7 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
             <Input label="Día" type="date" value={day} onChange={(e) => setDay(e.target.value)} />
             <Input label="Horarios" value={times} onChange={(e) => setTimes(e.target.value)} hint="Separados por coma, uno por partido: 19:00, 21:00" />
           </div>
-          <Input label="Cancha (opcional, para todos)" value={venue} onChange={(e) => setVenue(e.target.value)} />
+          <Input label="Cancha (opcional, para todos)" list="schedule-venues" value={venue} onChange={(e) => setVenue(e.target.value)} />
           {note && <div className="alert info" role="note"><AlertCircle size={18} /> {note}</div>}
           <div className="row-wrap">
             <Button variant="secondary" size="small" onClick={assignInOrder}>Asignar en orden</Button>
@@ -117,6 +122,10 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
           </div>
         </div>
       </details>
+
+      <datalist id="schedule-venues">
+        {venues.data?.data.map((venueItem) => <option key={venueItem._id} value={venueItem.name} />)}
+      </datalist>
 
       <div className="stack-sm">
         {matches.map((match) => {
@@ -131,8 +140,16 @@ function ScheduleEditor({ matchday, matches, onClose, onSaved }: { matchday: Pro
                 <Input label="Día y hora" type="datetime-local" disabled={locked} value={rows[match._id].when} onChange={(e) => setRow(match._id, { when: e.target.value })} />
               </div>
               <div style={{ minWidth: 140 }}>
-                <Input label="Cancha" disabled={locked} value={rows[match._id].venue} onChange={(e) => setRow(match._id, { venue: e.target.value })} />
+                <Input label="Cancha" list="schedule-venues" disabled={locked} value={rows[match._id].venue} onChange={(e) => setRow(match._id, { venue: e.target.value })} />
               </div>
+              {(referees.data?.data.length ?? 0) > 0 && (
+                <div style={{ minWidth: 160 }}>
+                  <Select label="Árbitro" disabled={locked} value={rows[match._id].refereeId} onChange={(e) => setRow(match._id, { refereeId: e.target.value })}>
+                    <option value="">Sin árbitro</option>
+                    {referees.data?.data.map((referee) => <option key={referee._id} value={referee._id}>{referee.fullName}</option>)}
+                  </Select>
+                </div>
+              )}
             </div>
           );
         })}

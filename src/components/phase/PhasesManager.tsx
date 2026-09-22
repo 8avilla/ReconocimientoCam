@@ -7,10 +7,11 @@ import { FixtureModal } from "@/components/match/FixtureModal";
 import { PhaseFormModal } from "@/components/phase/PhaseFormModal";
 import { MatchdaysModal } from "@/components/phase/MatchdaysModal";
 import { PhaseTeamsModal } from "@/components/phase/PhaseTeamsModal";
-import { ActionMenu, type MenuAction, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
+import { ActionMenu, type MenuAction, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Fab, Loading, useToast } from "@/components/ui";
+import { championshipPath } from "@/lib/paths";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
-import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL, LEGS_LABEL, PHASE_TYPE_LABEL } from "@/lib/labels";
+import { LEGS_LABEL, PHASE_TYPE_LABEL } from "@/lib/labels";
 import type { ChampionshipDTO, PhaseDTO } from "@/types/api";
 
 type Dialog = { kind: "form" | "teams" | "fixture" | "delete" | "matchdays"; phase: PhaseDTO | null } | null;
@@ -26,7 +27,6 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
   const error = championship.error ?? phases.error;
   if (error) return <ErrorState message={error.message} onRetry={() => { championship.reload(); phases.reload(); }} />;
   if (!championship.data || !phases.data) return <Loading />;
-  const current = championship.data;
   const list = phases.data.data;
   const close = () => setDialog(null);
   const saved = () => {
@@ -49,20 +49,13 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
     }
   }
 
-  const status = CHAMPIONSHIP_STATUS_LABEL[current.status];
   return (
     <>
-      <PageHeader
-        title={current.name}
-        description={`Temporada ${current.season} · Configuración de fases`}
-        breadcrumb={[{ label: "Campeonatos", href: "/championships" }, { label: current.name }]}
-        actions={<Button icon={<Plus size={18} />} onClick={() => setDialog({ kind: "form", phase: null })}>Nueva fase</Button>}
-        mobileActions={[{ label: "Nueva fase", icon: <Plus size={20} />, onClick: () => setDialog({ kind: "form", phase: null }) }]}
-      />
-      <div className="row-wrap" style={{ marginBottom: "var(--space-lg)" }}>
-        <Badge tone={status.tone}>{status.label}</Badge>
-        <Badge>{CHAMPIONSHIP_FORMAT_LABEL[current.format]}</Badge>
+      <div className="row-between" style={{ marginBottom: "var(--space-lg)" }}>
+        <p className="text-secondary">Cómo se juega el campeonato: liga, grupos o eliminatoria, en el orden en que se juegan.</p>
+        <Button icon={<Plus size={18} />} className="only-desktop" onClick={() => setDialog({ kind: "form", phase: null })}>Nueva fase</Button>
       </div>
+      <Fab label="Fases" actions={[{ label: "Nueva fase", icon: <Plus size={20} />, onClick: () => setDialog({ kind: "form", phase: null }) }]} />
 
       {list.length === 0 ? (
         <div className="card">
@@ -84,7 +77,7 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
               teams: { label: "Equipos", icon: <Users size={18} />, onClick: () => setDialog({ kind: "teams", phase }) },
               matchdays: { label: "Fechas", icon: <CalendarDays size={18} />, onClick: () => setDialog({ kind: "matchdays", phase }) },
               fixture: { label: "Generar calendario", icon: <CalendarPlus size={18} />, disabled: needsTeams, onClick: () => setDialog({ kind: "fixture", phase }) },
-              table: { label: "Tabla", icon: <ChartColumn size={18} />, href: `/stats?phase=${phase._id}` },
+              table: { label: "Tabla", icon: <ChartColumn size={18} />, href: championshipPath(championshipId, "clasificacion", `?phase=${phase._id}`) },
               brackets: { label: "Llaves", icon: <Swords size={18} />, href: `/phases/${phase._id}` },
             };
             // The main next step depends on where the phase is; everything else goes to the menu.

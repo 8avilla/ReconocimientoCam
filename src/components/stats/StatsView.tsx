@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChartColumn } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { Avatar, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { currentPhase } from "@/lib/rules/currentPhase";
 import { useIsMobile } from "@/lib/client/useMediaQuery";
@@ -77,7 +78,7 @@ function Stats({ championshipId, initialPhaseId }: { championshipId: string; ini
             </div>
           ) : (
             <div className="card">
-              <EmptyState icon={<ChartColumn size={28} />} title="Aún no hay fases" description="Las posiciones se calculan por fase. Crea una fase, elige sus equipos y genera su calendario." action={<Link href={`/championships/${championshipId}`} className="btn primary">Configurar fases</Link>} />
+              <EmptyState icon={<ChartColumn size={28} />} title="Aún no hay fases" description="Las posiciones se calculan por fase. Crea una fase, elige sus equipos y genera su calendario." action={<Link href={championshipPath(championshipId, "gestionar")} className="btn primary">Configurar fases</Link>} />
             </div>
           )}
         </>

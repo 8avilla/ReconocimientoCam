@@ -13,6 +13,7 @@ import { MatchScoreboard } from "@/components/match/MatchScoreboard";
 import { MatchSummary } from "@/components/match/MatchSummary";
 import { ActionMenu, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import type { MatchEventType } from "@/lib/constants";
+import { championshipPath } from "@/lib/paths";
 import { errorMessage, http } from "@/lib/client/http";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
@@ -74,7 +75,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
     try {
       await http(`/matches/${id}`, { method: "DELETE" });
       toast.success("Partido eliminado");
-      router.push("/matches");
+      router.push(championshipPath(current.championshipId, "partidos"));
     } catch (error) {
       toast.error(errorMessage(error));
       setDeleting(false);
@@ -89,7 +90,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
     <>
       <PageHeader
         title={`${current.homeTeamId.name} vs ${current.awayTeamId.name}`}
-        breadcrumb={[{ label: "Partidos", href: "/matches" }, { label: `${current.homeTeamId.name} vs ${current.awayTeamId.name}` }]}
+        breadcrumb={[{ label: "Partidos", href: championshipPath(current.championshipId, "partidos") }, { label: `${current.homeTeamId.name} vs ${current.awayTeamId.name}` }]}
         actions={manage && (
           <ActionMenu
             label="Más acciones del partido"

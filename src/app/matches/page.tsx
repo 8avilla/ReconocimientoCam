@@ -1,7 +1,6 @@
-import { MatchesView } from "@/components/match/MatchesView";
+import { LegacyRedirect } from "@/components/layout/LegacyRedirect";
 
-/** `?programacion=sin|con` opens the list already filtered by day/time assignment (used by the Inicio shortcuts). */
-export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ programacion?: string }> }) {
+export default async function LegacyMatches({ searchParams }: { searchParams: Promise<{ programacion?: string }> }) {
   const { programacion } = await searchParams;
-  return <MatchesView initialScheduled={programacion === "sin" ? "false" : programacion === "con" ? "true" : undefined} />;
+  return <LegacyRedirect section="partidos" query={programacion ? `?programacion=${encodeURIComponent(programacion)}` : ""} />;
 }

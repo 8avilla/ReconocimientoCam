@@ -1,9 +1,10 @@
-import { conflict, escapeRegex, json, notFound, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
+import { badRequest, conflict, escapeRegex, json, notFound, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { recordAudit } from "@/lib/audit";
 import { teamCreateSchema, teamListQuery } from "@/lib/validation/schemas";
 import { skipFor } from "@/lib/validation/common";
 import { Championship } from "@/models/Championship";
+import { Phase } from "@/models/Phase";
 import { ITeam, Team } from "@/models/Team";
 import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegistration";
 
@@ -38,13 +39,22 @@ export const POST = route(async (request) => {
   const duplicate = await Team.exists({ championshipId: input.championshipId, name: input.name });
   if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el campeonato", "duplicate");
 
-  const team = await Team.create(input);
+  const { phaseId, ...fields } = input;
+  // The team can join a phase right away (the organizer chooses which one, or none).
+  const phase = phaseId ? await Phase.findOne({ _id: phaseId, championshipId: input.championshipId }).select("type name").lean() : null;
+  if (phaseId && !phase) throw notFound("Fase no encontrada en este campeonato");
+  if (phase?.type === "knockout") throw badRequest("Los equipos de una eliminatoria se eligen en sus cruces");
+
+  const team = await Team.create(fields);
+  if (phase) {
+    await Phase.updateOne({ _id: phase._id }, { $addToSet: { teamIds: team._id } });
+  }
   await recordAudit(getActor(request), {
     action: "create",
     entityType: "team",
     entityId: team._id,
     championshipId: team.championshipId,
-    summary: `Equipo creado: ${team.name}`,
+    summary: `Equipo creado: ${team.name}${phase ? ` (fase ${phase.name})` : ""}`,
   });
   return json(team, 201);
 });

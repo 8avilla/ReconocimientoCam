@@ -1,6 +1,6 @@
-import { StatsView } from "@/components/stats/StatsView";
+import { LegacyRedirect } from "@/components/layout/LegacyRedirect";
 
-export default async function StatsPage({ searchParams }: { searchParams: Promise<{ phase?: string }> }) {
+export default async function LegacyStats({ searchParams }: { searchParams: Promise<{ phase?: string }> }) {
   const { phase } = await searchParams;
-  return <StatsView initialPhaseId={phase} />;
+  return <LegacyRedirect section="clasificacion" query={phase ? `?phase=${encodeURIComponent(phase)}` : ""} />;
 }

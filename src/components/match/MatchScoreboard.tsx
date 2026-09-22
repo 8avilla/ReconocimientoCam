@@ -50,6 +50,7 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
           )}
           {matchLabel(match) && <span className="text-secondary text-small">{matchLabel(match)}</span>}
           {match.venue && <span className="text-secondary text-small"><MapPin size={12} aria-hidden /> {match.venue}</span>}
+          {match.refereeId && <span className="text-secondary text-small">Árbitro: {match.refereeId.fullName}</span>}
         </div>
         <Side name={match.awayTeamId.name} shieldUrl={match.awayTeamId.shieldUrl} />
       </div>

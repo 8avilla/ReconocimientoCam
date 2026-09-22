@@ -22,6 +22,8 @@ export interface IMatch {
   /** Day and time; absent until the organizer sets them (they change often). */
   scheduledAt?: Date;
   venue: string;
+  /** Referee assigned to the match (optional). */
+  refereeId?: Types.ObjectId;
   status: MatchStatus;
   /** Live-match clock: current period and when the match / the current period started. */
   period: MatchPeriod;
@@ -43,6 +45,7 @@ const MatchSchema = new Schema<IMatch>(
     group: { type: String, trim: true },
     tieId: { type: Schema.Types.ObjectId, ref: "Tie" },
     leg: { type: Number, enum: [1, 2] },
+    refereeId: { type: Schema.Types.ObjectId, ref: "Referee" },
     homeTeamId: { type: Schema.Types.ObjectId, ref: "Team", required: true },
     awayTeamId: { type: Schema.Types.ObjectId, ref: "Team", required: true },
     scheduledAt: { type: Date },

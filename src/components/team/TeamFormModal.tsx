@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import { AlertCircle, ImagePlus } from "lucide-react";
-import { Avatar, Button, Input, Modal, useToast } from "@/components/ui";
+import { Avatar, Button, Input, Modal, Select, useToast } from "@/components/ui";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fileToResizedDataUrl } from "@/lib/client/image";
-import type { TeamDTO } from "@/types/api";
+import { useFetch } from "@/lib/client/useFetch";
+import { currentPhase } from "@/lib/rules/currentPhase";
+import type { PhaseDTO, TeamDTO } from "@/types/api";
 
 interface Props {
   open: boolean;
@@ -32,6 +34,12 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
   const [secondaryColor, setSecondaryColor] = useState(team?.secondaryColor ?? "#0F172A");
   const [active, setActive] = useState(team?.active ?? true);
   const [shield, setShield] = useState<string | null>(null);
+  // New teams join a phase right away: by default the one being played, but the organizer can pick another or none.
+  const phases = useFetch<{ data: PhaseDTO[] }>(team ? null : `/championships/${championshipId}/phases`);
+  const joinable = (phases.data?.data ?? []).filter((phase) => phase.type !== "knockout");
+  const [phaseChoice, setPhaseChoice] = useState<string | null>(null);
+  const phaseId = phaseChoice ?? currentPhase(joinable)?._id ?? "";
+  const selectedPhase = joinable.find((phase) => phase._id === phaseId);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -59,7 +67,7 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
       const fields = { name: name.trim(), delegateName: delegateName.trim(), primaryColor, secondaryColor };
       let saved = team
         ? await http<TeamDTO>(`/teams/${team._id}`, { method: "PATCH", json: { ...fields, active } })
-        : await http<TeamDTO>("/teams", { json: { ...fields, championshipId } });
+        : await http<TeamDTO>("/teams", { json: { ...fields, championshipId, phaseId: phaseId || null } });
 
       if (shield) {
         try {
@@ -97,6 +105,21 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
         <Input label="Color principal" type="color" className="color-input" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
         <Input label="Color secundario" type="color" className="color-input" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
       </div>
+      {!team && joinable.length > 0 && (
+        <Select
+          label="Fase"
+          value={phaseId}
+          onChange={(e) => setPhaseChoice(e.target.value)}
+          hint={
+            selectedPhase
+              ? `Entra a ${selectedPhase.name}${selectedPhase.matches.total > 0 ? " (ya tiene calendario: luego genera los partidos que le faltan)" : ""}${selectedPhase.type === "groups" ? "; asígnale su grupo en «Equipos» de la fase" : ""}. Puedes cambiarlo cuando quieras.`
+              : "No entra a ninguna fase por ahora. Puedes agregarlo después desde «Equipos» de la fase."
+          }
+        >
+          <option value="">Sin fase</option>
+          {joinable.map((phase) => <option key={phase._id} value={phase._id}>{phase.name}</option>)}
+        </Select>
+      )}
       {team && (
         <label className="checkbox-row">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />

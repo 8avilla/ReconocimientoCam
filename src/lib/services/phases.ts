@@ -36,7 +36,7 @@ export async function listPhases(championshipId: string) {
   const phases = await Phase.find({ championshipId }).sort({ order: 1 }).lean();
   const counts = await Match.aggregate<{ _id: Types.ObjectId; total: number; finished: number }>([
     { $match: { phaseId: { $in: phases.map((phase) => phase._id) } } },
-    { $group: { _id: "$phaseId", total: { $sum: 1 }, finished: { $sum: { $cond: [{ $eq: ["$status", "finished"] }, 1, 0] } } } },
+    { $group: { _id: "$phaseId", total: { $sum: 1 }, finished: { $sum: { $cond: [{ $in: ["$status", ["finished", "walkover"]] }, 1, 0] } } } },
   ]);
   const byPhase = new Map(counts.map((row) => [row._id.toString(), row]));
   const tieCounts = await Tie.aggregate<{ _id: Types.ObjectId; total: number; decided: number }>([
@@ -230,7 +230,9 @@ export async function getPhaseStandings(id: string) {
   const championship = await Championship.findById(phase.championshipId).lean();
   const [teams, matches] = await Promise.all([
     Team.find({ _id: { $in: phase.teamIds } }).select("name shieldUrl").lean(),
-    Match.find({ phaseId: phase._id, status: "finished" }).select("homeTeamId awayTeamId homeScore awayScore finishedAt group").lean(),
+    Match.find({ phaseId: phase._id, status: { $in: ["finished", "walkover"] } })
+      .select("homeTeamId awayTeamId homeScore awayScore finishedAt group walkoverWinnerTeamId")
+      .lean(),
   ]);
   const team = new Map(teams.map((entry) => [entry._id.toString(), entry]));
   const rules = {
@@ -244,6 +246,7 @@ export async function getPhaseStandings(id: string) {
     homeScore: match.homeScore ?? 0,
     awayScore: match.awayScore ?? 0,
     finishedAt: match.finishedAt,
+    winnerTeamId: match.walkoverWinnerTeamId?.toString(),
   });
   const table = (teamIds: Types.ObjectId[], scope: typeof matches) =>
     computeStandings(

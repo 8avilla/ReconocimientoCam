@@ -60,4 +60,23 @@ describe("computeStandings", () => {
     const table = computeStandings(teams, [{ homeTeamId: "x", awayTeamId: "a", homeScore: 5, awayScore: 0 }], RULES);
     expect(table.find((row) => row.teamId === "a")!.played).toBe(0);
   });
+
+  it("un W.O. sin goles configurados registra la victoria por el ganador, no por el marcador", () => {
+    const table = computeStandings(
+      teams,
+      [{ homeTeamId: "a", awayTeamId: "b", homeScore: 0, awayScore: 0, winnerTeamId: "a" }],
+      RULES
+    );
+    expect(table.find((row) => row.teamId === "a")).toMatchObject({ won: 1, points: 3, form: ["W"] });
+    expect(table.find((row) => row.teamId === "b")).toMatchObject({ lost: 1, points: 0, form: ["L"] });
+  });
+
+  it("un W.O. con goles configurados también suma la diferencia de gol", () => {
+    const table = computeStandings(
+      teams,
+      [{ homeTeamId: "b", awayTeamId: "a", homeScore: 0, awayScore: 3, winnerTeamId: "a" }],
+      RULES
+    );
+    expect(table.find((row) => row.teamId === "a")).toMatchObject({ won: 1, goalsFor: 3, goalDifference: 3 });
+  });
 });

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
-import { FaceEnrollment } from "@/components/player/FaceEnrollment";
+import { FaceEnrollment, type CapturedFace } from "@/components/player/FaceEnrollment";
 import { Button, Input, Loading, PageHeader, Select, useToast } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
@@ -43,7 +43,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [consent, setConsent] = useState(false);
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<CapturedFace | null>(null);
   const [saving, setSaving] = useState(false);
 
   const teamOptions = teams.data?.data ?? [];
@@ -99,7 +99,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
 
     if (image) {
       try {
-        await http(`/players/${playerId}/face`, { json: { image, consent: true } });
+        await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet, consent: true } });
         toast.success("Jugador registrado correctamente");
       } catch (error) {
         toast.error(`Jugador registrado, pero no se pudo guardar el rostro: ${errorMessage(error)}`);

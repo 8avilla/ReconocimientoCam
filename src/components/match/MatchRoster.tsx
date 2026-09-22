@@ -17,7 +17,7 @@ const QUICK: QuickType[] = ["goal", "yellow_card", "red_card"];
 interface Props {
   match: MatchDTO;
   events: MatchEventDTO[];
-  /** Players checked in as present. */
+  /** Both squads' active roster; check-in status is informational only, never a requirement to tag someone. */
   players: PresentPlayer[];
   sentOff: Set<string>;
   onChanged: () => void;
@@ -27,9 +27,9 @@ interface Props {
 }
 
 /**
- * Both squads (present players only) with one counter per goal / yellow / red: one tap registers the event at
- * the current match minute and the toast offers to undo it. The events are the same ones the detailed form
- * creates, so the timeline, discipline and suspensions keep working.
+ * Both squads' full roster (not just checked-in players) with one counter per goal / yellow / red: one tap
+ * registers the event at the current match minute and the toast offers to undo it. The events are the same
+ * ones the detailed form creates, so the timeline, discipline and suspensions keep working.
  */
 export function MatchRoster({ match, events, players, sentOff, onChanged, onOther, onGoToAttendance }: Props) {
   const toast = useToast();
@@ -108,6 +108,49 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
     }
   }
 
+  /** Adds a goal straight to the scoreboard, with no scorer: the fastest way to correct or bump the score. */
+  async function bumpGoal(teamId: string) {
+    const key = `${teamId}:score+`;
+    setBusy(key);
+    try {
+      const result = await http<EventCreateResultDTO>(`/matches/${match._id}/events`, {
+        json: { type: "goal", teamId, minute: suggestedMinute(match.period, match.periodStartedAt) },
+      });
+      toast.success(`Gol · ${result.score.home} – ${result.score.away}`, { label: "Deshacer", onClick: () => undo(result.event._id) });
+      onChanged();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Voids that team's most recent goal, whoever it was credited to (own goals count for the other team). */
+  async function undoLastGoal(teamId: string) {
+    const otherTeamId = teamId === match.homeTeamId._id ? match.awayTeamId._id : match.homeTeamId._id;
+    const last = [...events].reverse().find((event) => {
+      if (event.voided) return false;
+      if (event.type === "goal" || event.type === "penalty_goal") return event.teamId === teamId;
+      if (event.type === "own_goal") return event.teamId === otherTeamId;
+      return false;
+    });
+    if (!last) {
+      toast.error("Este equipo no tiene goles para quitar");
+      return;
+    }
+    const key = `${teamId}:score-`;
+    setBusy(key);
+    try {
+      await http(`/matches/${match._id}/events/${last._id}/void`, { method: "POST" });
+      toast.success("Gol anulado");
+      onChanged();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const teams = [match.homeTeamId, match.awayTeamId];
   const term = search.trim().toLowerCase();
   const score = { [match.homeTeamId._id]: match.homeScore ?? 0, [match.awayTeamId._id]: match.awayScore ?? 0 };
@@ -126,8 +169,18 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
         <strong>{match.homeScore ?? 0} – {match.awayScore ?? 0}</strong>
         <span className="truncate" style={{ textAlign: "right" }}>{match.awayTeamId.name}</span>
         <span className="live-bar-time">{MATCH_PERIOD_LABEL[match.period]}{playing && ` · ${suggestedMinute(match.period, match.periodStartedAt, new Date(now))}'`}</span>
+        <div className="live-bar-goals">
+          <div className="live-bar-goal-group">
+            <button type="button" className="live-bar-goal-btn" disabled={busy !== null} aria-label={`Quitar gol a ${match.homeTeamId.name}`} onClick={() => undoLastGoal(match.homeTeamId._id)}>−</button>
+            <button type="button" className="live-bar-goal-btn" disabled={busy !== null} aria-label={`Sumar gol a ${match.homeTeamId.name} sin anotador`} onClick={() => bumpGoal(match.homeTeamId._id)}>+</button>
+          </div>
+          <div className="live-bar-goal-group">
+            <button type="button" className="live-bar-goal-btn" disabled={busy !== null} aria-label={`Quitar gol a ${match.awayTeamId.name}`} onClick={() => undoLastGoal(match.awayTeamId._id)}>−</button>
+            <button type="button" className="live-bar-goal-btn" disabled={busy !== null} aria-label={`Sumar gol a ${match.awayTeamId.name} sin anotador`} onClick={() => bumpGoal(match.awayTeamId._id)}>+</button>
+          </div>
+        </div>
       </div>
-      <p className="text-secondary text-small">Toca un contador para sumar un gol o una tarjeta al minuto actual; mantén pulsado para quitar el último. También puedes deshacer desde el aviso o anular en la cronología.</p>
+      <p className="text-secondary text-small">Toca un contador para sumar un gol o una tarjeta al minuto actual; mantén pulsado para quitar el último. Los botones +/− del marcador suman o quitan un gol directo, sin anotador. También puedes deshacer desde el aviso o anular en la cronología.</p>
       <div className="search" style={{ maxWidth: 420 }}>
         <Search size={18} aria-hidden />
         <input className="input" type="search" placeholder="Buscar jugador por nombre o número..." aria-label="Buscar jugador" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -148,7 +201,7 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
               {squad.length === 0 ? (
                 <div className="alert warning" role="note" style={{ margin: "var(--space-md)" }}>
                   <AlertCircle size={18} />
-                  <span className="grow">No hay jugadores presentes de este equipo.</span>
+                  <span className="grow">Este equipo no tiene jugadores en su plantilla.</span>
                   <button className="text-strong" onClick={onGoToAttendance}>Ir a asistencia</button>
                 </div>
               ) : (
@@ -160,7 +213,11 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
                         <span className="roster-shirt">{player.shirtNumber ?? "–"}</span>
                         <div className="grow">
                           <div className="truncate text-strong">{player.fullName}</div>
-                          {out && <div className="text-small" style={{ color: "var(--color-error)" }}>Expulsado</div>}
+                          {out ? (
+                            <div className="text-small" style={{ color: "var(--color-error)" }}>Expulsado</div>
+                          ) : player.status && player.status !== "present" ? (
+                            <div className="text-small text-secondary">Sin confirmar</div>
+                          ) : null}
                         </div>
                         <div className="counters">
                           {QUICK.map((type) => {

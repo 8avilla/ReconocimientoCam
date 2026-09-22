@@ -25,6 +25,8 @@ export interface IMatch {
   /** Referee assigned to the match (optional). */
   refereeId?: Types.ObjectId;
   status: MatchStatus;
+  /** Set when status is "walkover": which team was awarded the win. */
+  walkoverWinnerTeamId?: Types.ObjectId;
   /** Live-match clock: current period and when the match / the current period started. */
   period: MatchPeriod;
   startedAt?: Date;
@@ -51,6 +53,7 @@ const MatchSchema = new Schema<IMatch>(
     scheduledAt: { type: Date },
     venue: { type: String, default: "", trim: true },
     status: { type: String, enum: MATCH_STATUSES, default: "scheduled" },
+    walkoverWinnerTeamId: { type: Schema.Types.ObjectId, ref: "Team" },
     period: { type: String, enum: MATCH_PERIODS, default: "not_started" },
     startedAt: { type: Date },
     periodStartedAt: { type: Date },

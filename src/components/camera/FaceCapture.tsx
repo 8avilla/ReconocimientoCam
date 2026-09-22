@@ -73,8 +73,12 @@ function getLandmarker(): Promise<FaceLandmarker> {
 }
 
 interface FaceCaptureProps {
-  /** Receives the face crop as a JPEG data URL. */
-  onCapture: (imageBase64: string) => void;
+  /**
+   * Receives two crops of the same shot: a tight one on the face (verification reference, same as
+   * before) and a looser one with more headroom (for the ID card / avatar). Callers that only need
+   * one (attendance, 1:1 verification) can ignore the second parameter.
+   */
+  onCapture: (imageBase64: string, carnetImageBase64: string) => void;
   busy?: boolean;
   buttonLabel?: string;
   /** Captures by itself once a face has stayed in view for a moment (no button); used for attendance by camera. */
@@ -87,12 +91,38 @@ interface FaceCaptureProps {
 
 /** Side (px) of the square face crop sent to the server; the embedding model downsizes it itself. */
 const CROP_SIZE = 320;
+/** Side (px) of the looser "ID card" crop: same shot, more headroom around the face. */
+const CARNET_CROP_SIZE = 480;
+/** How much bigger the ID card crop is than the tight face box (which already has its own padding). */
+const CARNET_SCALE = 1.6;
 
 /** A face must stay in view this long before an automatic capture, and captures are spaced by the cooldown. */
 const AUTO_STABLE_MS = 700;
 const AUTO_COOLDOWN_MS = 1800;
 /** Time without a face after which the person is considered gone. */
 const FACE_LOST_MS = 600;
+
+/** Draws a square crop of the video, clamped inside its frame, downsized to `outputSize`. */
+function drawSquareCrop(video: HTMLVideoElement, cx: number, cy: number, size: number, outputSize: number): string {
+  const clamped = Math.min(size, video.videoWidth, video.videoHeight);
+  const x = Math.min(Math.max(cx - clamped / 2, 0), video.videoWidth - clamped);
+  const y = Math.min(Math.max(cy - clamped / 2, 0), video.videoHeight - clamped);
+  const canvas = document.createElement("canvas");
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  canvas.getContext("2d")!.drawImage(video, x, y, clamped, clamped, 0, 0, outputSize, outputSize);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+/** Both crops of the same shot: tight (verification reference) and loose (ID card / avatar). */
+function captureCrops(video: HTMLVideoElement, bbox: { x: number; y: number; size: number }): { face: string; carnet: string } {
+  const cx = bbox.x + bbox.size / 2;
+  const cy = bbox.y + bbox.size / 2;
+  return {
+    face: drawSquareCrop(video, cx, cy, bbox.size, CROP_SIZE),
+    carnet: drawSquareCrop(video, cx, cy, bbox.size * CARNET_SCALE, CARNET_CROP_SIZE),
+  };
+}
 
 export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto", auto = false, hold = false, onFaceLost }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -237,11 +267,8 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
         faceSinceRef.current ??= now;
         if (autoRef.current && !busyRef.current && !holdRef.current && now - faceSinceRef.current >= AUTO_STABLE_MS && now >= nextAutoRef.current) {
           nextAutoRef.current = now + AUTO_COOLDOWN_MS;
-          const crop = document.createElement("canvas");
-          crop.width = CROP_SIZE;
-          crop.height = CROP_SIZE;
-          crop.getContext("2d")!.drawImage(video, cx - size / 2, cy - size / 2, size, size, 0, 0, CROP_SIZE, CROP_SIZE);
-          onCaptureRef.current(crop.toDataURL("image/jpeg", 0.92));
+          const crops = captureCrops(video, { x: cx - size / 2, y: cy - size / 2, size });
+          onCaptureRef.current(crops.face, crops.carnet);
         }
       } else {
         bboxRef.current = null;
@@ -276,11 +303,8 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
     const bbox = bboxRef.current;
     if (!video || !bbox) return;
 
-    const crop = document.createElement("canvas");
-    crop.width = CROP_SIZE;
-    crop.height = CROP_SIZE;
-    crop.getContext("2d")!.drawImage(video, bbox.x, bbox.y, bbox.size, bbox.size, 0, 0, CROP_SIZE, CROP_SIZE);
-    onCapture(crop.toDataURL("image/jpeg", 0.92));
+    const crops = captureCrops(video, bbox);
+    onCapture(crops.face, crops.carnet);
   }, [onCapture]);
 
   return (

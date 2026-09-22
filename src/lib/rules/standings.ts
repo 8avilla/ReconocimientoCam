@@ -11,6 +11,8 @@ export interface FinishedMatch {
   awayScore: number;
   /** Used to order the recent-form list; older first. */
   finishedAt?: Date | string;
+  /** Set for a walkover: the result comes from here, not from comparing scores (the goals are optional). */
+  winnerTeamId?: string;
 }
 
 export interface PointsRules {
@@ -59,18 +61,27 @@ export function computeStandings(teams: readonly StandingsTeam[], matches: reado
     const away = rows.get(match.awayTeamId);
     if (!home || !away) continue;
 
-    const apply = (row: typeof home, scored: number, conceded: number) => {
+    // A walkover's result comes from the recorded winner, not from the score (its goals are optional).
+    const homeResult: FormResult = match.winnerTeamId
+      ? (match.winnerTeamId === match.homeTeamId ? "W" : "L")
+      : match.homeScore > match.awayScore
+        ? "W"
+        : match.homeScore < match.awayScore
+          ? "L"
+          : "D";
+    const awayResult: FormResult = homeResult === "W" ? "L" : homeResult === "L" ? "W" : "D";
+
+    const apply = (row: typeof home, scored: number, conceded: number, result: FormResult) => {
       row.played += 1;
       row.goalsFor += scored;
       row.goalsAgainst += conceded;
-      const result: FormResult = scored > conceded ? "W" : scored < conceded ? "L" : "D";
       if (result === "W") { row.won += 1; row.points += rules.pointsPerWin; }
       else if (result === "D") { row.drawn += 1; row.points += rules.pointsPerDraw; }
       else { row.lost += 1; row.points += rules.pointsPerLoss; }
       row.form = [...row.form, result].slice(-FORM_LENGTH);
     };
-    apply(home, match.homeScore, match.awayScore);
-    apply(away, match.awayScore, match.homeScore);
+    apply(home, match.homeScore, match.awayScore, homeResult);
+    apply(away, match.awayScore, match.homeScore, awayResult);
   }
 
   return [...rows.values()]

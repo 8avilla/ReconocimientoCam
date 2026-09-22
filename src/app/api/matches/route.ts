@@ -56,6 +56,7 @@ export const GET = route(async (request) => {
     { path: "homeTeamId", select: "name shieldUrl" },
     { path: "awayTeamId", select: "name shieldUrl" },
     { path: "refereeId", select: "fullName" },
+    { path: "walkoverWinnerTeamId", select: "name shieldUrl" },
   ]);
   const body: Paginated<IMatch> = { data: data as unknown as IMatch[], meta: { page: query.page, limit: query.limit, total } };
   return json(body);

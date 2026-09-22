@@ -40,12 +40,15 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
             </div>
           </div>
           {group.items.map((match) => {
-            const started = match.status === "live" || match.status === "finished";
+            const started = match.status === "live" || match.status === "finished" || match.status === "walkover";
             const home = match.homeScore ?? 0;
             const away = match.awayScore ?? 0;
             const mine = match.homeTeamId._id === teamId ? home : away;
             const theirs = match.homeTeamId._id === teamId ? away : home;
-            const result = mine > theirs ? "W" : mine === theirs ? "D" : "L";
+            // A walkover's result comes from the recorded winner, not the score (its goals are optional).
+            const result = match.walkoverWinnerTeamId
+              ? match.walkoverWinnerTeamId._id === teamId ? "W" : "L"
+              : mine > theirs ? "W" : mine === theirs ? "D" : "L";
             const status = MATCH_STATUS_LABEL[match.status];
             return (
               <Link key={match._id} href={`/matches/${match._id}`} className="list-row match-row">

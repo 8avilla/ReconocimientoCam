@@ -50,6 +50,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
   const venues = useFetch<{ data: VenueDTO[] }>(`/venues?championshipId=${championshipId}&active=true`);
   const [matchdayId, setMatchdayId] = useState(match?.matchdayId?._id ?? "");
   const [status, setStatus] = useState<MatchStatus>(match?.status ?? "scheduled");
+  const [walkoverWinnerTeamId, setWalkoverWinnerTeamId] = useState(match?.walkoverWinnerTeamId?._id ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -59,7 +60,8 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
       venue !== (match.venue ?? "") ||
       refereeId !== (match.refereeId?._id ?? "") ||
       matchdayId !== (match.matchdayId?._id ?? "") ||
-      status !== (match.status ?? "scheduled")
+      status !== (match.status ?? "scheduled") ||
+      walkoverWinnerTeamId !== (match.walkoverWinnerTeamId?._id ?? "")
     : Boolean(homeTeamId || awayTeamId || scheduledAt || venue || refereeId || matchdayId || group);
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
@@ -96,6 +98,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
     if (!match && !homeTeamId) next.homeTeamId = "Selecciona el equipo local";
     if (!match && !awayTeamId) next.awayTeamId = "Selecciona el equipo visitante";
     if (homeTeamId && homeTeamId === awayTeamId) next.awayTeamId = "El equipo local y el visitante deben ser distintos";
+    if (match && status === "walkover" && !walkoverWinnerTeamId) next.walkoverWinnerTeamId = "Elige el equipo ganador";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -109,7 +112,8 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
             venue: venue.trim(),
             refereeId: refereeId || null,
             ...(inKnockout ? {} : { matchdayId, group: isGroups ? group : null }),
-            ...(match.status === "live" || match.status === "finished" ? {} : { status }),
+            status,
+            ...(status === "walkover" ? { walkoverWinnerTeamId } : {}),
           },
         });
       } else {
@@ -201,9 +205,28 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
           {referees.data?.data.map((referee) => <option key={referee._id} value={referee._id}>{referee.fullName}</option>)}
         </Select>
       )}
-      {match && match.status !== "live" && match.status !== "finished" && (
-        <Select label="Estado" value={status} onChange={(e) => setStatus(e.target.value as MatchStatus)} hint="El inicio y el cierre se gestionan desde la pestaña Eventos.">
-          {MATCH_STATUSES.filter((item) => item !== "live" && item !== "finished").map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}
+      {match && (
+        <Select
+          label="Estado"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as MatchStatus)}
+          hint="El cronómetro (Iniciar / medio tiempo / finalizar, en la pestaña Eventos) es opcional: aquí puedes poner el partido en vivo o finalizado directamente, sin usarlo."
+        >
+          {MATCH_STATUSES.map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}
+        </Select>
+      )}
+      {match && status === "walkover" && (
+        <Select
+          label="Ganador del W.O."
+          required
+          value={walkoverWinnerTeamId}
+          onChange={(e) => setWalkoverWinnerTeamId(e.target.value)}
+          error={errors.walkoverWinnerTeamId}
+          hint="Se le asignan los goles del reglamento; el otro equipo queda en 0."
+        >
+          <option value="">Selecciona un equipo</option>
+          <option value={match.homeTeamId._id}>{match.homeTeamId.name}</option>
+          <option value={match.awayTeamId._id}>{match.awayTeamId.name}</option>
         </Select>
       )}
       <div className="action-bar">

@@ -81,6 +81,7 @@ export async function lookupPlayer(matchId: string, code: string) {
       publicId: player.publicId,
       fullName: player.fullName,
       photoUrl: player.photoUrl,
+      facePhotoUrl: player.facePhotoUrl,
       hasFace: Boolean(player.photoUrl && player.biometricConsentAt),
     },
     team: { _id: context.team._id, name: context.team.name, shieldUrl: context.team.shieldUrl },

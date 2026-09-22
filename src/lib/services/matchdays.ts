@@ -16,7 +16,7 @@ export async function listMatchdays(phaseId: string) {
   const matchdays = await Matchday.find({ phaseId }).sort({ number: 1 }).lean();
   const stats = await Match.aggregate<{ _id: Types.ObjectId; total: number; finished: number; from: Date; to: Date }>([
     { $match: { matchdayId: { $in: matchdays.map((matchday) => matchday._id) } } },
-    { $group: { _id: "$matchdayId", total: { $sum: 1 }, finished: { $sum: { $cond: [{ $eq: ["$status", "finished"] }, 1, 0] } }, from: { $min: "$scheduledAt" }, to: { $max: "$scheduledAt" } } },
+    { $group: { _id: "$matchdayId", total: { $sum: 1 }, finished: { $sum: { $cond: [{ $in: ["$status", ["finished", "walkover"]] }, 1, 0] } }, from: { $min: "$scheduledAt" }, to: { $max: "$scheduledAt" } } },
   ]);
   const byMatchday = new Map(stats.map((row) => [row._id.toString(), row]));
   return matchdays.map((matchday) => {
@@ -116,8 +116,8 @@ export async function scheduleMatchday(actor: Actor, matchdayId: string, entries
 
   const matches = await Match.find({ matchdayId, _id: { $in: entries.map((entry) => entry.matchId) } }).select("status").lean();
   if (matches.length !== new Set(entries.map((entry) => entry.matchId)).size) throw badRequest("Algún partido no pertenece a esta fecha");
-  if (matches.some((match) => match.status === "live" || match.status === "finished")) {
-    throw conflict("No se puede reprogramar un partido en juego o finalizado", "match_not_reschedulable");
+  if (matches.some((match) => match.status === "live" || match.status === "finished" || match.status === "walkover")) {
+    throw conflict("No se puede reprogramar un partido en juego, finalizado o con W.O.", "match_not_reschedulable");
   }
 
   const refereeIds = entries.flatMap((entry) => (entry.refereeId ? [entry.refereeId] : []));

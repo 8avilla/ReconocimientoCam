@@ -3,6 +3,8 @@ import { getActor } from "@/lib/actor";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { assertMatchFitsPhase } from "@/lib/services/phases";
+import { serveSuspensions } from "@/lib/services/suspensions";
+import { Championship, DEFAULT_RULES } from "@/models/Championship";
 import { Matchday } from "@/models/Matchday";
 import { matchUpdateSchema } from "@/lib/validation/schemas";
 import { IMatch, Match } from "@/models/Match";
@@ -19,6 +21,7 @@ export const GET = route<Params>(async (_request, { id }) => {
     .populate({ path: "homeTeamId", select: "name shieldUrl primaryColor" })
     .populate({ path: "awayTeamId", select: "name shieldUrl primaryColor" })
     .populate({ path: "refereeId", select: "fullName" })
+    .populate({ path: "walkoverWinnerTeamId", select: "name shieldUrl" })
     .lean();
   if (!match) throw notFound("Partido no encontrado");
   const [calledUp, present] = await Promise.all([
@@ -34,10 +37,6 @@ export const PATCH = route<Params>(async (request, { id }) => {
   const match = await Match.findById(id);
   if (!match) throw notFound("Partido no encontrado");
   await requireOrganizerOfChampionship(actor, match.championshipId);
-
-  if (input.status && (match.status === "live" || match.status === "finished")) {
-    throw conflict("El estado de un partido en juego o finalizado se cambia desde la gestión del partido", "use_transitions");
-  }
 
   const before = match.toObject() as IMatch;
   if (match.tieId && (input.matchdayId !== undefined || input.group !== undefined)) {
@@ -58,10 +57,46 @@ export const PATCH = route<Params>(async (request, { id }) => {
     if (matchday.championshipId.toString() !== match.championshipId.toString()) throw badRequest("La fecha debe ser del mismo campeonato del partido");
     match.set({ matchdayId: matchday._id, phaseId: matchday.phaseId, group: fit.group });
   }
-  await match.save();
 
-  const { scheduledAt: requestedDate, refereeId: _referee, ...otherFields } = fields;
+  let justFinished = false;
+  if (match.status === "walkover") {
+    const winnerId = match.walkoverWinnerTeamId?.toString();
+    if (!winnerId) throw badRequest("Selecciona el equipo ganador del W.O.");
+    if (winnerId !== match.homeTeamId.toString() && winnerId !== match.awayTeamId.toString()) {
+      throw badRequest("El ganador debe ser uno de los equipos del partido");
+    }
+    const championship = await Championship.findById(match.championshipId).select("rules.walkoverGoals").lean();
+    const goals = championship?.rules?.walkoverGoals ?? DEFAULT_RULES.walkoverGoals;
+    const homeWins = winnerId === match.homeTeamId.toString();
+    match.set({
+      homeScore: homeWins ? goals : 0,
+      awayScore: homeWins ? 0 : goals,
+      finishedAt: match.finishedAt ?? new Date(),
+    });
+  } else {
+    if (before.status === "walkover") {
+      // Reverted away from walkover: the derived result no longer applies.
+      match.set({ walkoverWinnerTeamId: undefined, homeScore: undefined, awayScore: undefined, finishedAt: undefined });
+    }
+    // The running clock (start/half time/finish, via /transition) is optional: picking "En vivo" or
+    // "Finalizado" straight from this form skips it, so the period just needs to make sense for display.
+    if (match.status === "live" && match.period === "not_started") {
+      match.period = "first_half";
+    } else if (match.status === "finished") {
+      if (!match.finishedAt) match.finishedAt = new Date();
+      match.period = "finished";
+      justFinished = before.status !== "finished";
+    } else if ((before.status === "live" || before.status === "finished") && !["live", "finished"].includes(match.status)) {
+      // Reverted back to an earlier state (e.g. fixing a mistake): the clock resets, the recorded goals/cards don't.
+      match.set({ period: "not_started", startedAt: undefined, periodStartedAt: undefined, finishedAt: undefined });
+    }
+  }
+  await match.save();
+  if (justFinished) await serveSuspensions(actor, match);
+
+  const { scheduledAt: requestedDate, refereeId: _referee, walkoverWinnerTeamId: _winner, ...otherFields } = fields;
   void _referee; // the referee is audited through its own summary below
+  void _winner; // ObjectId vs string; the walkover outcome is audited through the status/score change itself
   const patch: Partial<IMatch> = { ...otherFields, ...(requestedDate !== undefined ? { scheduledAt: requestedDate ?? undefined } : {}) };
   const changes = diffChanges(before, patch, [
     "scheduledAt", "venue", "status",

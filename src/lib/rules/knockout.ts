@@ -17,7 +17,7 @@ export function aggregateScore(matches: readonly TieMatchResult[], teamA: string
   let goalsB = 0;
   let played = 0;
   for (const match of matches) {
-    if (match.status !== "finished") continue;
+    if (match.status !== "finished" && match.status !== "walkover") continue;
     played += 1;
     const home = match.homeScore ?? 0;
     const away = match.awayScore ?? 0;

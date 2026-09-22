@@ -13,8 +13,16 @@ export interface IPlayer {
   documentId?: string;
   /** Optional: same reason as `documentId`. */
   birthDate?: Date;
+  /** ID card / avatar photo, shown everywhere in the app: a looser crop, more natural to look at. */
   photoUrl: string;
   photoBlobName: string;
+  /**
+   * Tight, aligned crop of the same enrollment shot: what the embedding was computed from, and what's
+   * shown next to a live capture during manual review. Empty for players enrolled before this existed
+   * (they fall back to `photoUrl`, their only photo at the time).
+   */
+  facePhotoUrl?: string;
+  facePhotoBlobName?: string;
   /** L2-normalized face embedding; never returned by default. */
   faceEmbedding?: number[];
   /** Pipeline version that produced faceEmbedding; missing means the legacy pipeline (1). */
@@ -33,6 +41,8 @@ const PlayerSchema = new Schema<IPlayer>(
     birthDate: { type: Date },
     photoUrl: { type: String, default: "" },
     photoBlobName: { type: String, default: "" },
+    facePhotoUrl: { type: String, default: "" },
+    facePhotoBlobName: { type: String, default: "" },
     faceEmbedding: { type: [Number], default: undefined, select: false },
     embeddingVersion: { type: Number },
     biometricConsentAt: { type: Date },

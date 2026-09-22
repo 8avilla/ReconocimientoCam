@@ -304,7 +304,8 @@ function PlayerSummary({ player, similarity }: { player: LookupDTO; similarity?:
   const percent = similarity === undefined ? null : Math.max(0, Math.min(100, similarity * 100));
   return (
     <div className="card row" style={{ alignItems: "flex-start" }}>
-      <Avatar src={player.player.photoUrl} name={player.player.fullName} size={72} />
+      {/* The tight reference crop is what a human should compare the live face against; falls back to the ID photo for players enrolled before it existed. */}
+      <Avatar src={player.player.facePhotoUrl || player.player.photoUrl} name={player.player.fullName} size={72} />
       <div className="grow stack-sm">
         <div className="text-strong" style={{ fontSize: 16 }}>{player.player.fullName}</div>
         <div className="text-secondary">{player.team.name}</div>

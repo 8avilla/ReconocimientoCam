@@ -13,7 +13,9 @@ import { IMatchEvent, MatchEvent } from "@/models/MatchEvent";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
 import { Suspension } from "@/models/Suspension";
 
-const PLAYER_REQUIRED: MatchEventType[] = ["goal", "own_goal", "penalty_goal", "penalty_missed", "yellow_card", "red_card", "substitution"];
+// Goals are not here: an amateur match often doesn't have a confirmed scorer, and the score should
+// still be easy to correct on the spot. Cards and substitutions are always about one specific player.
+const PLAYER_REQUIRED: MatchEventType[] = ["penalty_missed", "yellow_card", "red_card", "substitution"];
 
 async function loadMatch(matchId: string, actor?: Actor) {
   const match = await Match.findById(matchId);
@@ -39,9 +41,11 @@ export async function recomputeScore(match: Pick<IMatch, "_id" | "homeTeamId" | 
   return score;
 }
 
-async function assertPresentInTeam(matchId: Types.ObjectId, playerId: string, teamId: string) {
-  const checkIn = await PlayerCheckIn.findOne({ matchId, playerId, status: "present" }).lean();
-  if (!checkIn) throw conflict("El jugador no está presente en este partido", "player_not_present");
+// Whether the player actually checked in as present is not required: many amateur organizers don't
+// run attendance strictly, and the whole active squad is called up automatically for every match.
+async function assertCalledUp(matchId: Types.ObjectId, playerId: string, teamId: string) {
+  const checkIn = await PlayerCheckIn.findOne({ matchId, playerId }).lean();
+  if (!checkIn) throw conflict("El jugador no fue convocado a este partido", "player_not_called_up");
   if (checkIn.teamId.toString() !== teamId) throw badRequest("El jugador no pertenece a ese equipo");
 }
 
@@ -68,17 +72,17 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
     throw badRequest("El equipo no participa en este partido");
   }
 
-  if (PLAYER_REQUIRED.includes(input.type)) {
-    if (!input.playerId) throw badRequest("Selecciona al jugador");
-    await assertPresentInTeam(match._id, input.playerId, input.teamId);
+  if (PLAYER_REQUIRED.includes(input.type) && !input.playerId) throw badRequest("Selecciona al jugador");
+  if (input.playerId) {
+    await assertCalledUp(match._id, input.playerId, input.teamId);
     await assertNotSentOff(match._id, input.playerId);
   }
   if (input.type === "goal" || input.type === "penalty_goal") {
-    if (input.relatedPlayerId) await assertPresentInTeam(match._id, input.relatedPlayerId, input.teamId);
+    if (input.relatedPlayerId) await assertCalledUp(match._id, input.relatedPlayerId, input.teamId);
   }
   if (input.type === "substitution") {
     if (!input.relatedPlayerId) throw badRequest("Selecciona al jugador que entra");
-    await assertPresentInTeam(match._id, input.relatedPlayerId, input.teamId);
+    await assertCalledUp(match._id, input.relatedPlayerId, input.teamId);
     await assertNotSentOff(match._id, input.relatedPlayerId);
     const [alreadyOut, alreadyIn] = await Promise.all([
       MatchEvent.exists({ matchId: match._id, type: "substitution", voided: false, playerId: input.playerId }),

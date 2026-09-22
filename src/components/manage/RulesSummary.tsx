@@ -32,6 +32,8 @@ export function RulesSummary() {
         ["Victoria / empate / derrota", `${rules.pointsPerWin} / ${rules.pointsPerDraw} / ${rules.pointsPerLoss} puntos`],
         ["Jugadores por plantilla", `máximo ${rules.maxRosterSize}`],
         ["Mínimo para iniciar un partido", `${rules.minPlayersToStart} jugadores`],
+        ["Goles por W.O.", rules.walkoverGoals ? `${rules.walkoverGoals} para el ganador` : "Sin goles, solo la victoria"],
+        ["Tiempos del partido", `${rules.periodsCount ?? 2} (${(rules.periodLabels ?? ["1er Tiempo", "2do Tiempo"]).join(", ")})`],
       ],
     },
     {

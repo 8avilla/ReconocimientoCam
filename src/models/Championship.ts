@@ -34,6 +34,12 @@ export interface ChampionshipRules {
   redCardFine: number;
   /** Whether referees may resolve a failed verification manually. Fixed to true for now. */
   allowManualReview: boolean;
+  /** Goals credited to the winner of a walkover (W.O.); the loser gets 0. 0 = no goals, only the win. */
+  walkoverGoals: number;
+  /** How many periods a match has (2 for football, 4 for basketball quarters, etc). Just for the on-screen clock. */
+  periodsCount: number;
+  /** Custom name per period, in order; a missing one falls back to "Tiempo N". */
+  periodLabels: string[];
 }
 
 export interface IChampionship {
@@ -71,6 +77,9 @@ export const DEFAULT_RULES: ChampionshipRules = {
   yellowCardFine: 0,
   redCardFine: 0,
   allowManualReview: true,
+  walkoverGoals: 0,
+  periodsCount: 2,
+  periodLabels: ["1er Tiempo", "2do Tiempo"],
 };
 
 const RulesSchema = new Schema<ChampionshipRules>(
@@ -88,6 +97,9 @@ const RulesSchema = new Schema<ChampionshipRules>(
     yellowCardFine: { type: Number, default: DEFAULT_RULES.yellowCardFine, min: 0 },
     redCardFine: { type: Number, default: DEFAULT_RULES.redCardFine, min: 0 },
     allowManualReview: { type: Boolean, default: DEFAULT_RULES.allowManualReview },
+    walkoverGoals: { type: Number, default: DEFAULT_RULES.walkoverGoals, min: 0, max: 50 },
+    periodsCount: { type: Number, default: DEFAULT_RULES.periodsCount, min: 1, max: 20 },
+    periodLabels: { type: [String], default: DEFAULT_RULES.periodLabels },
   },
   { _id: false }
 );

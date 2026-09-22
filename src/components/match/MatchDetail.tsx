@@ -7,7 +7,8 @@ import { AttendancePanel } from "@/components/attendance/AttendancePanel";
 import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { EventComposerModal, type PresentPlayer } from "@/components/match/EventComposerModal";
 import { EventTimeline } from "@/components/match/EventTimeline";
-import { MatchControls } from "@/components/match/MatchControls";
+import { MatchClock } from "@/components/match/MatchClock";
+import { MatchQuickStatus } from "@/components/match/MatchQuickStatus";
 import { MatchRoster } from "@/components/match/MatchRoster";
 import { MatchScoreboard } from "@/components/match/MatchScoreboard";
 import { MatchSummary } from "@/components/match/MatchSummary";
@@ -18,7 +19,7 @@ import { errorMessage, http } from "@/lib/client/http";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { suggestedMinute } from "@/lib/rules/match";
-import type { AttendanceDTO, MatchDTO, MatchEventDTO, Paginated, PhaseDTO, SuspensionDTO } from "@/types/api";
+import type { AttendanceDTO, ChampionshipDTO, MatchDTO, MatchEventDTO, Paginated, PhaseDTO, SuspensionDTO } from "@/types/api";
 
 export type MatchTab = "attendance" | "events" | "summary";
 const TABS: { id: MatchTab; label: string }[] = [
@@ -35,6 +36,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const attendance = useFetch<AttendanceDTO>(`/matches/${id}/attendance`);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?matchId=${id}&limit=50`);
   const phases = useFetch<{ data: PhaseDTO[] }>(match.data ? `/championships/${match.data.championshipId}/phases` : null);
+  const championship = useFetch<ChampionshipDTO>(match.data ? `/championships/${match.data.championshipId}` : null);
   const { can } = useRole();
   const manage = can("match.manage");
   const operate = can("match.operate");
@@ -57,9 +59,10 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const teamNames = Object.fromEntries(teams.map((team) => [team._id, team.name]));
   const eventList = events.data?.data ?? [];
   const rows = attendance.data?.checkIns ?? [];
+  // The whole called-up roster, not just checked-in players: tagging a goal or card never
+  // requires attendance to be confirmed first (many amateur matches don't track it strictly).
   const presentPlayers: PresentPlayer[] = rows
-    .filter((row) => row.status === "present")
-    .map((row) => ({ playerId: row.playerId._id, teamId: row.teamId, fullName: row.playerId.fullName, shirtNumber: row.shirtNumber }));
+    .map((row) => ({ playerId: row.playerId._id, teamId: row.teamId, fullName: row.playerId.fullName, shirtNumber: row.shirtNumber, status: row.status }));
   const shirtByPlayer = Object.fromEntries(rows.map((row) => [row.playerId._id, row.shirtNumber]));
   const sentOff = new Set(eventList.filter((event) => event.type === "red_card" && !event.voided && event.playerId).map((event) => event.playerId!._id));
 
@@ -106,6 +109,13 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
         <MatchScoreboard match={current} />
       </div>
 
+      {operate && <MatchClock periodLabels={championship.data?.rules.periodLabels ?? ["1er Tiempo", "2do Tiempo"]} />}
+      {operate && (
+        <div style={{ marginBottom: "var(--space-2xl)", maxWidth: 420 }}>
+          <MatchQuickStatus match={current} onChanged={reloadAll} />
+        </div>
+      )}
+
       <div className="tabs-line" role="tablist" aria-label="Secciones del partido">
         {tabs.map((item) => (
           <button key={item.id} role="tab" aria-selected={activeTab === item.id} className={`tab-line${activeTab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>
@@ -125,8 +135,6 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
 
       {activeTab === "events" && (
         <div className="stack" style={{ gap: "var(--space-2xl)" }}>
-          {operate && <MatchControls match={current} onChanged={reloadAll} />}
-
           {operate && inPlay && (
             <MatchRoster match={current} events={eventList} players={presentPlayers} sentOff={sentOff} onChanged={reloadAll} onOther={openComposer} onGoToAttendance={() => setTab("attendance")} />
           )}
@@ -149,7 +157,9 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
         </div>
       )}
 
-      {activeTab === "summary" && <MatchSummary events={eventList} teams={teams} suspensions={suspensions.data?.data ?? []} />}
+      {activeTab === "summary" && (
+        <MatchSummary events={eventList} teams={teams} suspensions={suspensions.data?.data ?? []} shirtByPlayer={shirtByPlayer} />
+      )}
 
       {composer && (
         <EventComposerModal

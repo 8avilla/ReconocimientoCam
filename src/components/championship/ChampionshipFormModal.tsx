@@ -36,6 +36,10 @@ interface FormValues {
   pointsPerWin: string;
   pointsPerDraw: string;
   pointsPerLoss: string;
+  walkoverGoals: string;
+  periodsCount: string;
+  /** Names of each period, comma-separated; padded/trimmed to periodsCount on save. */
+  periodLabels: string;
 }
 
 function toValues(championship: ChampionshipDTO | null): FormValues {
@@ -59,7 +63,16 @@ function toValues(championship: ChampionshipDTO | null): FormValues {
     pointsPerWin: String(rules?.pointsPerWin ?? 3),
     pointsPerDraw: String(rules?.pointsPerDraw ?? 1),
     pointsPerLoss: String(rules?.pointsPerLoss ?? 0),
+    walkoverGoals: String(rules?.walkoverGoals ?? 0),
+    periodsCount: String(rules?.periodsCount ?? 2),
+    periodLabels: (rules?.periodLabels ?? ["1er Tiempo", "2do Tiempo"]).join(", "),
   };
+}
+
+/** Pads or trims a comma-separated label list to exactly `count` entries, filling gaps with "Tiempo N". */
+function normalizePeriodLabels(csv: string, count: number): string[] {
+  const given = csv.split(",").map((label) => label.trim()).filter(Boolean);
+  return Array.from({ length: count }, (_, index) => given[index] || `Tiempo ${index + 1}`);
 }
 
 /** The form remounts per open (see `key` below) so its state always starts from the given championship. */
@@ -119,6 +132,9 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
         pointsPerWin: Number(values.pointsPerWin),
         pointsPerDraw: Number(values.pointsPerDraw),
         pointsPerLoss: Number(values.pointsPerLoss),
+        walkoverGoals: Number(values.walkoverGoals),
+        periodsCount: Number(values.periodsCount),
+        periodLabels: normalizePeriodLabels(values.periodLabels, Number(values.periodsCount)),
       },
     };
 
@@ -185,7 +201,21 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
           <Input label="Puntos por victoria" type="number" min={0} {...bind("pointsPerWin")} />
           <Input label="Puntos por empate" type="number" min={0} {...bind("pointsPerDraw")} />
           <Input label="Puntos por derrota" type="number" min={0} {...bind("pointsPerLoss")} />
-          <span />
+          <Input
+            label="Goles por W.O." type="number" min={0} max={50}
+            hint="Goles que se le asignan al ganador de un partido marcado como W.O.; el otro equipo queda en 0. Déjalo en 0 si solo quieres la victoria, sin goles."
+            error={errors["rules.walkoverGoals"]} {...bind("walkoverGoals")}
+          />
+          <Input
+            label="Cantidad de tiempos" type="number" min={1} max={20}
+            hint="2 para fútbol, 4 para baloncesto, etc. Es solo para el cronómetro del partido."
+            error={errors["rules.periodsCount"]} {...bind("periodsCount")}
+          />
+          <Input
+            label="Nombres de los tiempos" placeholder="1er Tiempo, 2do Tiempo"
+            hint="Separados por coma, en orden. Si faltan nombres para la cantidad de arriba, se completan como “Tiempo N”."
+            error={errors["rules.periodLabels"]} {...bind("periodLabels")}
+          />
           <Input
             label="Umbral de verificación facial" type="number" step="0.01" min={0} max={1}
             hint="Similitud mínima para validar la identidad." error={errors["rules.verifyThreshold"]} {...bind("verifyThreshold")}

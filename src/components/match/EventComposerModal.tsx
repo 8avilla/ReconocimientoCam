@@ -7,14 +7,18 @@ import { MATCH_EVENT_TYPES, type MatchEventType } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { EVENT_TYPE_LABEL, SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import { EventIcon } from "./EventIcon";
-import type { EventCreateResultDTO } from "@/types/api";
+import type { CheckInStatusDTO, EventCreateResultDTO } from "@/types/api";
 
+/** A roster player available to tag in an event; check-in status is shown but never blocks tagging. */
 export interface PresentPlayer {
   playerId: string;
   teamId: string;
   fullName: string;
   shirtNumber: number | null;
+  status?: CheckInStatusDTO;
 }
+
+const GOAL_TYPES: MatchEventType[] = ["goal", "penalty_goal", "own_goal"];
 
 interface Team {
   _id: string;
@@ -26,7 +30,7 @@ interface Props {
   open: boolean;
   matchId: string;
   teams: [Team, Team];
-  /** Players checked in as present. */
+  /** Both squads' active roster; check-in status is informational only, never a requirement to tag someone. */
   players: PresentPlayer[];
   /** Players already sent off: they cannot take part in new events. */
   sentOff: Set<string>;
@@ -68,17 +72,22 @@ function Composer({ matchId, teams, players, sentOff, initialType, defaultMinute
     .filter((player) => player.teamId === teamId && !sentOff.has(player.playerId))
     .sort((a, b) => (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
   const option = (player: PresentPlayer) => (
-    <option key={player.playerId} value={player.playerId}>#{player.shirtNumber} · {player.fullName}</option>
+    <option key={player.playerId} value={player.playerId}>
+      #{player.shirtNumber} · {player.fullName}{player.status && player.status !== "present" ? " (sin confirmar)" : ""}
+    </option>
   );
   const isIncident = type === "incident";
   const isGoal = type === "goal" || type === "penalty_goal";
   const isSubstitution = type === "substitution";
+  // A goal's scorer is optional: the score itself is what usually matters, and often nobody is sure
+  // (or agrees) on exactly who scored in an amateur match.
+  const playerRequired = !isIncident && !GOAL_TYPES.includes(type);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError("");
     const next: Record<string, string> = {};
-    if (!isIncident && !playerId) next.playerId = "Selecciona al jugador";
+    if (playerRequired && !playerId) next.playerId = "Selecciona al jugador";
     if (isSubstitution && !relatedPlayerId) next.relatedPlayerId = "Selecciona al jugador que entra";
     if (isIncident && !note.trim()) next.note = "Describe el incidente";
     if (minute === "" || Number(minute) < 0 || Number(minute) > 150) next.minute = "El minuto no es válido";
@@ -91,7 +100,7 @@ function Composer({ matchId, teams, players, sentOff, initialType, defaultMinute
         json: {
           type,
           teamId,
-          playerId: isIncident ? undefined : playerId,
+          playerId: isIncident ? undefined : playerId || undefined,
           relatedPlayerId: (isGoal || isSubstitution) && relatedPlayerId ? relatedPlayerId : undefined,
           minute: Number(minute),
           note: note.trim() || undefined,
@@ -136,8 +145,15 @@ function Composer({ matchId, teams, players, sentOff, initialType, defaultMinute
       </div>
 
       {!isIncident && (
-        <Select label={PLAYER_LABEL[type] ?? "Jugador"} required value={playerId} onChange={(e) => setPlayerId(e.target.value)} error={errors.playerId}>
-          <option value="">Selecciona un jugador</option>
+        <Select
+          label={playerRequired ? (PLAYER_LABEL[type] ?? "Jugador") : `${PLAYER_LABEL[type] ?? "Jugador"} (opcional)`}
+          required={playerRequired}
+          value={playerId}
+          onChange={(e) => setPlayerId(e.target.value)}
+          error={errors.playerId}
+          hint={!playerRequired ? "Déjalo vacío si solo quieres sumar el gol al marcador." : undefined}
+        >
+          <option value="">{playerRequired ? "Selecciona un jugador" : "Sin anotador"}</option>
           {teamPlayers.map(option)}
         </Select>
       )}
@@ -161,7 +177,7 @@ function Composer({ matchId, teams, players, sentOff, initialType, defaultMinute
 
       {teamPlayers.length === 0 && !isIncident && (
         <div className="alert warning" role="note">
-          <AlertCircle size={18} /> No hay jugadores presentes de este equipo. Registra su asistencia primero.
+          <AlertCircle size={18} /> Este equipo no tiene jugadores en su plantilla.
         </div>
       )}
 

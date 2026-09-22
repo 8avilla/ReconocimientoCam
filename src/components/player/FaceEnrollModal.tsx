@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Modal, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
-import { FaceEnrollment } from "./FaceEnrollment";
+import { FaceEnrollment, type CapturedFace } from "./FaceEnrollment";
 
 interface Props {
   open: boolean;
@@ -25,14 +25,14 @@ export function FaceEnrollModal({ open, ...props }: Props) {
 function FaceEnrollForm({ playerId, hasConsent, onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
   const [consent, setConsent] = useState(hasConsent);
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<CapturedFace | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (!image) return;
     setSaving(true);
     try {
-      await http(`/players/${playerId}/face`, { json: { image, consent } });
+      await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet, consent } });
       toast.success("Rostro registrado correctamente");
       onSaved();
     } catch (error) {

@@ -28,7 +28,7 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
     return () => clearInterval(timer);
   }, [playing]);
 
-  const started = match.status === "live" || match.status === "finished";
+  const started = match.status === "live" || match.status === "finished" || match.status === "walkover";
   return (
     <section className="card featured stack" aria-label="Marcador">
       <div className="row-between" style={{ alignItems: "center" }}>

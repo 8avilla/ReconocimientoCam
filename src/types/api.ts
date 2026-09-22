@@ -32,6 +32,9 @@ export interface ChampionshipRulesDTO {
   verifyThreshold: number;
   reviewThreshold: number;
   allowManualReview: boolean;
+  walkoverGoals?: number;
+  periodsCount?: number;
+  periodLabels?: string[];
 }
 
 export interface ChampionshipDTO {
@@ -79,6 +82,8 @@ export interface PlayerDTO {
   documentId?: string;
   birthDate?: string;
   photoUrl: string;
+  /** Tight reference crop for manual review; empty for players enrolled before it existed (falls back to photoUrl). */
+  facePhotoUrl?: string;
   biometricConsentAt?: string;
   hasFace: boolean;
   registration?: (RegistrationDTO & { team: Pick<TeamDTO, "_id" | "name" | "shieldUrl"> | null }) | null;
@@ -129,6 +134,8 @@ export interface MatchDTO {
   finishedAt?: string;
   homeScore?: number;
   awayScore?: number;
+  /** Set when status is "walkover": which team was awarded the win. */
+  walkoverWinnerTeamId?: Pick<TeamDTO, "_id" | "name" | "shieldUrl"> | null;
   counts?: { calledUp: number; present: number };
 }
 
@@ -227,7 +234,7 @@ export interface SearchDTO {
 }
 
 export interface LookupDTO {
-  player: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "photoUrl" | "hasFace">;
+  player: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "photoUrl" | "facePhotoUrl" | "hasFace">;
   team: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
   shirtNumber?: number;
   position?: Position;

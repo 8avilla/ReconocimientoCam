@@ -32,6 +32,9 @@ const rulesSchema = z
     verifyThreshold: z.number().min(0).max(1),
     reviewThreshold: z.number().min(0).max(1),
     allowManualReview: z.boolean(),
+    walkoverGoals: z.number().int().min(0).max(50),
+    periodsCount: z.number().int().min(1).max(20),
+    periodLabels: z.array(z.string().trim().min(1).max(40)).max(20),
   })
   .partial()
   .refine(
@@ -138,6 +141,8 @@ export const playerListQuery = paginationSchema.extend({
 
 export const faceEnrollSchema = z.object({
   image: imageDataUrlSchema,
+  /** Looser crop of the same shot, for the ID card/avatar; older clients may omit it. */
+  carnetImage: imageDataUrlSchema.optional(),
   /** Explicit biometric consent; required the first time a face is enrolled. */
   consent: z.boolean().optional(),
 });
@@ -198,8 +203,11 @@ export const matchUpdateSchema = z
     /** Moves the match to another matchday (of the same championship). */
     matchdayId: objectIdSchema,
     group: optionalText(30).nullable(),
-    // live/finished are reached through the match transitions; scores are derived from events.
-    status: z.enum(["scheduled", "postponed", "suspended", "walkover"]),
+    // The guided clock (start/half time/finish, via /transition) is optional: any status is also
+    // directly selectable here for organizers who don't want to track the running clock at all.
+    status: z.enum(MATCH_STATUSES),
+    /** Required when status is "walkover"; must be the home or away team (checked in the route). */
+    walkoverWinnerTeamId: objectIdSchema,
   })
   .partial();
 
@@ -339,7 +347,11 @@ export const matchEventCreateSchema = z
       if (!value.note) context.addIssue({ code: "custom", path: ["note"], message: "Describe el incidente" });
       return;
     }
-    if (!value.playerId) context.addIssue({ code: "custom", path: ["playerId"], message: "Selecciona al jugador" });
+    // A goal's scorer is optional: the score itself is what usually matters in an amateur match.
+    const goalTypes: (typeof value.type)[] = ["goal", "penalty_goal", "own_goal"];
+    if (!goalTypes.includes(value.type) && !value.playerId) {
+      context.addIssue({ code: "custom", path: ["playerId"], message: "Selecciona al jugador" });
+    }
     if (value.type === "substitution" && !value.relatedPlayerId) {
       context.addIssue({ code: "custom", path: ["relatedPlayerId"], message: "Selecciona al jugador que entra" });
     }

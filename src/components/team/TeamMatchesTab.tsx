@@ -14,9 +14,10 @@ export function TeamMatchesTab({ teamId, championshipId, kind }: { teamId?: stri
   if (loading && !data) return <Loading />;
 
   const all = data?.data ?? [];
+  const isPlayed = (match: MatchDTO) => match.status === "finished" || match.status === "walkover";
   const matches = kind === "results"
-    ? all.filter((match) => match.status === "finished").sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime())
-    : all.filter((match) => match.status !== "finished");
+    ? all.filter(isPlayed).sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime())
+    : all.filter((match) => !isPlayed(match));
 
   if (matches.length === 0) {
     return (

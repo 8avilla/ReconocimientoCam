@@ -30,8 +30,8 @@ export function EventTimeline({ matchId, events, teamNames, shirtByPlayer, canVo
     const main = who(event.playerId);
     if (event.type === "substitution") return `Sale ${main} · entra ${who(event.relatedPlayerId)}`;
     if (event.type === "incident") return event.note ?? "";
-    if (event.relatedPlayerId) return `${main} (asistencia: ${who(event.relatedPlayerId)})`;
-    return main;
+    if (event.relatedPlayerId) return `${main || "Sin anotador"} (asistencia: ${who(event.relatedPlayerId)})`;
+    return main || "Sin anotador";
   }
 
   /** Voids right away, without confirmation; the event stays in the history as "Anulado". */

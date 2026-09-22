@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ClipboardCheck, ScanFace, ScanLine, Search } from "lucide-react";
+import { ClipboardCheck, ScanFace, ScanLine, Search, SquarePen } from "lucide-react";
 import { CheckInBadge, VerificationBadge } from "@/components/attendance/AttendanceBadges";
 import { CameraAttendanceModal } from "@/components/attendance/CameraAttendanceModal";
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
@@ -128,19 +128,24 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
 
           <div className="only-mobile">
             {rows.map((row) => (
-              <div key={row._id} className="list-row" style={{ alignItems: "flex-start" }}>
-                <Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={44} />
-                <div className="grow stack-sm" style={{ gap: 4, minWidth: 0 }}>
-                  <div>
-                    <div className="champ-caption">#{row.shirtNumber}</div>
-                    <div className="champ-name">{row.playerId.fullName}</div>
-                  </div>
-                  <div className="row-wrap" style={{ gap: 6 }}>
-                    <CheckInBadge status={row.status} />
-                    <VerificationBadge verification={row.verificationId} />
-                  </div>
-                  {rowActions(row)}
+              <div key={row._id} className="list-row" style={{ padding: "6px var(--space-md)" }}>
+                <Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={32} />
+                <div className="grow truncate" style={{ minWidth: 0 }}>
+                  <span className="text-secondary">#{row.shirtNumber ?? "–"}</span> <span className="text-strong">{row.playerId.fullName}</span>
                 </div>
+                <CheckInBadge status={row.status} />
+                {canOperate && (
+                  <div className="row" style={{ gap: 2 }}>
+                    {row.status !== "present" && row.registrationStatus === "active" && (
+                      <button className="icon-button" aria-label={`Verificar a ${row.playerId.fullName}`} onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>
+                        <ScanFace size={18} />
+                      </button>
+                    )}
+                    <button className="icon-button" aria-label={`Registro manual de ${row.playerId.fullName}`} onClick={() => setManualFor(row)}>
+                      <SquarePen size={18} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

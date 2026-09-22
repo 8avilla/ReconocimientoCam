@@ -30,6 +30,11 @@ export async function prepareFaceImage(dataUrl: string): Promise<Buffer> {
   return normalizeImage(dataUrlToBuffer(dataUrl), 640, "jpeg");
 }
 
+/** Decodes and re-encodes the looser "ID card" shot (same capture, more headroom around the face). */
+export async function prepareCarnetImage(dataUrl: string): Promise<Buffer> {
+  return normalizeImage(dataUrlToBuffer(dataUrl), 640, "jpeg");
+}
+
 /** Detects, aligns and embeds the face of a photo; a missing or ambiguous face becomes a 422. */
 export async function embedFaceOrFail(photo: Buffer, options: { padFirst?: boolean } = {}): Promise<Float32Array> {
   try {
@@ -45,13 +50,15 @@ export async function normalizeShieldImage(dataUrl: string): Promise<Buffer> {
 }
 
 /**
- * Enrolls the official face of a player: the client sends the face crop (detected in the
- * browser), the server stores the photo in Azure Blob and keeps the embedding for 1:1 checks.
+ * Enrolls the official face of a player, from a single shot the browser sends as two crops: a tight
+ * one (`image`, the embedding's source, also kept as the reference photo for manual review) and a
+ * looser one (`carnetImage`, shown everywhere else as the player's photo). Older clients that only
+ * send `image` get the same photo in both places, like before.
  */
 export async function enrollPlayerFace(
   actor: Actor,
   playerId: string,
-  input: { image: string; consent?: boolean }
+  input: { image: string; carnetImage?: string; consent?: boolean }
 ) {
   invalidateGalleries();
   await requireOrganizerOfPlayer(actor, playerId);
@@ -64,22 +71,28 @@ export async function enrollPlayerFace(
     });
   }
 
-  const photo = await prepareFaceImage(input.image);
-  const embedding = await embedFaceOrFail(photo);
-  const uploaded = await uploadImage(photo, "players/faces");
+  const facePhoto = await prepareFaceImage(input.image);
+  const embedding = await embedFaceOrFail(facePhoto);
+  const [faceUploaded, carnetUploaded] = await Promise.all([
+    uploadImage(facePhoto, "players/faces"),
+    uploadImage(await prepareCarnetImage(input.carnetImage ?? input.image), "players/photos"),
+  ]);
 
-  const previousBlob = player.photoBlobName;
+  const previousFaceBlob = player.facePhotoBlobName;
+  const previousCarnetBlob = player.photoBlobName;
   player.set({
-    photoUrl: uploaded.url,
-    photoBlobName: uploaded.blobName,
+    photoUrl: carnetUploaded.url,
+    photoBlobName: carnetUploaded.blobName,
+    facePhotoUrl: faceUploaded.url,
+    facePhotoBlobName: faceUploaded.blobName,
     faceEmbedding: Array.from(embedding),
     embeddingVersion: EMBEDDING_VERSION,
     biometricConsentAt: player.biometricConsentAt ?? new Date(),
   });
   await player.save();
 
-  if (previousBlob) {
-    deleteImage(previousBlob).catch((error) => console.error("Failed to delete previous face image:", error));
+  for (const blobName of new Set([previousFaceBlob, previousCarnetBlob].filter(Boolean))) {
+    deleteImage(blobName!).catch((error) => console.error("Failed to delete previous face image:", error));
   }
 
   await recordAudit(actor, {
@@ -98,14 +111,14 @@ export async function removePlayerFace(actor: Actor, playerId: string) {
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 
-  const blobName = player.photoBlobName;
-  player.set({ photoUrl: "", photoBlobName: "" });
+  const blobNames = [player.photoBlobName, player.facePhotoBlobName].filter(Boolean) as string[];
+  player.set({ photoUrl: "", photoBlobName: "", facePhotoUrl: "", facePhotoBlobName: "" });
   player.faceEmbedding = undefined;
   player.embeddingVersion = undefined;
   player.biometricConsentAt = undefined;
   await player.save();
 
-  if (blobName) {
+  for (const blobName of new Set(blobNames)) {
     await deleteImage(blobName).catch((error) => console.error("Failed to delete face image:", error));
   }
   await recordAudit(actor, {

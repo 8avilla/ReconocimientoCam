@@ -7,7 +7,7 @@ import { errorMessage, http, HttpError } from "@/lib/client/http";
 
 interface Props {
   open: boolean;
-  player: { _id: string; fullName: string; documentId: string; birthDate: string };
+  player: { _id: string; fullName: string; documentId?: string; birthDate?: string };
   onClose: () => void;
   onSaved: () => void;
 }
@@ -23,8 +23,8 @@ export function PlayerFormModal({ open, ...props }: Props) {
 function PlayerForm({ player, onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
   const [fullName, setFullName] = useState(player.fullName);
-  const [documentId, setDocumentId] = useState(player.documentId);
-  const [birthDate, setBirthDate] = useState(player.birthDate.slice(0, 10));
+  const [documentId, setDocumentId] = useState(player.documentId ?? "");
+  const [birthDate, setBirthDate] = useState(player.birthDate?.slice(0, 10) ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,8 +34,6 @@ function PlayerForm({ player, onClose, onSaved }: Omit<Props, "open">) {
     setFormError("");
     const next: Record<string, string> = {};
     if (!fullName.trim()) next.fullName = "Este campo es obligatorio";
-    if (!documentId.trim()) next.documentId = "Este campo es obligatorio";
-    if (!birthDate) next.birthDate = "Este campo es obligatorio";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -43,7 +41,7 @@ function PlayerForm({ player, onClose, onSaved }: Omit<Props, "open">) {
     try {
       await http(`/players/${player._id}`, {
         method: "PATCH",
-        json: { fullName: fullName.trim(), documentId: documentId.trim(), birthDate },
+        json: { fullName: fullName.trim(), documentId: documentId.trim() || undefined, birthDate: birthDate || undefined },
       });
       toast.success("Jugador actualizado");
       onSaved();
@@ -61,8 +59,8 @@ function PlayerForm({ player, onClose, onSaved }: Omit<Props, "open">) {
       {formError && <div className="alert error" role="alert"><AlertCircle size={18} /> {formError}</div>}
       <Input label="Nombre completo" required value={fullName} onChange={(e) => setFullName(e.target.value)} error={errors.fullName} />
       <div className="form-grid two">
-        <Input label="Documento" required value={documentId} onChange={(e) => setDocumentId(e.target.value)} error={errors.documentId} />
-        <Input label="Fecha de nacimiento" required type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} error={errors.birthDate} />
+        <Input label="Documento (opcional)" value={documentId} onChange={(e) => setDocumentId(e.target.value)} error={errors.documentId} />
+        <Input label="Fecha de nacimiento (opcional)" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} error={errors.birthDate} />
       </div>
       <div className="action-bar">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>

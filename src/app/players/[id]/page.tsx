@@ -86,7 +86,7 @@ export default function PlayerProfilePage() {
           <section className="card stack">
             <h3>Datos personales</h3>
             <dl className="stack-sm">
-              <Row label="Documento" value={current.documentId} />
+              <Row label="Documento" value={current.documentId || "—"} />
               <Row label="Fecha de nacimiento" value={formatDate(current.birthDate)} />
               <Row label="Identificador" value={current.publicId} />
             </dl>

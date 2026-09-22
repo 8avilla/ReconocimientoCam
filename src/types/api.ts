@@ -76,8 +76,8 @@ export interface PlayerDTO {
   _id: string;
   publicId: string;
   fullName: string;
-  documentId: string;
-  birthDate: string;
+  documentId?: string;
+  birthDate?: string;
   photoUrl: string;
   biometricConsentAt?: string;
   hasFace: boolean;

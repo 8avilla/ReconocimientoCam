@@ -55,8 +55,6 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
   function goToPhoto() {
     const next: Record<string, string> = {};
     if (!values.fullName.trim()) next.fullName = "Este campo es obligatorio";
-    if (!values.documentId.trim()) next.documentId = "Este campo es obligatorio";
-    if (!values.birthDate) next.birthDate = "Este campo es obligatorio";
     if (!values.teamId) next.teamId = "Selecciona un equipo";
     if (values.shirtNumber === "" || !Number.isInteger(Number(values.shirtNumber)) || Number(values.shirtNumber) < 0) {
       next.shirtNumber = "Ingresa un número de camiseta válido";
@@ -71,7 +69,11 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     let playerId: string | null = null;
     try {
       const player = await http<PlayerDTO>("/players", {
-        json: { fullName: values.fullName.trim(), documentId: values.documentId.trim(), birthDate: values.birthDate },
+        json: {
+          fullName: values.fullName.trim(),
+          ...(values.documentId.trim() ? { documentId: values.documentId.trim() } : {}),
+          ...(values.birthDate ? { birthDate: values.birthDate } : {}),
+        },
       });
       playerId = player._id;
       await http("/registrations", {
@@ -129,8 +131,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
           <form className="stack" noValidate onSubmit={(event) => { event.preventDefault(); goToPhoto(); }}>
             <Input label="Nombre completo" required autoComplete="off" value={values.fullName} onChange={set("fullName")} error={errors.fullName} />
             <div className="form-grid two">
-              <Input label="Documento" required autoComplete="off" inputMode="numeric" value={values.documentId} onChange={set("documentId")} error={errors.documentId} />
-              <Input label="Fecha de nacimiento" required type="date" value={values.birthDate} onChange={set("birthDate")} error={errors.birthDate} max={new Date().toISOString().slice(0, 10)} />
+              <Input label="Documento (opcional)" autoComplete="off" inputMode="numeric" value={values.documentId} onChange={set("documentId")} error={errors.documentId} />
+              <Input label="Fecha de nacimiento (opcional)" type="date" value={values.birthDate} onChange={set("birthDate")} error={errors.birthDate} max={new Date().toISOString().slice(0, 10)} />
             </div>
             {teams.loading && !teams.data ? (
               <Loading />
@@ -170,8 +172,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
           <div className="stack">
             <dl className="stack-sm">
               <SummaryRow label="Nombre" value={values.fullName} />
-              <SummaryRow label="Documento" value={values.documentId} />
-              <SummaryRow label="Fecha de nacimiento" value={values.birthDate} />
+              <SummaryRow label="Documento" value={values.documentId || "—"} />
+              <SummaryRow label="Fecha de nacimiento" value={values.birthDate || "—"} />
               <SummaryRow label="Equipo" value={selectedTeam?.name ?? "—"} />
               <SummaryRow label="Camiseta" value={`#${values.shirtNumber} · ${values.position}`} />
               <SummaryRow label="Rostro" value={image ? "Capturado" : "Pendiente"} />

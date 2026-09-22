@@ -9,8 +9,10 @@ export interface IPlayer {
   /** Opaque identifier encoded in the QR code; it carries no personal data. */
   publicId: string;
   fullName: string;
-  documentId: string;
-  birthDate: Date;
+  /** Optional: not every player has it on hand at registration time. */
+  documentId?: string;
+  /** Optional: same reason as `documentId`. */
+  birthDate?: Date;
   photoUrl: string;
   photoBlobName: string;
   /** L2-normalized face embedding; never returned by default. */
@@ -26,8 +28,9 @@ const PlayerSchema = new Schema<IPlayer>(
   {
     publicId: { type: String, required: true, unique: true, immutable: true },
     fullName: { type: String, required: true, trim: true },
-    documentId: { type: String, required: true, unique: true, trim: true },
-    birthDate: { type: Date, required: true },
+    // Sparse: many players are missing this at first; the unique index must only apply when it's set.
+    documentId: { type: String, unique: true, sparse: true, trim: true },
+    birthDate: { type: Date },
     photoUrl: { type: String, default: "" },
     photoBlobName: { type: String, default: "" },
     faceEmbedding: { type: [Number], default: undefined, select: false },

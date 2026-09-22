@@ -36,6 +36,10 @@ describe("playerCreateSchema", () => {
   it("rechaza nombre vacío", () => {
     expect(playerCreateSchema.safeParse({ fullName: "  ", documentId: "1", birthDate: "2000-01-01" }).success).toBe(false);
   });
+
+  it("permite registrar sin documento ni fecha de nacimiento", () => {
+    expect(playerCreateSchema.safeParse({ fullName: "Ana" }).success).toBe(true);
+  });
 });
 
 describe("checkInCreateSchema", () => {

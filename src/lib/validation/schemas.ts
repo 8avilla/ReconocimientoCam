@@ -118,15 +118,15 @@ const birthDateSchema = z.coerce
 
 export const playerCreateSchema = z.object({
   fullName: requiredText(),
-  documentId: requiredText(30),
-  birthDate: birthDateSchema,
+  documentId: optionalText(30).optional(),
+  birthDate: birthDateSchema.optional(),
 });
 
 export const playerUpdateSchema = z
   .object({
     fullName: requiredText(),
-    documentId: requiredText(30),
-    birthDate: birthDateSchema,
+    documentId: optionalText(30).optional(),
+    birthDate: birthDateSchema.optional(),
   })
   .partial();
 

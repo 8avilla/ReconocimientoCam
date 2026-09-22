@@ -95,7 +95,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                           <Avatar src={player.photoUrl} name={player.fullName} size={40} />
                           <div>
                             <div className="text-strong">{player.fullName}</div>
-                            <div className="text-secondary text-small">{player.documentId}</div>
+                            <div className="text-secondary text-small">{player.documentId || "Sin documento"}</div>
                           </div>
                         </Link>
                       </td>

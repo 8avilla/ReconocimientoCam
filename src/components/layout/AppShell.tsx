@@ -15,7 +15,7 @@ import { useChampionship } from "./ChampionshipContext";
 import { ChampionshipSwitcher } from "./ChampionshipSwitcher";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
-import { RoleSwitcher } from "./RoleSwitcher";
+import { RoleModal } from "./RoleSwitcher";
 import styles from "./AppShell.module.css";
 
 interface NavItem {
@@ -56,6 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
   const { role } = useRole();
   const { current } = useChampionship();
 
@@ -99,7 +100,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {scoped && canAccess(role, "/admin") && (
             <Link href="/admin" className={styles.navItem}><Settings size={20} aria-hidden /> Administración</Link>
           )}
-          <RoleSwitcher variant="menu" />
+          <button className="btn secondary block role-menu-button" onClick={() => setRoleOpen(true)}>
+            <Eye size={20} aria-hidden /> Ver como: {ROLE_LABEL[role]}
+            {role !== "admin" && <span className="role-dot-inline" aria-hidden />}
+          </button>
         </div>
       </aside>
 
@@ -164,9 +168,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {scoped && canAccess(role, "/admin") && (
             <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
           )}
-          <RoleSwitcher variant="menu" onOpen={() => setMoreOpen(false)} />
+          <button className="btn secondary block role-menu-button" onClick={() => { setMoreOpen(false); setRoleOpen(true); }}>
+            <Eye size={20} aria-hidden /> Ver como: {ROLE_LABEL[role]}
+            {role !== "admin" && <span className="role-dot-inline" aria-hidden />}
+          </button>
         </div>
       </Modal>
+
+      {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
+      <RoleModal open={roleOpen} onClose={() => setRoleOpen(false)} />
 
       <ChampionshipSwitcher open={switchOpen} section={routed?.section ?? null} onClose={() => setSwitchOpen(false)} />
     </div>

@@ -20,7 +20,7 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^1.47.0",
     "mongoose": "^9.9.1",
-    "next": "16.2.12",
+    "next": "16.3.5",
     "next-auth": "^5.0.0-beta.32",
     "onnxruntime-node": "^1.27.0",
     "qrcode": "^1.5.4",
@@ -30,7 +30,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "24.13.6",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -38,6 +38,6 @@
     "eslint-config-next": "16.2.12",
     "tsx": "^4.23.13",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vitest": "5.0.1"
   }
 }

@@ -51,3 +51,28 @@ export async function requireOrganizerOfPlayer(actor: Actor, playerId: string): 
   });
   if (!organizes) throw new ApiError(403, "No administras el campeonato de este jugador", "forbidden");
 }
+
+/**
+ * Non-throwing, batch version of `requireOrganizerOfPlayer`: which of the given players does the actor
+ * organize (admin sees all, a signed-out visitor sees none). Used to decide whether to include a
+ * player's sensitive fields (document id, birth date) in a read response, not to block a request.
+ */
+export async function organizedPlayerIds(actor: Actor, playerIds: readonly string[]): Promise<Set<string>> {
+  if (playerIds.length === 0) return new Set();
+  if (actor.isAdmin) return new Set(playerIds);
+  if (!actor.userId) return new Set();
+
+  const organizedChampionshipIds = await Championship.distinct("_id", {
+    $or: [{ ownerUserId: actor.userId }, { organizerUserIds: actor.userId }],
+  });
+  if (organizedChampionshipIds.length === 0) return new Set();
+
+  const rows = await TeamRegistration.find({
+    playerId: { $in: playerIds },
+    championshipId: { $in: organizedChampionshipIds },
+    status: { $in: LIVE_REGISTRATION_STATUSES },
+  })
+    .select("playerId")
+    .lean();
+  return new Set(rows.map((row) => row.playerId.toString()));
+}

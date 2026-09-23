@@ -1,4 +1,6 @@
 import { json, notFound, parseQuery, route, toObjectId } from "@/lib/api";
+import { getActor } from "@/lib/actor";
+import { requireOrganizerOfPlayer } from "@/lib/permissions";
 import { playerCardQuery } from "@/lib/validation/schemas";
 import { IChampionship } from "@/models/Championship";
 import { Player } from "@/models/Player";
@@ -7,11 +9,15 @@ import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegis
 
 type Params = { id: string };
 
-/** Digital ID card data. The QR only encodes `publicId`, never personal data. */
+/**
+ * Digital ID card data, including the document id and birth date, so only organizers of this player's
+ * championship (or an admin) may fetch it. The QR itself only encodes `publicId`, never personal data.
+ */
 export const GET = route<Params>(async (request, { id }) => {
   const { championshipId } = parseQuery(request, playerCardQuery);
   const player = await Player.findById(id).lean();
   if (!player) throw notFound("Jugador no encontrado");
+  await requireOrganizerOfPlayer(getActor(request), id);
 
   const registration = await TeamRegistration.findOne({
     playerId: id,

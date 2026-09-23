@@ -1,6 +1,7 @@
 import { escapeRegex, json, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { recordAudit } from "@/lib/audit";
+import { organizedPlayerIds } from "@/lib/permissions";
 import { generatePublicId } from "@/lib/services/players";
 import { skipFor } from "@/lib/validation/common";
 import { playerCreateSchema, playerListQuery } from "@/lib/validation/schemas";
@@ -10,6 +11,7 @@ import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegis
 
 /** Lists player identities; optionally restricted to a team or championship roster. */
 export const GET = route(async (request) => {
+  const actor = getActor(request);
   const query = parseQuery(request, playerListQuery);
   const registrationFilter = {
     status: { $in: LIVE_REGISTRATION_STATUSES },
@@ -41,10 +43,14 @@ export const GET = route(async (request) => {
   const teamById = new Map(teams.map((team) => [team._id.toString(), team]));
   const registrationByPlayer = new Map(registrations.map((registration) => [registration.playerId.toString(), registration]));
 
+  const organized = await organizedPlayerIds(actor, players.map((player) => player._id.toString()));
   const data = players.map((player) => {
     const registration = registrationByPlayer.get(player._id.toString());
+    const { documentId, birthDate, ...rest } = player;
+    const sensitive = organized.has(player._id.toString()) ? { documentId, birthDate } : {};
     return {
-      ...player,
+      ...rest,
+      ...sensitive,
       hasFace: Boolean(player.photoUrl && player.biometricConsentAt),
       registration: registration
         ? { ...registration, team: teamById.get(registration.teamId.toString()) ?? null }

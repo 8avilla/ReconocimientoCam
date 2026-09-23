@@ -2,6 +2,7 @@ import { conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { deleteImage } from "@/lib/azureBlob";
+import { organizedPlayerIds, requireOrganizerOfPlayer } from "@/lib/permissions";
 import { playerUpdateSchema } from "@/lib/validation/schemas";
 import { IPlayer, Player } from "@/models/Player";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
@@ -9,7 +10,7 @@ import { TeamRegistration } from "@/models/TeamRegistration";
 
 type Params = { id: string };
 
-export const GET = route<Params>(async (_request, { id }) => {
+export const GET = route<Params>(async (request, { id }) => {
   const player = await Player.findById(id).lean();
   if (!player) throw notFound("Jugador no encontrado");
   const registrations = await TeamRegistration.find({ playerId: id })
@@ -17,13 +18,18 @@ export const GET = route<Params>(async (_request, { id }) => {
     .populate({ path: "teamId", select: "name shieldUrl" })
     .populate({ path: "championshipId", select: "name season" })
     .lean();
-  return json({ ...player, hasFace: Boolean(player.photoUrl && player.biometricConsentAt), registrations });
+
+  const { documentId, birthDate, ...rest } = player;
+  const organized = await organizedPlayerIds(getActor(request), [id]);
+  const sensitive = organized.has(id) ? { documentId, birthDate } : {};
+  return json({ ...rest, ...sensitive, hasFace: Boolean(player.photoUrl && player.biometricConsentAt), registrations });
 });
 
 export const PATCH = route<Params>(async (request, { id }) => {
   const input = await parseBody(request, playerUpdateSchema);
   const player = await Player.findById(id);
   if (!player) throw notFound("Jugador no encontrado");
+  await requireOrganizerOfPlayer(getActor(request), id);
 
   const before = player.toObject() as IPlayer;
   player.set(input);
@@ -45,6 +51,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
 export const DELETE = route<Params>(async (request, { id }) => {
   const player = await Player.findById(id);
   if (!player) throw notFound("Jugador no encontrado");
+  await requireOrganizerOfPlayer(getActor(request), id);
 
   const [registrations, checkIns] = await Promise.all([
     TeamRegistration.exists({ playerId: id }),

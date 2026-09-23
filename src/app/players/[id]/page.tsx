@@ -31,9 +31,10 @@ export default function PlayerProfilePage() {
   const router = useRouter();
   const toast = useToast();
   const player = useFetch<PlayerDetailDTO>(`/players/${id}`);
-  const card = useFetch<PlayerCardDTO>(`/players/${id}/card`);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?playerId=${id}&status=active&limit=10`);
   const { can } = useRole();
+  const canSeeCarnet = can("player.manage");
+  const card = useFetch<PlayerCardDTO>(canSeeCarnet ? `/players/${id}/card` : null);
   const [tab, setTab] = useStoredState<Tab>("super-torneos:player:tab", "perfil", (value) => TABS.some((item) => item.id === value));
   const [dialog, setDialog] = useState<Dialog>(null);
   const [editingRegistrationId, setEditingRegistrationId] = useState<string | null>(null);
@@ -116,21 +117,23 @@ export default function PlayerProfilePage() {
 
       {tab === "perfil" && (
         <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start", gap: "var(--space-2xl)" }}>
-          <section aria-label="Carnet digital" className="stack">
-            {card.error ? (
-              <ErrorState message={card.error.message} onRetry={card.reload} />
-            ) : card.data ? (
-              <>
-                <PlayerIdCard card={card.data} />
-                <Button variant="secondary" icon={<Printer size={18} />} onClick={() => window.print()} style={{ alignSelf: "center" }}>
-                  Imprimir carnet
-                </Button>
-                <PlayerIdCardPrint card={card.data} />
-              </>
-            ) : (
-              <Loading />
-            )}
-          </section>
+          {canSeeCarnet && (
+            <section aria-label="Carnet digital" className="stack">
+              {card.error ? (
+                <ErrorState message={card.error.message} onRetry={card.reload} />
+              ) : card.data ? (
+                <>
+                  <PlayerIdCard card={card.data} />
+                  <Button variant="secondary" icon={<Printer size={18} />} onClick={() => window.print()} style={{ alignSelf: "center" }}>
+                    Imprimir carnet
+                  </Button>
+                  <PlayerIdCardPrint card={card.data} />
+                </>
+              ) : (
+                <Loading />
+              )}
+            </section>
+          )}
 
           <section className="card stack">
             <h3>Datos personales</h3>

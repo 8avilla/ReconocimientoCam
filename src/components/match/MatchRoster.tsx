@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AlertCircle, ArrowLeftRight, Ellipsis, Search } from "lucide-react";
 import { Avatar, Button, useToast } from "@/components/ui";
 import type { MatchEventType } from "@/lib/constants";
@@ -192,10 +193,10 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
           return (
             <div key={team._id} className="flush-list">
               <div className="row-between match-group-head">
-                <div className="row">
+                <Link href={`/teams/${team._id}`} className="row">
                   <Avatar src={team.shieldUrl} name={team.name} size={32} square />
                   <h3>{team.name}</h3>
-                </div>
+                </Link>
                 <span className="text-strong" aria-label={`Goles de ${team.name}`} style={{ fontSize: 20 }}>{score[team._id]}</span>
               </div>
               {squad.length === 0 ? (

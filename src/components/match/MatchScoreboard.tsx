@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { Avatar } from "@/components/ui";
 import { suggestedMinute } from "@/lib/rules/match";
@@ -8,12 +9,12 @@ import { formatDateTime, MATCH_PERIOD_LABEL, matchLabel } from "@/lib/labels";
 import { MatchStatusBadge } from "./MatchStatusBadge";
 import type { MatchDTO } from "@/types/api";
 
-function Side({ name, shieldUrl }: { name: string; shieldUrl: string }) {
+function Side({ teamId, name, shieldUrl }: { teamId: string; name: string; shieldUrl: string }) {
   return (
-    <div className="stack-sm" style={{ alignItems: "center", textAlign: "center", minWidth: 0, flex: 1 }}>
+    <Link href={`/teams/${teamId}`} className="stack-sm" style={{ alignItems: "center", textAlign: "center", minWidth: 0, flex: 1 }}>
       <Avatar src={shieldUrl} name={name} size={72} square />
       <span className="text-strong">{name}</span>
-    </div>
+    </Link>
   );
 }
 
@@ -32,7 +33,7 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
   return (
     <section className="card featured stack" aria-label="Marcador">
       <div className="row-between" style={{ alignItems: "center" }}>
-        <Side name={match.homeTeamId.name} shieldUrl={match.homeTeamId.shieldUrl} />
+        <Side teamId={match.homeTeamId._id} name={match.homeTeamId.name} shieldUrl={match.homeTeamId.shieldUrl} />
         <div className="stack-sm" style={{ alignItems: "center", textAlign: "center" }}>
           <MatchStatusBadge status={match.status} />
           {started ? (
@@ -52,7 +53,7 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
           {match.venue && <span className="text-secondary text-small"><MapPin size={12} aria-hidden /> {match.venue}</span>}
           {match.refereeId && <span className="text-secondary text-small">Árbitro: {match.refereeId.fullName}</span>}
         </div>
-        <Side name={match.awayTeamId.name} shieldUrl={match.awayTeamId.shieldUrl} />
+        <Side teamId={match.awayTeamId._id} name={match.awayTeamId.name} shieldUrl={match.awayTeamId.shieldUrl} />
       </div>
     </section>
   );

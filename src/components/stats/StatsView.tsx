@@ -202,11 +202,11 @@ export function StandingsTable({ rows, highlightTeamId, title }: { rows: Standin
               {rows.map((row) => (
                 <tr key={row.teamId} className={row.teamId === highlightTeamId ? "highlight" : undefined}>
                   <td className="sticky-col">
-                    <span className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
+                    <Link href={`/teams/${row.teamId}`} className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
                       <span className="text-strong" style={{ width: 20, textAlign: "right" }}>{row.position}</span>
                       <Avatar src={row.shieldUrl} name={row.name} size={28} square />
                       <span className="text-strong">{row.name}</span>
-                    </span>
+                    </Link>
                   </td>
                   <td>{row.played}</td><td>{row.won}</td><td>{row.drawn}</td><td>{row.lost}</td>
                   <td>{row.goalsFor}</td><td>{row.goalsAgainst}</td><td>{signed(row.goalDifference)}</td>
@@ -226,10 +226,10 @@ export function StandingsTable({ rows, highlightTeamId, title }: { rows: Standin
           {rows.map((row) => (
             <div key={row.teamId} role="row" className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}`}>
               <span className="standings-pos" role="cell">{row.position}</span>
-              <span className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
+              <Link href={`/teams/${row.teamId}`} className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
                 <Avatar src={row.shieldUrl} name={row.name} size={28} square />
                 <span className="truncate">{row.name}</span>
-              </span>
+              </Link>
               <span role="cell">{row.played}</span>
               <span role="cell">{row.goalsFor}:{row.goalsAgainst}</span>
               <span role="cell" className="text-strong" aria-label={`${row.points} puntos`}>{row.points}</span>
@@ -249,7 +249,7 @@ export function PlayerRanking({ rows, empty, value, unit, extra, showTeam = true
     <div className="flush-list">
       {title && <h2 className="band band-muted band-small">{title} ({rows.length})</h2>}
       {rows.map((row, index) => (
-        <div key={row.playerId} className="list-row">
+        <Link key={row.playerId} href={`/players/${row.playerId}`} className="list-row">
           <span className="text-strong text-secondary" style={{ width: 24 }}>{index + 1}</span>
           <Avatar src={row.photoUrl} name={row.fullName} size={44} />
           <div className="grow" style={{ minWidth: 0 }}>
@@ -260,7 +260,7 @@ export function PlayerRanking({ rows, empty, value, unit, extra, showTeam = true
             <span style={{ fontSize: 24, fontWeight: 700 }}>{value(row)}</span>
             <span className="text-secondary text-small"> {unit}</span>
           </span>
-        </div>
+        </Link>
       ))}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Gavel, Plus } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FinesView } from "@/components/sanction/FinesView";
@@ -99,10 +100,10 @@ function Sanctions({ championshipId }: { championshipId: string }) {
             const state = SUSPENSION_STATUS_LABEL[item.status];
             return (
               <div key={item._id} className="list-row" style={{ alignItems: "flex-start" }}>
-                <Avatar src={item.playerId.photoUrl} name={item.playerId.fullName} size={44} />
+                <Link href={`/players/${item.playerId._id}`}><Avatar src={item.playerId.photoUrl} name={item.playerId.fullName} size={44} /></Link>
                 <div className="grow" style={{ minWidth: 0 }}>
-                  <div className="champ-caption truncate">{item.teamId.name} · {SUSPENSION_REASON_LABEL[item.reason]}</div>
-                  <div className="champ-name truncate">{item.playerId.fullName}</div>
+                  <div className="champ-caption truncate"><Link href={`/teams/${item.teamId._id}`}>{item.teamId.name}</Link> · {SUSPENSION_REASON_LABEL[item.reason]}</div>
+                  <div className="champ-name truncate"><Link href={`/players/${item.playerId._id}`}>{item.playerId.fullName}</Link></div>
                   <div className="text-secondary text-small">{formatDate(item.createdAt)} · {item.matchesServed}/{item.matchesToServe} partidos</div>
                   {item.note && <div className="text-secondary text-small">{item.note}</div>}
                 </div>

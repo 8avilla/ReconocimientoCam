@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Avatar } from "@/components/ui";
 import type { MatchEventType } from "@/lib/constants";
 import { EventIcon } from "./EventIcon";
@@ -60,14 +61,14 @@ export function MatchSummary({
             const lines = lineup(team);
             return (
               <div key={team._id} className="stack-sm">
-                <div className="row"><Avatar src={team.shieldUrl} name={team.name} size={24} square /><span className="text-strong">{team.name}</span></div>
+                <Link href={`/teams/${team._id}`} className="row"><Avatar src={team.shieldUrl} name={team.name} size={24} square /><span className="text-strong">{team.name}</span></Link>
                 {lines.length === 0 ? (
                   <p className="text-secondary text-small">Sin goles ni tarjetas</p>
                 ) : (
                   <ul style={{ listStyle: "none" }}>
                     {lines.map((line) => (
                       <li key={line.playerId} className="row-between" style={{ padding: "4px 0" }}>
-                        <span className="truncate">{line.shirtNumber != null ? `${line.shirtNumber} ` : ""}{line.fullName}</span>
+                        <Link href={`/players/${line.playerId}`} className="truncate">{line.shirtNumber != null ? `${line.shirtNumber} ` : ""}{line.fullName}</Link>
                         <span className="row" style={{ gap: 2, flexShrink: 0 }}>
                           {line.badges.map((type, index) => <EventIcon key={index} type={type} size={16} />)}
                         </span>
@@ -84,7 +85,15 @@ export function MatchSummary({
       {suspensions.length > 0 && (
         <section className="card stack-sm" aria-label="Suspendidos">
           <h3>Suspendidos</h3>
-          <p>{suspensions.map((suspension) => `${suspension.playerId.fullName} (${suspension.teamId.name})`).join(", ")}</p>
+          <p>
+            {suspensions.map((suspension, index) => (
+              <span key={suspension._id}>
+                {index > 0 && ", "}
+                <Link href={`/players/${suspension.playerId._id}`}>{suspension.playerId.fullName}</Link>{" "}
+                (<Link href={`/teams/${suspension.teamId._id}`}>{suspension.teamId.name}</Link>)
+              </span>
+            ))}
+          </p>
         </section>
       )}
     </div>

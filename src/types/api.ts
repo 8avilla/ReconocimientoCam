@@ -46,6 +46,7 @@ export interface ChampionshipDTO {
   startDate?: string;
   endDate?: string;
   rules: ChampionshipRulesDTO;
+  logoUrl: string;
   ownerUserId?: string;
   organizerUserIds: string[];
   /** Invited by email, not signed in yet (organizer/admin only; empty for anyone else). */

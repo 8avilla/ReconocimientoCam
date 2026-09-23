@@ -15,7 +15,14 @@ function getContainerClient(): ContainerClient {
   return containerClient;
 }
 
-export type ImageFolder = "players/faces" | "players/photos" | "players/gallery" | "players/checkins" | "teams/shields" | "fines/receipts";
+export type ImageFolder =
+  | "players/faces"
+  | "players/photos"
+  | "players/gallery"
+  | "players/checkins"
+  | "teams/shields"
+  | "championships/logos"
+  | "fines/receipts";
 
 export interface UploadedImage {
   url: string;

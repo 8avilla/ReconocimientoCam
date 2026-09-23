@@ -63,18 +63,12 @@ export async function normalizeShieldImage(dataUrl: string): Promise<Buffer> {
 export async function enrollPlayerFace(
   actor: Actor,
   playerId: string,
-  input: { image: string; carnetImage?: string; consent?: boolean }
+  input: { image: string; carnetImage?: string }
 ) {
   invalidateGalleries();
   await requireOrganizerOfPlayer(actor, playerId);
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
-
-  if (!player.biometricConsentAt && input.consent !== true) {
-    throw badRequest("Se requiere el consentimiento explícito del jugador para registrar su rostro", {
-      code: "consent_required",
-    });
-  }
 
   const facePhoto = await prepareFaceImage(input.image);
   const embedding = await embedFaceOrFail(facePhoto);
@@ -136,6 +130,10 @@ export async function removePlayerFace(actor: Actor, playerId: string) {
 
 export async function uploadShieldImage(dataUrl: string) {
   return uploadImage(await normalizeShieldImage(dataUrl), "teams/shields", "image/png");
+}
+
+export async function uploadChampionshipLogo(dataUrl: string) {
+  return uploadImage(await normalizeShieldImage(dataUrl), "championships/logos", "image/png");
 }
 
 /** Higher resolution than the biometric photos: these are meant for identification and posters. */

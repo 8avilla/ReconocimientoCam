@@ -51,6 +51,9 @@ export interface IChampionship {
   startDate?: Date;
   endDate?: Date;
   rules: ChampionshipRules;
+  /** Logo/badge shown on its cards and pages; empty until the organizer uploads one. */
+  logoUrl: string;
+  logoBlobName: string;
   /** Who created it (the first organizer); absent for championships that predate accounts. */
   ownerUserId?: Types.ObjectId;
   /** Co-organizers, in addition to the owner. */
@@ -113,6 +116,8 @@ const ChampionshipSchema = new Schema<IChampionship>(
     startDate: { type: Date },
     endDate: { type: Date },
     rules: { type: RulesSchema, default: () => ({}) },
+    logoUrl: { type: String, default: "" },
+    logoBlobName: { type: String, default: "" },
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User" },
     organizerUserIds: { type: [Schema.Types.ObjectId], ref: "User", default: [] },
     organizerInviteEmails: { type: [String], default: [] },

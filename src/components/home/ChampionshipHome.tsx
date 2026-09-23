@@ -2,23 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, MapPin, Shield, Trophy, Users } from "lucide-react";
+import { CalendarDays, Pencil, Settings, Shield, Trophy, MapPin, Users } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { AttentionList } from "@/components/home/AttentionList";
+import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { MyTeams } from "@/components/home/MyTeams";
 import { SetupChecklist } from "@/components/home/SetupChecklist";
 import { TeamStandingsTab } from "@/components/team/TeamStandingsTab";
-import { Avatar } from "@/components/ui";
+import { Avatar, Button } from "@/components/ui";
+import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
-import type { MatchDTO, OverviewDTO, Paginated } from "@/types/api";
+import type { ChampionshipDTO, MatchDTO, OverviewDTO, Paginated } from "@/types/api";
 
 export function ChampionshipHome() {
-  return <RequireChampionship>{(championship) => <Dashboard championshipId={championship._id} name={championship.name} season={championship.season} />}</RequireChampionship>;
+  return <RequireChampionship>{(championship) => <Dashboard championship={championship} />}</RequireChampionship>;
 }
 
-function Dashboard({ championshipId, name, season }: { championshipId: string; name: string; season: string }) {
+function Dashboard({ championship }: { championship: ChampionshipDTO }) {
+  const { _id: championshipId, name, season, logoUrl } = championship;
   // Stable timestamp: a new value on every render would change the request path endlessly.
   const [now] = useState(() => new Date().toISOString());
   const teams = useFetch<Paginated<unknown>>(`/teams?championshipId=${championshipId}&limit=1`);
@@ -26,6 +29,8 @@ function Dashboard({ championshipId, name, season }: { championshipId: string; n
   const matches = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&from=${encodeURIComponent(now)}&order=date&limit=1`);
   const nextMatch = matches.data?.data[0];
   const { can } = useRole();
+  const { reload: reloadChampionship } = useChampionship();
+  const [editOpen, setEditOpen] = useState(false);
   const overview = useFetch<OverviewDTO>(`/championships/${championshipId}/overview`);
 
   const summary = [
@@ -33,11 +38,16 @@ function Dashboard({ championshipId, name, season }: { championshipId: string; n
     { label: "Jugadores", value: players.data?.meta.total, icon: Users, href: championshipPath(championshipId, "jugadores") },
     { label: "Próximos", value: matches.data?.meta.total, icon: CalendarDays, href: championshipPath(championshipId, "partidos") },
   ];
+  const manage = can("championship.manage");
 
   return (
     <>
       <section className="team-hero rounded" aria-label="Campeonato" style={{ marginBottom: "var(--space-2xl)" }}>
-        <span className="hero-tile" aria-hidden><Trophy size={36} /></span>
+        {logoUrl ? (
+          <Avatar src={logoUrl} name={name} size={64} square />
+        ) : (
+          <span className="hero-tile" aria-hidden><Trophy size={36} /></span>
+        )}
         <div className="stack-sm grow" style={{ minWidth: 0 }}>
           <h1>{name}</h1>
           <span className="text-secondary">Temporada {season}</span>
@@ -49,7 +59,27 @@ function Dashboard({ championshipId, name, season }: { championshipId: string; n
             ))}
           </div>
         </div>
+        {manage && (
+          <div className="row-wrap" style={{ flexShrink: 0 }}>
+            <Button variant="secondary" size="small" icon={<Pencil size={16} />} onClick={() => setEditOpen(true)}>Editar</Button>
+            <Link href={championshipPath(championshipId, "gestionar")} className="btn secondary small">
+              <Settings size={16} aria-hidden /> Gestionar
+            </Link>
+          </div>
+        )}
       </section>
+
+      {manage && (
+        <ChampionshipFormModal
+          open={editOpen}
+          championship={championship}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => {
+            setEditOpen(false);
+            reloadChampionship();
+          }}
+        />
+      )}
 
       <div className="stack" style={{ gap: "var(--space-2xl)" }}>
           {overview.data && can("championship.manage") && <SetupChecklist championshipId={championshipId} overview={overview.data} />}

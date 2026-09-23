@@ -20,26 +20,16 @@ export interface CapturedFace {
 interface Props {
   /** Both crops of the shot, or null while nothing is captured. */
   image: CapturedFace | null;
-  consent: boolean;
-  onConsentChange: (consent: boolean) => void;
   onImageChange: (image: CapturedFace | null) => void;
 }
 
-/** Biometric consent + live face capture. The camera only starts after explicit consent. */
-export function FaceEnrollment({ image, consent, onConsentChange, onImageChange }: Props) {
+/** Live face capture for the biometric registration. */
+export function FaceEnrollment({ image, onImageChange }: Props) {
   const [cameraKey, setCameraKey] = useState(0);
 
   return (
     <div className="stack">
-      <label className="checkbox-row">
-        <input type="checkbox" checked={consent} onChange={(event) => onConsentChange(event.target.checked)} />
-        <span>
-          El jugador autoriza el uso de su fotografía y de sus datos biométricos faciales para verificar su identidad
-          en los partidos de este campeonato.
-        </span>
-      </label>
-
-      {consent && image && (
+      {image && (
         <div className="stack" style={{ alignItems: "center" }}>
           {/* The looser crop is what's shown everywhere else, so it's what the organizer previews here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,7 +49,7 @@ export function FaceEnrollment({ image, consent, onConsentChange, onImageChange 
         </div>
       )}
 
-      {consent && !image && (
+      {!image && (
         <>
           <FaceCapture key={cameraKey} onCapture={(face, carnet) => onImageChange({ face, carnet })} buttonLabel="Capturar foto" />
           <ul className="stack-sm text-secondary" style={{ listStyle: "none" }}>

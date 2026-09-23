@@ -98,6 +98,25 @@
 .field-hint { font-size: 12px; color: var(--color-text-secondary); }
 .color-input { padding: 4px; }
 .checkbox-row { display: flex; align-items: flex-start; gap: var(--space-md); font-size: 14px; }
+
+/* ---------- Dropdown picker: plain text + chevron, not a boxed select (phase, team...) ---------- */
+.dropdown-picker { position: relative; display: inline-flex; align-items: center; min-height: 44px; }
+.dropdown-picker-select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background: transparent; border: none; outline: none; cursor: pointer;
+  font-size: 17px; font-weight: 700; color: var(--color-text-primary); padding-right: 22px; max-width: 220px; text-overflow: ellipsis;
+}
+.dropdown-picker svg { position: absolute; right: 0; pointer-events: none; color: var(--color-text-secondary); }
+
+/* ---------- Fecha tabs: scrollable row of pills, filled when active ---------- */
+.fecha-tabs { display: flex; gap: var(--space-sm); overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.fecha-tabs::-webkit-scrollbar { display: none; }
+.fecha-tab {
+  flex-shrink: 0; min-height: 40px; padding: 0 var(--space-md);
+  border-radius: var(--radius-pill); border: 1px solid var(--color-border);
+  background: var(--color-surface); font-size: 14px; font-weight: 600; color: var(--color-text-primary);
+}
+.fecha-tab.active { background: var(--color-text-primary); border-color: var(--color-text-primary); color: #fff; }
 .checkbox-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--color-primary); flex-shrink: 0; }
 .search { position: relative; }
 .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-disabled); pointer-events: none; }

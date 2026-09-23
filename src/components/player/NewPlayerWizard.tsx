@@ -42,7 +42,6 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
-  const [consent, setConsent] = useState(false);
   const [image, setImage] = useState<CapturedFace | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -99,7 +98,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
 
     if (image) {
       try {
-        await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet, consent: true } });
+        await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet } });
         toast.success("Jugador registrado correctamente");
       } catch (error) {
         toast.error(`Jugador registrado, pero no se pudo guardar el rostro: ${errorMessage(error)}`);
@@ -163,7 +162,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
 
         {step === 2 && (
           <div className="stack">
-            <FaceEnrollment image={image} consent={consent} onConsentChange={(value) => { setConsent(value); if (!value) setImage(null); }} onImageChange={setImage} />
+            <FaceEnrollment image={image} onImageChange={setImage} />
             <div className="action-bar">
               <Button variant="secondary" onClick={() => setStep(1)}>Atrás</Button>
               {image ? (

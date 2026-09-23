@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock, CalendarDays, CalendarPlus, FilterX, Plus, SlidersHorizontal, X } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, ChevronDown, FilterX, Plus, SlidersHorizontal, X } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FixtureModal } from "@/components/match/FixtureModal";
 import { MatchFormModal } from "@/components/match/MatchFormModal";
@@ -14,9 +14,8 @@ import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
-import { useIsMobile } from "@/lib/client/useMediaQuery";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
-import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO } from "@/types/api";
+import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, TeamDTO } from "@/types/api";
 
 export function MatchesView({ initialScheduled }: { initialScheduled?: "true" | "false" }) {
   return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} initialScheduled={initialScheduled} />}</RequireChampionship>;
@@ -27,6 +26,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const key = (name: string) => `super-torneos:matches:${championshipId}:${name}`;
   const [status, setStatus] = useStoredState<string>(key("status"), "");
   const [storedPhaseId, setPhaseId] = useStoredState<string>(key("phase"), "");
+  const [storedTeamId, setTeamId] = useStoredState<string>(key("team"), "");
   const [storedMatchdayId, setMatchdayId] = useStoredState<string>(key("matchday"), "");
   const [scheduledFilter, setScheduledFilter] = useStoredState<string>(key("scheduled"), "", undefined, initialScheduled);
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -35,68 +35,84 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const [toDay, setToDay] = useStoredState<string>(key("to"), "");
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const phaseList = phases.data?.data ?? [];
+  const teamsFetch = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${championshipId}&limit=100`);
+  const teamList = teamsFetch.data?.data ?? [];
   const matchdaysFetch = useFetch<{ data: (MatchdayDTO & { phaseName: string })[] }>(`/championships/${championshipId}/matchdays`);
   const allMatchdays = matchdaysFetch.data?.data ?? [];
-  // A remembered phase or fecha that no longer exists must not leave the list empty.
+  // A remembered phase, team or fecha that no longer exists must not leave the list empty.
   const phaseId = phases.data && storedPhaseId && !phaseList.some((item) => item._id === storedPhaseId) ? "" : storedPhaseId;
+  const teamId = teamsFetch.data && storedTeamId && !teamList.some((item) => item._id === storedTeamId) ? "" : storedTeamId;
   const matchdayId = matchdaysFetch.data && storedMatchdayId && !allMatchdays.some((item) => item._id === storedMatchdayId) ? "" : storedMatchdayId;
   const matchdayList = phaseId ? allMatchdays.filter((item) => item.phaseId === phaseId) : allMatchdays;
-  const filtered = Boolean(status || phaseId || matchdayId || scheduledFilter || fromDay || toDay);
+  const filtered = Boolean(status || phaseId || teamId || matchdayId || scheduledFilter || fromDay || toDay);
   const [formOpen, setFormOpen] = useState(false);
   const [fixtureOpen, setFixtureOpen] = useState(false);
-  const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : ""}${phaseId ? `&phaseId=${phaseId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
+  const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : ""}${phaseId ? `&phaseId=${phaseId}` : ""}${teamId ? `&teamId=${teamId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
   const { data, error, loading, reload } = useFetch<Paginated<MatchDTO>>(query);
   const matches = data?.data ?? [];
-  const clearFilters = () => { setStatus(""); setPhaseId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); };
-  const isMobile = useIsMobile();
+  const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); };
   const { can } = useRole();
   const manage = can("match.manage");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const selectStyle = isMobile ? undefined : { width: "auto", minWidth: 200 };
   const statusSelect = (
-    <select className="select" style={selectStyle} aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
+    <select className="select" aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
       <option value="">Todos los estados</option>
       {MATCH_STATUSES.map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}
     </select>
   );
-  const phaseSelect = phaseList.length > 0 && (
-    <select className="select" style={selectStyle} aria-label="Filtrar por fase" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setMatchdayId(""); }}>
-      <option value="">Todas las fases</option>
-      {phaseList.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-    </select>
+  // Styled as plain text + a chevron (not a boxed dropdown): the phase this championship is in, tap to change.
+  const phasePicker = phaseList.length > 0 && (
+    <div className="dropdown-picker">
+      <select className="dropdown-picker-select" aria-label="Filtrar por fase" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setMatchdayId(""); }}>
+        <option value="">Todas las fases</option>
+        {phaseList.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+      </select>
+      <ChevronDown size={18} aria-hidden />
+    </div>
   );
-  const matchdaySelect = allMatchdays.length > 0 && (
-    <select className="select" style={selectStyle} aria-label="Filtrar por fecha" value={matchdayId} onChange={(e) => setMatchdayId(e.target.value)}>
-      <option value="">Todas las fechas</option>
-      {phaseId
-        ? matchdayList.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)
-        : phaseList.map((phase) => (
-            <optgroup key={phase._id} label={phase.name}>
-              {matchdayList.filter((item) => item.phaseId === phase._id).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-            </optgroup>
-          ))}
-    </select>
+  // Same look as the phase picker: which team's matches to show (home or away).
+  const teamPicker = teamList.length > 0 && (
+    <div className="dropdown-picker">
+      <select className="dropdown-picker-select" aria-label="Filtrar por equipo" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+        <option value="">Todos los equipos</option>
+        {teamList.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+      </select>
+      <ChevronDown size={18} aria-hidden />
+    </div>
+  );
+  // One pill per fecha (scrollable row), "Todas" first; the fechas shown follow the phase picked above.
+  const fechaTabs = allMatchdays.length > 0 && (
+    <div className="fecha-tabs" role="tablist" aria-label="Fecha">
+      <button type="button" role="tab" aria-selected={matchdayId === ""} className={`fecha-tab${matchdayId === "" ? " active" : ""}`} onClick={() => setMatchdayId("")}>
+        Todas
+      </button>
+      {matchdayList.map((item) => (
+        <button
+          key={item._id}
+          type="button"
+          role="tab"
+          aria-selected={matchdayId === item._id}
+          className={`fecha-tab${matchdayId === item._id ? " active" : ""}`}
+          onClick={() => setMatchdayId(item._id)}
+        >
+          {item.name}
+        </button>
+      ))}
+    </div>
   );
   const scheduledSelect = (
-    <select className="select" style={selectStyle} aria-label="Filtrar por programación" value={scheduledFilter} onChange={(e) => setScheduledFilter(e.target.value)}>
+    <select className="select" aria-label="Filtrar por programación" value={scheduledFilter} onChange={(e) => setScheduledFilter(e.target.value)}>
       <option value="">Con o sin día y hora</option>
       <option value="false">Sin día ni hora</option>
       <option value="true">Con día y hora</option>
     </select>
   );
-  const fromInput = <input id="from-day" className="input" type="date" style={isMobile ? undefined : { width: "auto" }} aria-label="Desde el día" value={fromDay} max={toDay || undefined} onChange={(e) => setFromDay(e.target.value)} />;
-  const toInput = <input id="to-day" className="input" type="date" style={isMobile ? undefined : { width: "auto" }} aria-label="Hasta el día" value={toDay} min={fromDay || undefined} onChange={(e) => setToDay(e.target.value)} />;
-  const dateRange = (
-    <>
-      <label className="row" style={{ gap: "var(--space-sm)" }}><span className="text-secondary text-small">Desde</span>{fromInput}</label>
-      <label className="row" style={{ gap: "var(--space-sm)" }}><span className="text-secondary text-small">Hasta</span>{toInput}</label>
-    </>
-  );
+  const fromInput = <input id="from-day" className="input" type="date" aria-label="Desde el día" value={fromDay} max={toDay || undefined} onChange={(e) => setFromDay(e.target.value)} />;
+  const toInput = <input id="to-day" className="input" type="date" aria-label="Hasta el día" value={toDay} min={fromDay || undefined} onChange={(e) => setToDay(e.target.value)} />;
   const dayLabel = (day: string) => new Date(`${day}T00:00:00`).toLocaleDateString("es", { day: "numeric", month: "short" });
-  // Active filters as removable chips (the fecha has its own select on phones, so it is not repeated).
+  // Active filters as removable chips (the phase, team and fecha have their own always-visible pickers, so they're not repeated here).
   const chips = [
     status && { label: MATCH_STATUS_LABEL[status as MatchStatus].label, clear: () => setStatus("") },
-    phaseId && { label: phaseList.find((item) => item._id === phaseId)?.name ?? "Fase", clear: () => { setPhaseId(""); setMatchdayId(""); } },
     scheduledFilter && { label: scheduledFilter === "true" ? "Con día y hora" : "Sin día ni hora", clear: () => setScheduledFilter("") },
     fromDay && { label: `Desde ${dayLabel(fromDay)}`, clear: () => setFromDay("") },
     toDay && { label: `Hasta ${dayLabel(toDay)}`, clear: () => setToDay("") },
@@ -127,25 +143,19 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
         </div>
       )}
       <div className="stack-sm" style={{ marginBottom: "var(--space-lg)" }}>
-        {isMobile ? (
-          <div className="row">
-            <div className="grow">{matchdaySelect}</div>
-            <Button variant="secondary" icon={<SlidersHorizontal size={18} />} onClick={() => setFiltersOpen(true)}>
-              Filtros{extraActive > 0 ? ` (${extraActive})` : ""}
-            </Button>
+        <div className="row-between">
+          <div className="row-wrap" style={{ columnGap: "var(--space-lg)", rowGap: 0 }}>
+            {phasePicker}
+            {teamPicker}
           </div>
-        ) : (
-          <div className="row-wrap">
-            {statusSelect}
-            {phaseSelect}
-            {matchdaySelect}
-            {scheduledSelect}
-            {dateRange}
-          </div>
-        )}
+          <Button variant="secondary" icon={<SlidersHorizontal size={18} />} onClick={() => setFiltersOpen(true)}>
+            Filtros{extraActive > 0 ? ` (${extraActive})` : ""}
+          </Button>
+        </div>
+        {fechaTabs}
         {(filtered || matchdayId) && (
           <div className="chips">
-            {isMobile && chips.map((chip) => (
+            {chips.map((chip) => (
               <span key={chip.label} className="chip">
                 {chip.label}
                 <button aria-label={`Quitar filtro ${chip.label}`} onClick={chip.clear}><X size={14} aria-hidden /></button>
@@ -162,7 +172,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
       </div>
 
       <Modal
-        open={filtersOpen && isMobile}
+        open={filtersOpen}
         title="Filtros"
         onClose={() => setFiltersOpen(false)}
         footer={
@@ -174,7 +184,6 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
       >
         <div className="stack">
           {statusSelect}
-          {phaseSelect}
           {scheduledSelect}
           <div className="form-grid two">
             <div className="field"><label htmlFor="from-day">Desde</label>{fromInput}</div>

@@ -8,8 +8,6 @@ import { FaceEnrollment, type CapturedFace } from "./FaceEnrollment";
 interface Props {
   open: boolean;
   playerId: string;
-  /** Consent already on file skips the consent checkbox requirement on the server. */
-  hasConsent: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -22,9 +20,8 @@ export function FaceEnrollModal({ open, ...props }: Props) {
   );
 }
 
-function FaceEnrollForm({ playerId, hasConsent, onClose, onSaved }: Omit<Props, "open">) {
+function FaceEnrollForm({ playerId, onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
-  const [consent, setConsent] = useState(hasConsent);
   const [image, setImage] = useState<CapturedFace | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -32,7 +29,7 @@ function FaceEnrollForm({ playerId, hasConsent, onClose, onSaved }: Omit<Props, 
     if (!image) return;
     setSaving(true);
     try {
-      await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet, consent } });
+      await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet } });
       toast.success("Rostro registrado correctamente");
       onSaved();
     } catch (error) {
@@ -44,7 +41,7 @@ function FaceEnrollForm({ playerId, hasConsent, onClose, onSaved }: Omit<Props, 
 
   return (
     <div className="stack">
-      <FaceEnrollment image={image} consent={consent} onConsentChange={(value) => { setConsent(value); if (!value) setImage(null); }} onImageChange={setImage} />
+      <FaceEnrollment image={image} onImageChange={setImage} />
       <div className="action-bar">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
         <Button size="large" onClick={handleSave} loading={saving} disabled={!image}>Guardar rostro</Button>

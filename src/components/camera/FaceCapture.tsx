@@ -2,75 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SwitchCamera } from "lucide-react";
-import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+import type { FaceLandmarker } from "@mediapipe/tasks-vision";
+import { bboxFromLandmarks, captureCrops, getLandmarker, withSilencedConsole } from "./faceCrop";
 
 const FACING_KEY = "super-torneos:camera-facing";
-
-const MEDIAPIPE_WASM_URL =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.0/wasm";
-
-// El WASM de MediaPipe escribe sus logs internos (incluso "INFO") por stderr,
-// que Emscripten mapea a console.error. En `next dev`, Next.js parchea
-// console.error para su overlay de errores, y ese parche es incompatible con
-// esa escritura interna (crashea en put_char/fd_write). Como no nos interesan
-// esos logs, los silenciamos solo mientras corre la llamada síncrona.
-function withSilencedConsole<T>(fn: () => T): T {
-  const original = { log: console.log, info: console.info, warn: console.warn, error: console.error };
-  console.log = () => {};
-  console.info = () => {};
-  console.warn = () => {};
-  console.error = () => {};
-  try {
-    return fn();
-  } finally {
-    console.log = original.log;
-    console.info = original.info;
-    console.warn = original.warn;
-    console.error = original.error;
-  }
-}
-
-// Versión async: el WASM puede capturar su referencia a console.error/console.info
-// durante la instanciación (dentro de la promesa), no solo en la llamada síncrona
-// inicial, así que hay que mantener el silencio hasta que la promesa resuelva.
-async function withSilencedConsoleAsync<T>(fn: () => Promise<T>): Promise<T> {
-  const original = { log: console.log, info: console.info, warn: console.warn, error: console.error };
-  console.log = () => {};
-  console.info = () => {};
-  console.warn = () => {};
-  console.error = () => {};
-  try {
-    return await fn();
-  } finally {
-    console.log = original.log;
-    console.info = original.info;
-    console.warn = original.warn;
-    console.error = original.error;
-  }
-}
-
-// Singleton a nivel de módulo: evita crear dos instancias del módulo WASM en
-// paralelo (p. ej. por el doble-montaje de efectos de React StrictMode en dev),
-// lo cual corrompe el estado interno del módulo y lanza errores en put_char/fd_write.
-let landmarkerPromise: Promise<FaceLandmarker> | null = null;
-function getLandmarker(): Promise<FaceLandmarker> {
-  if (!landmarkerPromise) {
-    landmarkerPromise = withSilencedConsoleAsync(async () => {
-      const fileset = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL);
-      return FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath: "/mediapipe-models/face_landmarker.task",
-          // "GPU" falla en varios navegadores/móviles (delegado WebGL no soportado);
-          // "CPU" es más lento pero mucho más compatible.
-          delegate: "CPU",
-        },
-        runningMode: "VIDEO",
-        numFaces: 1,
-      });
-    });
-  }
-  return landmarkerPromise;
-}
 
 interface FaceCaptureProps {
   /**
@@ -89,40 +24,11 @@ interface FaceCaptureProps {
   onFaceLost?: () => void;
 }
 
-/** Side (px) of the square face crop sent to the server; the embedding model downsizes it itself. */
-const CROP_SIZE = 320;
-/** Side (px) of the looser "ID card" crop: same shot, more headroom around the face. */
-const CARNET_CROP_SIZE = 480;
-/** How much bigger the ID card crop is than the tight face box (which already has its own padding). */
-const CARNET_SCALE = 1.6;
-
 /** A face must stay in view this long before an automatic capture, and captures are spaced by the cooldown. */
 const AUTO_STABLE_MS = 700;
 const AUTO_COOLDOWN_MS = 1800;
 /** Time without a face after which the person is considered gone. */
 const FACE_LOST_MS = 600;
-
-/** Draws a square crop of the video, clamped inside its frame, downsized to `outputSize`. */
-function drawSquareCrop(video: HTMLVideoElement, cx: number, cy: number, size: number, outputSize: number): string {
-  const clamped = Math.min(size, video.videoWidth, video.videoHeight);
-  const x = Math.min(Math.max(cx - clamped / 2, 0), video.videoWidth - clamped);
-  const y = Math.min(Math.max(cy - clamped / 2, 0), video.videoHeight - clamped);
-  const canvas = document.createElement("canvas");
-  canvas.width = outputSize;
-  canvas.height = outputSize;
-  canvas.getContext("2d")!.drawImage(video, x, y, clamped, clamped, 0, 0, outputSize, outputSize);
-  return canvas.toDataURL("image/jpeg", 0.92);
-}
-
-/** Both crops of the same shot: tight (verification reference) and loose (ID card / avatar). */
-function captureCrops(video: HTMLVideoElement, bbox: { x: number; y: number; size: number }): { face: string; carnet: string } {
-  const cx = bbox.x + bbox.size / 2;
-  const cy = bbox.y + bbox.size / 2;
-  return {
-    face: drawSquareCrop(video, cx, cy, bbox.size, CROP_SIZE),
-    carnet: drawSquareCrop(video, cx, cy, bbox.size * CARNET_SCALE, CARNET_CROP_SIZE),
-  };
-}
 
 export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar foto", auto = false, hold = false, onFaceLost }: FaceCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -232,21 +138,14 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
 
       const landmarks = result.faceLandmarks?.[0];
       if (landmarks && landmarks.length > 0) {
-        let minX = 1, minY = 1, maxX = 0, maxY = 0;
-        for (const p of landmarks) {
-          minX = Math.min(minX, p.x);
-          minY = Math.min(minY, p.y);
-          maxX = Math.max(maxX, p.x);
-          maxY = Math.max(maxY, p.y);
-        }
         const w = video.videoWidth;
         const h = video.videoHeight;
-        const pad = 0.35; // margen extra alrededor del rostro
-        const cx = ((minX + maxX) / 2) * w;
-        const cy = ((minY + maxY) / 2) * h;
-        const size = Math.max(maxX - minX, maxY - minY) * w * (1 + pad);
+        const bbox = bboxFromLandmarks(landmarks, w, h);
+        const { size } = bbox;
+        const cx = bbox.x + size / 2;
+        const cy = bbox.y + size / 2;
 
-        bboxRef.current = { x: cx - size / 2, y: cy - size / 2, size };
+        bboxRef.current = bbox;
 
         ctx.strokeStyle = "#16a34a";
         ctx.lineWidth = 3;
@@ -267,19 +166,24 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
         faceSinceRef.current ??= now;
         if (autoRef.current && !busyRef.current && !holdRef.current && now - faceSinceRef.current >= AUTO_STABLE_MS && now >= nextAutoRef.current) {
           nextAutoRef.current = now + AUTO_COOLDOWN_MS;
-          const crops = captureCrops(video, { x: cx - size / 2, y: cy - size / 2, size });
+          const crops = captureCrops(video, video.videoWidth, video.videoHeight, bbox);
           onCaptureRef.current(crops.face, crops.carnet);
         }
       } else {
-        bboxRef.current = null;
-        // Gone for a moment (not just a missed frame): the next face is someone new.
-        if (trackRef.current && performance.now() - trackRef.current.seenAt > FACE_LOST_MS) {
-          trackRef.current = null;
-          faceSinceRef.current = null;
-          onFaceLostRef.current?.();
+        // A single missed frame (a blink, a bit of motion blur, a brief MediaPipe hiccup) is not the
+        // face leaving: keep the button enabled and the last good box usable for a short grace period,
+        // otherwise "Rostro detectado" flickers on and off and the capture button seems to disappear.
+        const goneForMs = trackRef.current ? performance.now() - trackRef.current.seenAt : Infinity;
+        if (goneForMs > FACE_LOST_MS) {
+          bboxRef.current = null;
+          if (trackRef.current) {
+            trackRef.current = null;
+            faceSinceRef.current = null;
+            onFaceLostRef.current?.();
+          }
+          setFaceReady(false);
+          setStatus("Buscando rostro...");
         }
-        setFaceReady(false);
-        setStatus("Buscando rostro...");
       }
 
       rafRef.current = requestAnimationFrame(loop);
@@ -303,7 +207,7 @@ export default function FaceCapture({ onCapture, busy, buttonLabel = "Capturar f
     const bbox = bboxRef.current;
     if (!video || !bbox) return;
 
-    const crops = captureCrops(video, bbox);
+    const crops = captureCrops(video, video.videoWidth, video.videoHeight, bbox);
     onCapture(crops.face, crops.carnet);
   }, [onCapture]);
 
@@ -353,7 +257,4 @@ function cameraErrorMessage(error: unknown): string {
   return "No se pudo iniciar la cámara o el modelo de detección.";
 }
 
-/** Starts loading the detector (WASM + model) so opening the camera later is instant. */
-export function preloadFaceDetector(): Promise<unknown> {
-  return getLandmarker();
-}
+export { preloadFaceDetector } from "./faceCrop";

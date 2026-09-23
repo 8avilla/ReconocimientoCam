@@ -2,20 +2,33 @@
 
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
-import { Camera, CircleCheck, Paperclip, SquareUser, Trash2 } from "lucide-react";
+import { Camera, Paperclip, ScanFace, SquareUser, Trash2 } from "lucide-react";
 import { Button, ConfirmDialog, Modal, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { fileToResizedDataUrl } from "@/lib/client/image";
 import type { PlayerPhotoDTO } from "@/types/api";
 
-// getUserMedia only runs in the browser.
+// getUserMedia and the face detector only run in the browser.
 const SimpleCameraCapture = dynamic(() => import("@/components/camera/SimpleCameraCapture").then((mod) => mod.SimpleCameraCapture), { ssr: false });
 
 const MAX_PHOTOS = 8;
 
+/** Downloads an already-uploaded photo and re-encodes it as a data URL, to run detection on it locally. */
+async function urlToDataUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 /**
  * General photos of the player (identification, posters): no face detection, no embedding, and
- * kept apart from the biometric photo/consent above.
+ * kept apart from the biometric photo/consent above. Tap a thumbnail to see it larger; that's
+ * where the "use as ID photo" / "use for face recognition" actions live.
  */
 export function PlayerPhotoGallery({
   playerId,
@@ -35,20 +48,58 @@ export function PlayerPhotoGallery({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [viewing, setViewing] = useState<PlayerPhotoDTO | null>(null);
   const [toDelete, setToDelete] = useState<PlayerPhotoDTO | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [settingCarnet, setSettingCarnet] = useState<string | null>(null);
+  const [settingCarnet, setSettingCarnet] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [pendingBiometric, setPendingBiometric] = useState<{ photo: PlayerPhotoDTO; crops: { face: string; carnet: string } } | null>(null);
+  const [savingBiometric, setSavingBiometric] = useState(false);
 
-  async function setAsCarnet(photo: PlayerPhotoDTO) {
-    setSettingCarnet(photo._id);
+  async function detectBiometricFromPhoto(photo: PlayerPhotoDTO) {
+    setDetecting(true);
     try {
-      await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });
-      toast.success("Foto de carnet actualizada");
+      const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
+      const crops = await detectFaceCropsInImage(await urlToDataUrl(photo.url));
+      if (!crops) {
+        toast.error("No se detectó un rostro claro en esta foto. Prueba con otra o usa la cámara.");
+        return;
+      }
+      setViewing(null);
+      setPendingBiometric({ photo, crops });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setDetecting(false);
+    }
+  }
+
+  async function confirmBiometric() {
+    if (!pendingBiometric) return;
+    setSavingBiometric(true);
+    try {
+      await http(`/players/${playerId}/face`, { json: { image: pendingBiometric.crops.face, carnetImage: pendingBiometric.crops.carnet } });
+      toast.success("Rostro registrado a partir de la foto");
+      setPendingBiometric(null);
       onChanged();
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
-      setSettingCarnet(null);
+      setSavingBiometric(false);
+    }
+  }
+
+  async function setAsCarnet(photo: PlayerPhotoDTO) {
+    setSettingCarnet(true);
+    try {
+      await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });
+      toast.success("Foto de carnet actualizada");
+      setViewing(null);
+      onChanged();
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSettingCarnet(false);
     }
   }
 
@@ -94,10 +145,12 @@ export function PlayerPhotoGallery({
     }
   }
 
+  const viewingIsCarnet = Boolean(viewing) && Boolean(currentPhotoUrl) && viewing?.url === currentPhotoUrl;
+
   return (
     <section className="card stack">
       <div className="row-between">
-        <h3>Fotos</h3>
+        <h3>Galería</h3>
         {canManage && photos.length < MAX_PHOTOS && (
           <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
             <Button variant="ghost" size="small" icon={<Camera size={16} />} loading={uploading} onClick={() => setCameraOpen(true)}>
@@ -111,7 +164,7 @@ export function PlayerPhotoGallery({
       </div>
       <p className="text-secondary text-small">
         Fotos generales del jugador, para identificarlo o para afiches. No se usan para verificar su identidad en los partidos.
-        {canManage && photos.length > 0 && " Toca el ícono de persona en una foto para usarla como foto de carnet."}
+        {photos.length > 0 && " Toca una foto para verla más grande."}
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
       <Modal open={cameraOpen} title="Tomar foto" onClose={() => setCameraOpen(false)}>
@@ -124,42 +177,62 @@ export function PlayerPhotoGallery({
           {photos.map((photo) => {
             const isCarnet = Boolean(currentPhotoUrl) && photo.url === currentPhotoUrl;
             return (
-              <div key={photo._id} style={{ position: "relative" }}>
+              <button
+                key={photo._id}
+                type="button"
+                aria-label="Ver foto ampliada"
+                style={{ padding: 0, border: 0, background: "none", cursor: "pointer" }}
+                onClick={() => setViewing(photo)}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt="Foto del jugador" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "var(--radius-md)", outline: isCarnet ? "2px solid var(--color-primary)" : undefined }} />
-                {canManage && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Eliminar foto"
-                    style={{ position: "absolute", top: -8, right: -8, width: 28, height: 28, background: "var(--color-surface)", border: "1px solid var(--color-border)" }}
-                    onClick={() => setToDelete(photo)}
-                  >
-                    <Trash2 size={14} color="var(--color-error)" />
-                  </button>
-                )}
-                {canManage && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={isCarnet ? "Ya es la foto del carnet" : "Usar como foto del carnet"}
-                    disabled={isCarnet || settingCarnet === photo._id}
-                    title={isCarnet ? "Foto de carnet actual" : "Usar como foto del carnet"}
-                    style={{
-                      position: "absolute", bottom: -8, left: -8, width: 28, height: 28,
-                      background: isCarnet ? "var(--color-primary)" : "var(--color-surface)",
-                      border: "1px solid var(--color-border)",
-                    }}
-                    onClick={() => setAsCarnet(photo)}
-                  >
-                    {isCarnet ? <CircleCheck size={14} color="#fff" /> : <SquareUser size={14} />}
-                  </button>
-                )}
-              </div>
+                <img
+                  src={photo.url}
+                  alt="Foto del jugador"
+                  style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "var(--radius-md)", outline: isCarnet ? "2px solid var(--color-primary)" : undefined }}
+                />
+              </button>
             );
           })}
         </div>
       )}
+
+      <Modal open={Boolean(viewing)} title="Foto" onClose={() => setViewing(null)}>
+        {viewing && (
+          <div className="stack" style={{ alignItems: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={viewing.url} alt="Foto del jugador ampliada" style={{ width: "100%", maxWidth: 360, borderRadius: "var(--radius-lg)" }} />
+            {canManage && (
+              <div className="stack-sm" style={{ width: "100%" }}>
+                <Button
+                  variant="secondary"
+                  icon={<SquareUser size={18} />}
+                  disabled={viewingIsCarnet || settingCarnet}
+                  loading={settingCarnet}
+                  onClick={() => setAsCarnet(viewing)}
+                >
+                  {viewingIsCarnet ? "Ya es la foto del carnet" : "Usar como foto del carnet"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  icon={<ScanFace size={18} />}
+                  loading={detecting}
+                  onClick={() => detectBiometricFromPhoto(viewing)}
+                >
+                  Usar para reconocimiento facial
+                </Button>
+                <Button
+                  variant="ghost"
+                  icon={<Trash2 size={18} color="var(--color-error)" />}
+                  onClick={() => { setToDelete(viewing); setViewing(null); }}
+                >
+                  Eliminar foto
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={Boolean(toDelete)}
         title="Eliminar foto"
@@ -168,6 +241,15 @@ export function PlayerPhotoGallery({
         loading={deleting}
         onConfirm={confirmDelete}
         onClose={() => setToDelete(null)}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingBiometric)}
+        title="Registrar rostro desde esta foto"
+        message="Se detectó un rostro en la foto. Al confirmar, reemplaza el rostro y la foto de referencia usados para verificar la identidad del jugador en los partidos."
+        confirmLabel="Usar esta foto"
+        loading={savingBiometric}
+        onConfirm={confirmBiometric}
+        onClose={() => setPendingBiometric(null)}
       />
     </section>
   );

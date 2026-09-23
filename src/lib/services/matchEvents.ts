@@ -65,8 +65,10 @@ export interface CreateEventInput {
 
 export async function createEvent(actor: Actor, matchId: string, input: CreateEventInput) {
   const { match, championship } = await loadMatch(matchId, actor);
-  if (match.status !== "live" && match.status !== "finished") {
-    throw conflict("El partido no está en juego", "match_not_live");
+  // New events are allowed in any state except the two "closed" ones: a W.O. never had real play,
+  // and a finished match is done (past events can still be voided to fix a mistake).
+  if (match.status === "walkover" || match.status === "finished") {
+    throw conflict("El partido está cerrado; no se pueden registrar eventos nuevos", "match_closed");
   }
   if (match.homeTeamId.toString() !== input.teamId && match.awayTeamId.toString() !== input.teamId) {
     throw badRequest("El equipo no participa en este partido");

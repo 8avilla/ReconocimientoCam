@@ -50,9 +50,13 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   if (!match.data) return <Loading />;
   const current = match.data;
 
-  const inPlay = current.status === "live" || current.status === "finished";
+  // New events (goals, cards, substitutions) can be added in any state except the two "closed"
+  // ones: a W.O. never had real play, and a finished match is done. Past events can still be voided
+  // to fix a mistake while the match is live or just after finishing (see `canVoid` below).
+  const canRegisterEvents = current.status !== "walkover" && current.status !== "finished";
+  const canVoidEvents = current.status === "live" || current.status === "finished";
   const tabs = operate ? TABS : TABS.filter((item) => item.id !== "attendance");
-  const requested = tab ?? (inPlay ? "events" : operate ? "attendance" : "summary");
+  const requested = tab ?? (canRegisterEvents || canVoidEvents ? "events" : operate ? "attendance" : "summary");
   const activeTab = tabs.some((item) => item.id === requested) ? requested : tabs[0].id;
 
   const teams: [MatchDTO["homeTeamId"], MatchDTO["awayTeamId"]] = [current.homeTeamId, current.awayTeamId];
@@ -135,11 +139,11 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
 
       {activeTab === "events" && (
         <div className="stack" style={{ gap: "var(--space-2xl)" }}>
-          {operate && inPlay && (
+          {operate && canRegisterEvents && (
             <MatchRoster match={current} events={eventList} players={presentPlayers} sentOff={sentOff} onChanged={reloadAll} onOther={openComposer} onGoToAttendance={() => setTab("attendance")} />
           )}
-          {operate && inPlay && current.status === "finished" && (
-            <p className="text-secondary text-small">El partido finalizó: registrar o anular eventos corrige el marcador y la disciplina.</p>
+          {operate && current.status === "finished" && (
+            <p className="text-secondary text-small">El partido finalizó: ya no se pueden registrar eventos nuevos, pero puedes anular uno existente si corrige el marcador o la disciplina.</p>
           )}
 
           <section aria-label="Cronología">
@@ -150,7 +154,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
               ) : !events.data ? (
                 <Loading />
               ) : (
-                <EventTimeline matchId={id} events={eventList} teamNames={teamNames} shirtByPlayer={shirtByPlayer} canVoid={inPlay && operate} onChanged={reloadAll} />
+                <EventTimeline matchId={id} events={eventList} teamNames={teamNames} shirtByPlayer={shirtByPlayer} canVoid={canVoidEvents && operate} onChanged={reloadAll} />
               )}
             </div>
           </section>

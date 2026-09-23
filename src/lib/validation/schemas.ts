@@ -143,8 +143,6 @@ export const faceEnrollSchema = z.object({
   image: imageDataUrlSchema,
   /** Looser crop of the same shot, for the ID card/avatar; older clients may omit it. */
   carnetImage: imageDataUrlSchema.optional(),
-  /** Explicit biometric consent; required the first time a face is enrolled. */
-  consent: z.boolean().optional(),
 });
 
 /** A general photo (identification, posters); unrelated to the biometric face above. */

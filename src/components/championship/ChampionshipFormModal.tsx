@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertCircle } from "lucide-react";
-import { Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
+import { AlertCircle, ImagePlus } from "lucide-react";
+import { Avatar, Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { CHAMPIONSHIP_FORMATS, CHAMPIONSHIP_STATUSES } from "@/lib/constants";
 import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
+import { fileToResizedDataUrl } from "@/lib/client/image";
 import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import type { ChampionshipDTO } from "@/types/api";
 
@@ -87,10 +88,11 @@ export function ChampionshipFormModal({ open, championship, onClose, onSaved }: 
 function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
   const [values, setValues] = useState<FormValues>(() => toValues(championship));
+  const [logo, setLogo] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-  const dirty = JSON.stringify(values) !== JSON.stringify(toValues(championship));
+  const dirty = JSON.stringify(values) !== JSON.stringify(toValues(championship)) || logo !== null;
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   const bind = (field: keyof FormValues) => ({
@@ -98,6 +100,16 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
     onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setValues((current) => ({ ...current, [field]: event.target.value })),
   });
+
+  async function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setLogo(await fileToResizedDataUrl(file, 512));
+    } catch (error) {
+      setFormError(errorMessage(error));
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -140,9 +152,18 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
 
     setSaving(true);
     try {
-      const saved = isEdit
+      let saved = isEdit
         ? await http<ChampionshipDTO>(`/championships/${championship!._id}`, { method: "PATCH", json: payload })
         : await http<ChampionshipDTO>("/championships", { json: payload });
+
+      if (logo) {
+        try {
+          const { logoUrl } = await http<{ logoUrl: string }>(`/championships/${saved._id}/logo`, { json: { image: logo } });
+          saved = { ...saved, logoUrl };
+        } catch (error) {
+          toast.error(`El campeonato se guardó, pero no se pudo subir el logo: ${errorMessage(error)}`);
+        }
+      }
       toast.success(isEdit ? "Campeonato actualizado" : "Campeonato creado correctamente");
       onSaved(saved);
     } catch (error) {
@@ -158,6 +179,15 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
       {formError && (
         <div className="alert error" role="alert"><AlertCircle size={18} /> {formError}</div>
       )}
+
+      <div className="row">
+        <Avatar src={logo ?? championship?.logoUrl} name={values.name || "Campeonato"} size={72} square />
+        <label className="btn secondary" style={{ cursor: "pointer" }}>
+          <ImagePlus size={18} aria-hidden /> {championship?.logoUrl || logo ? "Cambiar imagen" : "Subir imagen"}
+          <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: "none" }} />
+        </label>
+      </div>
+
       <div className="form-grid two">
         <Input label="Nombre" required error={errors.name} {...bind("name")} />
         <Input label="Temporada" required error={errors.season} {...bind("season")} />

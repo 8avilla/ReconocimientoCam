@@ -123,7 +123,7 @@ export default function PlayerProfilePage() {
             </div>
             <p className="text-secondary">
               {current.hasFace
-                ? `Consentimiento registrado el ${formatDate(current.biometricConsentAt)}.`
+                ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}.`
                 : "Registra el rostro del jugador para poder verificar su identidad en los partidos."}
             </p>
             {can("player.manage") && <div className="row-wrap">
@@ -143,7 +143,7 @@ export default function PlayerProfilePage() {
       </div>
 
       <PlayerFormModal open={dialog === "edit"} player={current} onClose={() => setDialog(null)} onSaved={closeAndReload} />
-      <FaceEnrollModal open={dialog === "face"} playerId={id} hasConsent={Boolean(current.biometricConsentAt)} onClose={() => setDialog(null)} onSaved={closeAndReload} />
+      <FaceEnrollModal open={dialog === "face"} playerId={id} onClose={() => setDialog(null)} onSaved={closeAndReload} />
       {dialog === "registration" && liveRegistration && (
         <RegistrationFormModal
           open
@@ -157,7 +157,7 @@ export default function PlayerProfilePage() {
       <ConfirmDialog
         open={dialog === "removeFace"}
         title="Eliminar datos biométricos"
-        message="Se borrarán la foto, el rostro registrado y el consentimiento del jugador. Esta acción no se puede deshacer."
+        message="Se borrarán la foto y el rostro registrado del jugador. Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
         loading={busy}
         onConfirm={() => run(() => http(`/players/${id}/face`, { method: "DELETE" }), "Datos biométricos eliminados", closeAndReload)}

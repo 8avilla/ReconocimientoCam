@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Camera, Pencil, ShieldOff, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, Pencil, ShieldAlert, ShieldOff, Trash2 } from "lucide-react";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
@@ -13,10 +13,17 @@ import { Avatar, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToas
 import { errorMessage, http } from "@/lib/client/http";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
-import { formatDate } from "@/lib/labels";
-import type { PlayerCardDTO, PlayerDetailDTO } from "@/types/api";
+import { useStoredState } from "@/lib/client/useStoredState";
+import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
+import type { Paginated, PlayerCardDTO, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
 
 type Dialog = "edit" | "face" | "registration" | "removeFace" | "delete" | null;
+type Tab = "perfil" | "rostro" | "inscripciones";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "perfil", label: "Perfil" },
+  { id: "rostro", label: "Rostro y fotos" },
+  { id: "inscripciones", label: "Inscripciones" },
+];
 
 export default function PlayerProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -24,14 +31,24 @@ export default function PlayerProfilePage() {
   const toast = useToast();
   const player = useFetch<PlayerDetailDTO>(`/players/${id}`);
   const card = useFetch<PlayerCardDTO>(`/players/${id}/card`);
+  const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?playerId=${id}&status=active&limit=10`);
   const { can } = useRole();
+  const [tab, setTab] = useStoredState<Tab>("super-torneos:player:tab", "perfil", (value) => TABS.some((item) => item.id === value));
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [editingRegistrationId, setEditingRegistrationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (player.error) return <ErrorState message={player.error.message} onRetry={player.reload} />;
   if (!player.data) return <Loading />;
   const current = player.data;
   const liveRegistration = current.registrations.find((registration) => registration.status !== "inactive");
+  const editingRegistration = current.registrations.find((registration) => registration._id === editingRegistrationId);
+  const missingData = !current.documentId || !current.birthDate;
+  const headerDescription = liveRegistration
+    ? [liveRegistration.teamId?.name ?? "Sin equipo", liveRegistration.championshipId && `${liveRegistration.championshipId.name} ${liveRegistration.championshipId.season}`]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
 
   const reloadAll = () => {
     player.reload();
@@ -39,6 +56,7 @@ export default function PlayerProfilePage() {
   };
   const closeAndReload = () => {
     setDialog(null);
+    setEditingRegistrationId(null);
     reloadAll();
   };
 
@@ -60,6 +78,7 @@ export default function PlayerProfilePage() {
     <>
       <PageHeader
         title={current.fullName}
+        description={headerDescription}
         breadcrumb={[{ label: "Jugadores", href: "/players" }, { label: current.fullName }]}
         actions={can("player.manage") && (
           <ActionMenu
@@ -72,60 +91,73 @@ export default function PlayerProfilePage() {
         )}
       />
 
-      <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start", gap: "var(--space-2xl)" }}>
-        <section aria-label="Carnet digital">
-          {card.error ? (
-            <ErrorState message={card.error.message} onRetry={card.reload} />
-          ) : card.data ? (
-            <PlayerIdCard card={card.data} />
-          ) : (
-            <Loading />
-          )}
-        </section>
+      {suspensions.data && suspensions.data.data.length > 0 && (
+        <div className="stack-sm" style={{ marginBottom: "var(--space-lg)" }}>
+          {suspensions.data.data.map((suspension) => (
+            <div key={suspension._id} className="alert error" role="alert">
+              <ShieldAlert size={18} />
+              <span className="grow">
+                Suspendido en {suspension.teamId.name} — {SUSPENSION_REASON_LABEL[suspension.reason]}, cumplió {suspension.matchesServed} de {suspension.matchesToServe}{" "}
+                {suspension.matchesToServe === 1 ? "partido" : "partidos"}.
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
-        <div className="stack">
+      <div className="tabs-line" role="tablist" aria-label="Secciones del jugador">
+        {TABS.map((item) => (
+          <button key={item.id} role="tab" aria-selected={tab === item.id} className={`tab-line${tab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "perfil" && (
+        <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start", gap: "var(--space-2xl)" }}>
+          <section aria-label="Carnet digital">
+            {card.error ? (
+              <ErrorState message={card.error.message} onRetry={card.reload} />
+            ) : card.data ? (
+              <PlayerIdCard card={card.data} />
+            ) : (
+              <Loading />
+            )}
+          </section>
+
           <section className="card stack">
             <h3>Datos personales</h3>
+            {missingData && can("player.manage") && (
+              <div className="alert warning" role="note">
+                <AlertCircle size={18} />
+                <span className="grow">Faltan datos: {[!current.documentId && "documento", !current.birthDate && "fecha de nacimiento"].filter(Boolean).join(", ")}.</span>
+                <button className="text-strong" onClick={() => setDialog("edit")}>Completar</button>
+              </div>
+            )}
             <dl className="stack-sm">
               <Row label="Documento" value={current.documentId || "—"} />
               <Row label="Fecha de nacimiento" value={formatDate(current.birthDate)} />
               <Row label="Identificador" value={current.publicId} />
             </dl>
           </section>
+        </div>
+      )}
 
-          <section className="card stack">
-            <div className="row-between">
-              <h3>Inscripciones</h3>
-              {liveRegistration && can("roster.manage") && <Button variant="ghost" size="small" onClick={() => setDialog("registration")}>Editar</Button>}
-            </div>
-            {current.registrations.length === 0 ? (
-              <p className="text-secondary">El jugador no está inscrito en ningún equipo.</p>
-            ) : (
-              current.registrations.map((registration) => (
-                <div key={registration._id} className="row">
-                  <Avatar src={registration.teamId?.shieldUrl} name={registration.teamId?.name ?? "Equipo"} size={40} square />
-                  <div className="grow">
-                    <div className="text-strong">{registration.teamId?.name}{registration.shirtNumber != null && ` · #${registration.shirtNumber}`}</div>
-                    <div className="text-secondary text-small">
-                      {registration.position ?? "Sin posición"} · {registration.championshipId?.name} {registration.championshipId?.season}
-                    </div>
-                  </div>
-                  <RegistrationBadge status={registration.status} />
-                </div>
-              ))
-            )}
-          </section>
-
+      {tab === "rostro" && (
+        <div className="stack" style={{ gap: "var(--space-2xl)" }}>
           <section className="card stack">
             <div className="row-between">
               <h3>Verificación facial</h3>
               <FaceBadge hasFace={current.hasFace} />
             </div>
-            <p className="text-secondary">
-              {current.hasFace
-                ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}.`
-                : "Registra el rostro del jugador para poder verificar su identidad en los partidos."}
-            </p>
+            <div className="row">
+              {current.hasFace && <Avatar src={current.facePhotoUrl || current.photoUrl} name={current.fullName} size={56} />}
+              <p className="text-secondary grow">
+                {current.hasFace
+                  ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}.`
+                  : "Registra el rostro del jugador para poder verificar su identidad en los partidos."}
+              </p>
+            </div>
             {can("player.manage") && <div className="row-wrap">
               <Button icon={<Camera size={18} />} onClick={() => setDialog("face")}>
                 {current.hasFace ? "Actualizar rostro" : "Registrar rostro"}
@@ -140,17 +172,42 @@ export default function PlayerProfilePage() {
 
           <PlayerPhotoGallery playerId={id} photos={current.photos ?? []} currentPhotoUrl={current.photoUrl} canManage={can("player.manage")} onChanged={reloadAll} />
         </div>
-      </div>
+      )}
+
+      {tab === "inscripciones" && (
+        <section className="card stack">
+          <h3>Inscripciones</h3>
+          {current.registrations.length === 0 ? (
+            <p className="text-secondary">El jugador no está inscrito en ningún equipo.</p>
+          ) : (
+            current.registrations.map((registration) => (
+              <div key={registration._id} className="row">
+                <Avatar src={registration.teamId?.shieldUrl} name={registration.teamId?.name ?? "Equipo"} size={40} square />
+                <div className="grow">
+                  <div className="text-strong">{registration.teamId?.name}{registration.shirtNumber != null && ` · #${registration.shirtNumber}`}</div>
+                  <div className="text-secondary text-small">
+                    {registration.position ?? "Sin posición"} · {registration.championshipId?.name} {registration.championshipId?.season}
+                  </div>
+                </div>
+                <RegistrationBadge status={registration.status} />
+                {registration.status !== "inactive" && can("roster.manage") && (
+                  <Button variant="ghost" size="small" onClick={() => { setEditingRegistrationId(registration._id); setDialog("registration"); }}>Editar</Button>
+                )}
+              </div>
+            ))
+          )}
+        </section>
+      )}
 
       <PlayerFormModal open={dialog === "edit"} player={current} onClose={() => setDialog(null)} onSaved={closeAndReload} />
       <FaceEnrollModal open={dialog === "face"} playerId={id} onClose={() => setDialog(null)} onSaved={closeAndReload} />
-      {dialog === "registration" && liveRegistration && (
+      {dialog === "registration" && editingRegistration && (
         <RegistrationFormModal
           open
-          registrationId={liveRegistration._id}
+          registrationId={editingRegistration._id}
           playerName={current.fullName}
-          initial={{ shirtNumber: liveRegistration.shirtNumber, position: liveRegistration.position, status: liveRegistration.status }}
-          onClose={() => setDialog(null)}
+          initial={{ shirtNumber: editingRegistration.shirtNumber, position: editingRegistration.position, status: editingRegistration.status }}
+          onClose={() => { setDialog(null); setEditingRegistrationId(null); }}
           onSaved={closeAndReload}
         />
       )}

@@ -7,6 +7,7 @@ import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCard } from "@/components/player/PlayerIdCard";
+import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
 import { Avatar, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast, ActionMenu } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
@@ -136,6 +137,8 @@ export default function PlayerProfilePage() {
               )}
             </div>}
           </section>
+
+          <PlayerPhotoGallery playerId={id} photos={current.photos ?? []} currentPhotoUrl={current.photoUrl} canManage={can("player.manage")} onChanged={reloadAll} />
         </div>
       </div>
 

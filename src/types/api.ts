@@ -75,6 +75,12 @@ export interface RegistrationDTO {
   status: RegistrationStatus;
 }
 
+export interface PlayerPhotoDTO {
+  _id: string;
+  url: string;
+  uploadedAt: string;
+}
+
 export interface PlayerDTO {
   _id: string;
   publicId: string;
@@ -86,6 +92,8 @@ export interface PlayerDTO {
   facePhotoUrl?: string;
   biometricConsentAt?: string;
   hasFace: boolean;
+  /** General photos (identification, posters); unrelated to the biometric face above. */
+  photos?: PlayerPhotoDTO[];
   registration?: (RegistrationDTO & { team: Pick<TeamDTO, "_id" | "name" | "shieldUrl"> | null }) | null;
 }
 

@@ -28,9 +28,26 @@ export interface IPlayer {
   /** Pipeline version that produced faceEmbedding; missing means the legacy pipeline (1). */
   embeddingVersion?: number;
   biometricConsentAt?: Date;
+  /**
+   * General photos (for a poster, or so staff can recognize the player in person): not used for
+   * recognition and not covered by the biometric consent above.
+   */
+  photos: IPlayerPhoto[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface IPlayerPhoto {
+  _id: Types.ObjectId;
+  url: string;
+  blobName: string;
+  uploadedAt: Date;
+}
+
+const PlayerPhotoSchema = new Schema<IPlayerPhoto>(
+  { url: { type: String, required: true }, blobName: { type: String, required: true }, uploadedAt: { type: Date, default: Date.now } },
+  { _id: true }
+);
 
 const PlayerSchema = new Schema<IPlayer>(
   {
@@ -46,6 +63,7 @@ const PlayerSchema = new Schema<IPlayer>(
     faceEmbedding: { type: [Number], default: undefined, select: false },
     embeddingVersion: { type: Number },
     biometricConsentAt: { type: Date },
+    photos: { type: [PlayerPhotoSchema], default: [] },
   },
   { timestamps: true }
 );

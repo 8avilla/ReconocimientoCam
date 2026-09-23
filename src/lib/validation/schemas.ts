@@ -147,6 +147,9 @@ export const faceEnrollSchema = z.object({
   consent: z.boolean().optional(),
 });
 
+/** A general photo (identification, posters); unrelated to the biometric face above. */
+export const playerPhotoCreateSchema = z.object({ image: imageDataUrlSchema });
+
 export const playerCardQuery = z.object({ championshipId: objectIdSchema.optional() });
 
 // ---------- Registrations ----------

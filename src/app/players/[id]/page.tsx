@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, Camera, Pencil, ShieldAlert, ShieldOff, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, Pencil, Printer, ShieldAlert, ShieldOff, Trash2 } from "lucide-react";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCard } from "@/components/player/PlayerIdCard";
+import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
 import { Avatar, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast, ActionMenu } from "@/components/ui";
@@ -115,11 +116,17 @@ export default function PlayerProfilePage() {
 
       {tab === "perfil" && (
         <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start", gap: "var(--space-2xl)" }}>
-          <section aria-label="Carnet digital">
+          <section aria-label="Carnet digital" className="stack">
             {card.error ? (
               <ErrorState message={card.error.message} onRetry={card.reload} />
             ) : card.data ? (
-              <PlayerIdCard card={card.data} />
+              <>
+                <PlayerIdCard card={card.data} />
+                <Button variant="secondary" icon={<Printer size={18} />} onClick={() => window.print()} style={{ alignSelf: "center" }}>
+                  Imprimir carnet
+                </Button>
+                <PlayerIdCardPrint card={card.data} />
+              </>
             ) : (
               <Loading />
             )}

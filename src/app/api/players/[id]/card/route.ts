@@ -20,12 +20,14 @@ export const GET = route<Params>(async (request, { id }) => {
   })
     .sort({ createdAt: -1 })
     .populate<{ teamId: ITeam }>({ path: "teamId", select: "name shieldUrl primaryColor secondaryColor" })
-    .populate<{ championshipId: IChampionship }>({ path: "championshipId", select: "name season" })
+    .populate<{ championshipId: IChampionship }>({ path: "championshipId", select: "name season logoUrl" })
     .lean();
 
   return json({
     publicId: player.publicId,
     fullName: player.fullName,
+    documentId: player.documentId,
+    birthDate: player.birthDate,
     photoUrl: player.photoUrl,
     team: registration?.teamId ?? null,
     championship: registration?.championshipId ?? null,

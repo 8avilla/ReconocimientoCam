@@ -114,9 +114,11 @@ export interface RosterEntryDTO extends Omit<RegistrationDTO, "playerId"> {
 export interface PlayerCardDTO {
   publicId: string;
   fullName: string;
+  documentId?: string;
+  birthDate?: string;
   photoUrl: string;
   team: Pick<TeamDTO, "_id" | "name" | "shieldUrl" | "primaryColor" | "secondaryColor"> | null;
-  championship: Pick<ChampionshipDTO, "_id" | "name" | "season"> | null;
+  championship: Pick<ChampionshipDTO, "_id" | "name" | "season" | "logoUrl"> | null;
   shirtNumber: number | null;
   position: Position | null;
   status: RegistrationStatus;

@@ -24,7 +24,7 @@ export function ChampionshipSwitcher({ open, section, onClose }: { open: boolean
     <button
       key={item._id}
       className={`switch-row${current?._id === item._id ? " active" : ""}`}
-      onClick={() => goTo(item._id)}
+      onClick={() => goTo(item.slug || item._id)}
     >
       <ChampionshipTile logoUrl={item.logoUrl} size={36} />
       <span className="grow" style={{ minWidth: 0, textAlign: "left" }}>

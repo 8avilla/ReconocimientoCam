@@ -1,4 +1,6 @@
 import type { NextRequest } from "next/server";
+import type { Permission } from "@/lib/roles";
+import { ALL_PERMISSIONS } from "@/lib/roles";
 import { currentActor } from "./requestContext";
 
 /**
@@ -15,9 +17,15 @@ export interface Actor {
   role: ActorRole;
   /** Real admin flag from the session (ADMIN_EMAILS), independent of `role`'s label. */
   isAdmin: boolean;
+  /**
+   * This user's assigned role's permissions (all of them if `isAdmin`, empty without a role). Ownership
+   * checks (`requireOrganizer` and friends) still gate *which* championship/entity; this only narrows
+   * *what* a non-admin organizer may do within it — see `requirePermission` in `src/lib/permissions.ts`.
+   */
+  permissions: Permission[];
 }
 
-export const SYSTEM_ACTOR: Actor = { userId: null, name: "Sistema", role: "admin", isAdmin: true };
+export const SYSTEM_ACTOR: Actor = { userId: null, name: "Sistema", role: "admin", isAdmin: true, permissions: [...ALL_PERMISSIONS] };
 
 /**
  * Who is making the current request. `route()` (in `src/lib/api.ts`) resolves this once per request from
@@ -26,5 +34,5 @@ export const SYSTEM_ACTOR: Actor = { userId: null, name: "Sistema", role: "admin
  */
 export function getActor(request: NextRequest): Actor {
   void request;
-  return currentActor() ?? { userId: null, name: "Visitante", role: "visitor", isAdmin: false };
+  return currentActor() ?? { userId: null, name: "Visitante", role: "visitor", isAdmin: false, permissions: [] };
 }

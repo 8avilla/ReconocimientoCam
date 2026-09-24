@@ -42,6 +42,9 @@ export interface ChampionshipRules {
   periodLabels: string[];
 }
 
+export const CHAMPIONSHIP_VISIBILITIES = ["public", "private"] as const;
+export type ChampionshipVisibility = (typeof CHAMPIONSHIP_VISIBILITIES)[number];
+
 export interface IChampionship {
   _id: Types.ObjectId;
   name: string;
@@ -51,6 +54,10 @@ export interface IChampionship {
   startDate?: Date;
   endDate?: Date;
   rules: ChampionshipRules;
+  /** Friendly, URL-safe alternative to the id (e.g. "/c/ligamaster"); optional, unique when set. */
+  slug?: string;
+  /** "public" shows up in the championships list for everyone; "private" only opens via its direct link. */
+  visibility: ChampionshipVisibility;
   /** Logo/badge shown on its cards and pages; empty until the organizer uploads one. */
   logoUrl: string;
   logoBlobName: string;
@@ -116,6 +123,8 @@ const ChampionshipSchema = new Schema<IChampionship>(
     startDate: { type: Date },
     endDate: { type: Date },
     rules: { type: RulesSchema, default: () => ({}) },
+    slug: { type: String, trim: true, lowercase: true, unique: true, sparse: true },
+    visibility: { type: String, enum: CHAMPIONSHIP_VISIBILITIES, default: "public" },
     logoUrl: { type: String, default: "" },
     logoBlobName: { type: String, default: "" },
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User" },

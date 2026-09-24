@@ -206,6 +206,7 @@
 .alert.error { background: var(--color-error-bg); color: #991b1b; }
 .alert.warning { background: var(--color-warning-bg); color: #92400e; }
 .alert.info { background: var(--color-info-bg); color: #1d4ed8; }
+.alert.success { background: var(--color-success-bg); color: #166534; }
 
 /* ---------- Tables (desktop) ---------- */
 .table-wrap { overflow-x: auto; }

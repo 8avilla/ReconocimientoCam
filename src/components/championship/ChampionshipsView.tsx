@@ -57,7 +57,7 @@ export function ChampionshipsView() {
     return (
       <div key={championship._id} className="champ-row">
         {/* Tapping a championship always does the same for everyone: go into it. */}
-        <Link href={championshipPath(championship._id)} className="row grow" style={{ minWidth: 0 }}>
+        <Link href={championshipPath(championship.slug || championship._id)} className="row grow" style={{ minWidth: 0 }}>
           <ChampionshipTile logoUrl={championship.logoUrl} size={44} />
           <div className="grow" style={{ minWidth: 0 }}>
             <div className="champ-caption">Temporada {championship.season} · {status.label}</div>
@@ -80,7 +80,7 @@ export function ChampionshipsView() {
             label={`Más acciones de ${championship.name}`}
             actions={[
               ...(manageThis ? [
-                { label: "Gestionar", icon: <Layers size={18} />, href: championshipPath(championship._id, "gestionar") },
+                { label: "Gestionar", icon: <Layers size={18} />, href: championshipPath(championship.slug || championship._id, "gestionar") },
                 { label: "Editar", icon: <Pencil size={18} />, onClick: () => openForm(championship) },
               ] : []),
               ...(user?.isAdmin ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
@@ -144,7 +144,7 @@ export function ChampionshipsView() {
         onClose={() => setFormOpen(false)}
         onSaved={(saved) => {
           setFormOpen(false);
-          if (!editing) router.push(championshipPath(saved._id, "gestionar"));
+          if (!editing) router.push(championshipPath(saved.slug || saved._id, "gestionar"));
           reload();
         }}
       />

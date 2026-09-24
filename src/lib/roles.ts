@@ -16,22 +16,37 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   admin: "Gestiona la app y todo lo demás: además de lo del organizador, elimina campeonatos y consulta el registro de actividad.",
 };
 
-export type Permission =
-  | "championship.manage"
-  | "championship.delete"
-  | "match.manage"
-  | "match.operate"
-  | "team.manage"
-  | "roster.manage"
-  | "player.manage"
-  | "sanction.manage"
-  | "app.manage";
+/** Every permission that exists — the single source of truth, so it doubles as a runtime list (the roles
+ * CRUD's checkboxes, zod enum validation) and, via `(typeof ALL_PERMISSIONS)[number]`, the `Permission` type. */
+export const ALL_PERMISSIONS = [
+  "championship.manage",
+  "championship.delete",
+  "match.manage",
+  "match.operate",
+  "team.manage",
+  "roster.manage",
+  "player.manage",
+  "sanction.manage",
+  "app.manage",
+] as const;
+export type Permission = (typeof ALL_PERMISSIONS)[number];
 
-const ORGANIZER: readonly Permission[] = ["championship.manage", "match.manage", "match.operate", "team.manage", "roster.manage", "player.manage", "sanction.manage"];
+/**
+ * For now the app only really needs two roles: a system-wide one and one for whoever runs a championship.
+ * Both are still plain rows in the Roles CRUD (an admin can rename them, change their permissions, or add
+ * more roles later) — these names are just seeded once (see `src/lib/services/roles.ts`) so every account
+ * starts with a sensible one, and shared here (not in that server-only file) so client code — the "new
+ * user" form's default selection — can reference the name without importing a Mongoose model.
+ */
+export const SYSTEM_ROLE_NAME = "Sistema";
+export const CHAMPIONSHIP_ADMIN_ROLE_NAME = "Administrador de campeonato";
+
+/** The permissions a championship organizer has — also what the seeded "Administrador de campeonato" role grants (see `src/lib/services/roles.ts`). */
+export const ORGANIZER_PERMISSIONS: readonly Permission[] = ["championship.manage", "match.manage", "match.operate", "team.manage", "roster.manage", "player.manage", "sanction.manage"];
 const PERMISSIONS: Record<Role, readonly Permission[]> = {
   visitor: [],
-  organizer: ORGANIZER,
-  admin: [...ORGANIZER, "championship.delete", "app.manage"],
+  organizer: ORGANIZER_PERMISSIONS,
+  admin: [...ORGANIZER_PERMISSIONS, "championship.delete", "app.manage"],
 };
 
 export function can(role: Role, permission: Permission): boolean {

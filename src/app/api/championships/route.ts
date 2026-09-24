@@ -7,8 +7,14 @@ import { assertThresholdOrder } from "@/lib/rules/championship";
 import { Championship, DEFAULT_RULES, IChampionship } from "@/models/Championship";
 
 export const GET = route(async (request) => {
+  const actor = getActor(request);
   const query = parseQuery(request, championshipListQuery);
+  // Private championships are hidden from the general list unless the requester owns/organizes them (or is admin).
+  const visibilityFilter = actor.isAdmin
+    ? {}
+    : { $or: [{ visibility: "public" as const }, ...(actor.userId ? [{ ownerUserId: actor.userId }, { organizerUserIds: actor.userId }] : [])] };
   const filter = {
+    ...visibilityFilter,
     ...(query.status ? { status: query.status } : {}),
     ...(query.q ? { name: { $regex: escapeRegex(query.q), $options: "i" } } : {}),
   };
@@ -30,6 +36,10 @@ export const POST = route(async (request) => {
 
   const duplicate = await Championship.exists({ name: input.name, season: input.season });
   if (duplicate) throw conflict("Ya existe un campeonato con ese nombre y temporada", "duplicate");
+
+  if (input.slug && (await Championship.exists({ slug: input.slug }))) {
+    throw conflict("Ese enlace ya lo usa otro campeonato", "duplicate");
+  }
 
   const championship = await Championship.create({ ...input, rules, ownerUserId: actor.userId });
   await recordAudit(actor, {

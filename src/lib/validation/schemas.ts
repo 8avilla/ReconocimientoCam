@@ -2,10 +2,12 @@ import { z } from "zod";
 import {
   CHAMPIONSHIP_FORMATS,
   CHAMPIONSHIP_STATUSES,
+  CHAMPIONSHIP_VISIBILITIES,
 } from "@/models/Championship";
 import { POSITIONS, REGISTRATION_STATUSES } from "@/models/TeamRegistration";
 import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES } from "@/lib/constants";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/models/AuditLog";
+import { ALL_PERMISSIONS } from "@/lib/roles";
 import {
   hexColorSchema,
   imageDataUrlSchema,
@@ -45,6 +47,15 @@ const rulesSchema = z
     { message: "El umbral de revisión no puede superar el umbral de verificación", path: ["reviewThreshold"] }
   );
 
+/** Lowercase letters, numbers and hyphens only, so it drops cleanly into "/c/<slug>". */
+const slugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "Debe tener al menos 3 caracteres")
+  .max(50)
+  .regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones, sin espacios");
+
 export const championshipCreateSchema = z
   .object({
     name: requiredText(),
@@ -54,6 +65,8 @@ export const championshipCreateSchema = z
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
     rules: rulesSchema.optional(),
+    slug: slugSchema.optional(),
+    visibility: z.enum(CHAMPIONSHIP_VISIBILITIES).optional(),
   })
   .refine((value) => !value.startDate || !value.endDate || value.endDate >= value.startDate, {
     message: "La fecha de fin no puede ser anterior a la de inicio",
@@ -69,6 +82,9 @@ export const championshipUpdateSchema = z
     startDate: z.coerce.date().nullable(),
     endDate: z.coerce.date().nullable(),
     rules: rulesSchema,
+    /** null clears the custom slug, falling back to the id again. */
+    slug: slugSchema.nullable(),
+    visibility: z.enum(CHAMPIONSHIP_VISIBILITIES),
   })
   .partial();
 
@@ -447,3 +463,39 @@ export const venueCreateSchema = z.object({
 });
 export const venueUpdateSchema = z.object({ name: requiredText(80), address: optionalText(200), notes: optionalText(300), active: z.boolean() }).partial();
 export const venueListQuery = z.object({ championshipId: objectIdSchema, active: z.enum(["true", "false"]).optional() });
+
+// ---------- Credentials auth ----------
+
+const passwordSchema = z.string().min(8, "Debe tener al menos 8 caracteres");
+
+export const registerSchema = z.object({
+  name: requiredText(120),
+  email: z.string().trim().toLowerCase().email("Correo inválido"),
+  password: passwordSchema,
+});
+
+export const forgotPasswordSchema = z.object({ email: z.string().trim().toLowerCase().email("Correo inválido") });
+
+export const resetPasswordSchema = z.object({ token: requiredText(200), password: passwordSchema });
+
+// ---------- Users and roles (admin) ----------
+
+export const userCreateSchema = z.object({
+  name: requiredText(120),
+  email: z.string().trim().toLowerCase().email("Correo inválido"),
+  roleId: objectIdSchema.nullable().optional(),
+  isAdmin: z.boolean().optional(),
+});
+export const userUpdateSchema = z.object({
+  name: requiredText(120),
+  roleId: objectIdSchema.nullable(),
+  isAdmin: z.boolean(),
+}).partial();
+export const userListQuery = paginationSchema.extend({ q: z.string().trim().max(60).optional() });
+
+export const roleCreateSchema = z.object({
+  name: requiredText(60),
+  permissions: z.array(z.enum(ALL_PERMISSIONS)).default([]),
+});
+export const roleUpdateSchema = roleCreateSchema.partial();
+export const roleListQuery = paginationSchema;

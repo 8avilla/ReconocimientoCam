@@ -10,6 +10,7 @@ import type {
   Position,
   RegistrationStatus,
 } from "@/lib/constants";
+import type { Permission } from "@/lib/roles";
 
 /** Client-side shapes of the JSON returned by the REST API (ids and dates are strings). */
 
@@ -46,6 +47,10 @@ export interface ChampionshipDTO {
   startDate?: string;
   endDate?: string;
   rules: ChampionshipRulesDTO;
+  /** Friendly, URL-safe alternative to the id (e.g. "/c/ligamaster"); optional, unique when set. */
+  slug?: string;
+  /** "public" shows up in the championships list for everyone; "private" only opens via its direct link. */
+  visibility: "public" | "private";
   logoUrl: string;
   ownerUserId?: string;
   organizerUserIds: string[];
@@ -496,4 +501,22 @@ export interface ChampionshipOrganizersDTO {
   owner: OrganizerPersonDTO | null;
   organizers: OrganizerPersonDTO[];
   invited: string[];
+}
+
+export interface RoleDTO {
+  _id: string;
+  name: string;
+  permissions: Permission[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserDTO {
+  _id: string;
+  name: string;
+  email: string;
+  image?: string;
+  isAdmin: boolean;
+  roleId: Pick<RoleDTO, "_id" | "name"> | null;
+  createdAt: string;
 }

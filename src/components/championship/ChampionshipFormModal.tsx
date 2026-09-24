@@ -8,6 +8,7 @@ import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labe
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fileToResizedDataUrl } from "@/lib/client/image";
 import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
+import { championshipPath } from "@/lib/paths";
 import type { ChampionshipDTO } from "@/types/api";
 
 interface Props {
@@ -25,6 +26,8 @@ interface FormValues {
   format: string;
   startDate: string;
   endDate: string;
+  slug: string;
+  visibility: string;
   maxRosterSize: string;
   minPlayersToStart: string;
   yellowCardsForSuspension: string;
@@ -52,6 +55,8 @@ function toValues(championship: ChampionshipDTO | null): FormValues {
     format: championship?.format ?? "league",
     startDate: championship?.startDate?.slice(0, 10) ?? "",
     endDate: championship?.endDate?.slice(0, 10) ?? "",
+    slug: championship?.slug ?? "",
+    visibility: championship?.visibility ?? "public",
     maxRosterSize: String(rules?.maxRosterSize ?? 25),
     minPlayersToStart: String(rules?.minPlayersToStart ?? 7),
     yellowCardsForSuspension: String(rules?.yellowCardsForSuspension ?? 3),
@@ -94,6 +99,8 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(toValues(championship)) || logo !== null;
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
+  const previewPath = championshipPath(values.slug.trim().toLowerCase() || championship?._id || "id-del-campeonato");
+  const previewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}${previewPath}`;
 
   const bind = (field: keyof FormValues) => ({
     value: values[field],
@@ -119,6 +126,9 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
     if (values.startDate && values.endDate && values.endDate < values.startDate) {
       clientErrors.endDate = "La fecha de fin no puede ser anterior a la de inicio";
     }
+    if (values.slug.trim() && !/^[a-z0-9-]+$/.test(values.slug.trim().toLowerCase())) {
+      clientErrors.slug = "Solo minúsculas, números y guiones, sin espacios";
+    }
     setErrors(clientErrors);
     setFormError("");
     if (Object.keys(clientErrors).length > 0) return;
@@ -131,6 +141,8 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
       format: values.format,
       startDate: values.startDate || (isEdit ? null : undefined),
       endDate: values.endDate || (isEdit ? null : undefined),
+      slug: values.slug.trim() ? values.slug.trim().toLowerCase() : isEdit ? null : undefined,
+      visibility: values.visibility,
       rules: {
         maxRosterSize: Number(values.maxRosterSize),
         minPlayersToStart: Number(values.minPlayersToStart),
@@ -204,6 +216,24 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
         <Input label="Fecha de inicio" type="date" error={errors.startDate} {...bind("startDate")} />
         <Input label="Fecha de fin" type="date" error={errors.endDate} {...bind("endDate")} />
       </div>
+
+      <section className="stack-sm card" aria-label="Enlace y visibilidad" style={{ background: "var(--color-background)" }}>
+        <h3>Enlace y visibilidad</h3>
+        <div className="form-grid two">
+          <Input
+            label="Enlace personalizado (opcional)" placeholder="ligamaster"
+            hint={`El campeonato se abrirá en: ${previewUrl}`}
+            error={errors.slug} {...bind("slug")}
+          />
+          <Select
+            label="Visibilidad" {...bind("visibility")}
+            hint={values.visibility === "public" ? "Aparece en el listado de campeonatos, para todos." : "No aparece en el listado; solo se abre con el enlace directo."}
+          >
+            <option value="public">Público</option>
+            <option value="private">Privado</option>
+          </Select>
+        </div>
+      </section>
 
       <section className="stack-sm card" aria-label="Multas por tarjetas" style={{ background: "var(--color-background)" }}>
         <h3>Multas por tarjetas</h3>

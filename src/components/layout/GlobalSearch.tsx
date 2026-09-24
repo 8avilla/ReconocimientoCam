@@ -52,7 +52,7 @@ function ChampionshipSearchModal({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="flush-list" style={{ margin: "0 calc(-1 * var(--space-lg))", border: "none" }}>
             {matches.map((item) => (
-              <Link key={item._id} href={championshipPath(item._id)} className="list-row" onClick={onClose}>
+              <Link key={item._id} href={championshipPath(item.slug || item._id)} className="list-row" onClick={onClose}>
                 <ChampionshipTile logoUrl={item.logoUrl} size={36} />
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div className="text-strong truncate">{item.name}{favoriteIds.has(item._id) && " ★"}</div>

@@ -4,7 +4,9 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { connectToDatabase } from "@/lib/db";
 import type { Actor } from "@/lib/actor";
+import { ALL_PERMISSIONS } from "@/lib/roles";
 import { runWithActor } from "@/lib/requestContext";
+import { getUserPermissions } from "@/lib/services/users";
 
 /** Error carrying an HTTP status and a user-facing (Spanish) message. */
 export class ApiError extends Error {
@@ -50,15 +52,17 @@ export function route<P = Record<string, never>>(handler: RouteHandler<P>) {
   };
 }
 
-/** Resolves who is making this request from the real Google session (see `src/auth.ts`). */
+/** Resolves who is making this request from the real session (Google or credentials, see `src/auth.ts`). */
 async function resolveActor(): Promise<Actor> {
   const session = await auth();
-  if (!session?.user) return { userId: null, name: "Visitante", role: "visitor", isAdmin: false };
+  if (!session?.user) return { userId: null, name: "Visitante", role: "visitor", isAdmin: false, permissions: [] };
+  const permissions = session.user.isAdmin ? [...ALL_PERMISSIONS] : await getUserPermissions(session.user.id);
   return {
     userId: session.user.id,
     name: session.user.name ?? session.user.email ?? "Usuario",
     role: session.user.isAdmin ? "admin" : "organizer",
     isAdmin: session.user.isAdmin,
+    permissions,
   };
 }
 

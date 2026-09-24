@@ -66,6 +66,13 @@ export function ChampionshipProvider({ children }: { children: React.ReactNode }
   const routeId = parseChampionshipPath(pathname)?.id ?? null;
   const selectedId = useSyncExternalStore(subscribeSelection, readSelection, () => null);
 
+  const championships = useMemo(() => data?.data ?? [], [data]);
+  const matchInList = routeId ? championships.find((item) => item._id === routeId || item.slug === routeId) ?? null : null;
+  // The bulk list only carries public championships (plus ones this user owns/organizes) and real ids never
+  // match a slug string — a private-but-linked championship or a `/c/<slug>` address needs its own direct fetch.
+  const needsFallback = Boolean(routeId) && !loading && !matchInList;
+  const fallback = useFetch<ChampionshipDTO>(needsFallback ? `/championships/${routeId}` : null);
+
   // Visiting a championship makes it the "last visited" one, which detail pages (a match, a team...) fall back to.
   useEffect(() => {
     if (routeId) rememberSelection(routeId);
@@ -74,12 +81,21 @@ export function ChampionshipProvider({ children }: { children: React.ReactNode }
   const setCurrentId = useCallback((id: string) => rememberSelection(id), []);
 
   const value = useMemo<ChampionshipContextValue>(() => {
-    const championships = data?.data ?? [];
     const current = routeId
-      ? championships.find((item) => item._id === routeId) ?? null
+      ? matchInList ?? fallback.data ?? null
       : championships.find((item) => item._id === selectedId) ?? championships.find((item) => favoriteIds.has(item._id)) ?? championships[0] ?? null;
-    return { championships, current, routeId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload };
-  }, [data, routeId, selectedId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload]);
+    return {
+      championships,
+      current,
+      routeId,
+      setCurrentId,
+      favoriteIds,
+      toggleFavorite,
+      loading: loading || (needsFallback && fallback.loading),
+      error: error ?? (needsFallback ? fallback.error : undefined),
+      reload,
+    };
+  }, [championships, routeId, matchInList, fallback.data, fallback.loading, fallback.error, needsFallback, selectedId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload]);
 
   return <ChampionshipContext.Provider value={value}>{children}</ChampionshipContext.Provider>;
 }

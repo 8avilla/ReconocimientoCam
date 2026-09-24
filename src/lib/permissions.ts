@@ -1,5 +1,6 @@
 import { ApiError, notFound } from "@/lib/api";
 import type { Actor } from "@/lib/actor";
+import type { Permission } from "@/lib/roles";
 import { Championship } from "@/models/Championship";
 import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegistration";
 
@@ -27,6 +28,25 @@ export function requireAdmin(actor: Actor): void {
   if (actor.isAdmin) return;
   if (!actor.userId) throw new ApiError(401, "Inicia sesión para hacer esto", "unauthenticated");
   throw new ApiError(403, "Solo un administrador puede hacer esto", "forbidden");
+}
+
+/**
+ * Same ownership check as `requireOrganizer`, plus: for a non-admin, their assigned role must include
+ * `permission`. A custom role narrows what an organizer may do within a championship they run; it never
+ * widens it beyond what ownership already allows. Not yet adopted by the existing organizer routes (see
+ * the scope note in the roles/users feature plan) — available for new call sites to opt into.
+ */
+export function requirePermission(actor: Actor, permission: Permission, owned: Owned): void {
+  requireOrganizer(actor, owned);
+  if (actor.isAdmin) return;
+  if (!actor.permissions.includes(permission)) throw new ApiError(403, "Tu rol no tiene permiso para hacer esto", "forbidden");
+}
+
+/** Async wrapper for `requirePermission`, mirroring `requireOrganizerOfChampionship`. */
+export async function requirePermissionOfChampionship(actor: Actor, permission: Permission, championshipId: string | { toString(): string }): Promise<void> {
+  const championship = await Championship.findById(championshipId.toString()).select("ownerUserId organizerUserIds").lean();
+  if (!championship) throw notFound("Campeonato no encontrado");
+  requirePermission(actor, permission, championship);
 }
 
 /** Loads just enough of the championship to check who organizes it, and throws unless the actor does. */

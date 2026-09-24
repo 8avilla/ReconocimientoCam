@@ -1,6 +1,19 @@
 import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus } from "@/lib/constants";
+import type { Permission } from "@/lib/roles";
 
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
+
+export const PERMISSION_LABEL: Record<Permission, string> = {
+  "championship.manage": "Gestionar campeonato (fases, calendario, reglas)",
+  "championship.delete": "Eliminar campeonatos",
+  "match.manage": "Gestionar partidos (crear, programar, editar)",
+  "match.operate": "Operar partidos en vivo (marcador, eventos)",
+  "team.manage": "Gestionar equipos",
+  "roster.manage": "Gestionar inscripciones de jugadores",
+  "player.manage": "Gestionar jugadores (datos, rostro, fotos)",
+  "sanction.manage": "Gestionar sanciones y multas",
+  "app.manage": "Administrar la app (usuarios, roles, actividad)",
+};
 
 export const CHAMPIONSHIP_STATUS_LABEL: Record<ChampionshipStatus, { label: string; tone: Tone }> = {
   draft: { label: "Borrador", tone: "neutral" },

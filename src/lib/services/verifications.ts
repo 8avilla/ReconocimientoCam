@@ -82,7 +82,9 @@ export async function lookupPlayer(matchId: string, code: string) {
       fullName: player.fullName,
       photoUrl: player.photoUrl,
       facePhotoUrl: player.facePhotoUrl,
-      hasFace: Boolean(player.photoUrl && player.biometricConsentAt),
+      // `biometricConsentAt` alone: `photoUrl` (the carnet/profile picture) can go empty on its own
+      // (its gallery photo got deleted) without the actual biometric data (embedding, consent) changing.
+      hasFace: Boolean(player.biometricConsentAt),
     },
     team: { _id: context.team._id, name: context.team.name, shieldUrl: context.team.shieldUrl },
     shirtNumber: context.registration.shirtNumber,

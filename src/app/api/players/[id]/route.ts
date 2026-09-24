@@ -22,7 +22,11 @@ export const GET = route<Params>(async (request, { id }) => {
   const { documentId, birthDate, ...rest } = player;
   const organized = await organizedPlayerIds(getActor(request), [id]);
   const sensitive = organized.has(id) ? { documentId, birthDate } : {};
-  return json({ ...rest, ...sensitive, hasFace: Boolean(player.photoUrl && player.biometricConsentAt), registrations });
+  // `biometricConsentAt` alone is the real signal: it's set/cleared only by enrolling or explicitly
+  // removing the face (never by deleting a gallery photo), unlike `photoUrl` — the carnet/profile
+  // picture — which can go empty on its own (e.g. its gallery photo got deleted) without touching
+  // the actual biometric data (embedding, consent, face photo).
+  return json({ ...rest, ...sensitive, hasFace: Boolean(player.biometricConsentAt), registrations });
 });
 
 export const PATCH = route<Params>(async (request, { id }) => {

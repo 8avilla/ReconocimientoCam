@@ -51,7 +51,9 @@ export const GET = route(async (request) => {
     return {
       ...rest,
       ...sensitive,
-      hasFace: Boolean(player.photoUrl && player.biometricConsentAt),
+      // See [id]/route.ts: `biometricConsentAt` alone, not `photoUrl` — the carnet/profile picture
+      // can go empty on its own (its gallery photo got deleted) without the biometric data changing.
+      hasFace: Boolean(player.biometricConsentAt),
       registration: registration
         ? { ...registration, team: teamById.get(registration.teamId.toString()) ?? null }
         : null,

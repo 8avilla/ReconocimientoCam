@@ -56,3 +56,40 @@ export async function urlToResizedDataUrl(url: string, maxSize: number, type: "i
   const blob = await fetch(url).then((response) => response.blob());
   return blobToResizedDataUrl(blob, maxSize, type);
 }
+
+/**
+ * Crops/scales url's image to fill a `boxWidth`x`boxHeight` box exactly, the same way CSS
+ * `background-size: cover` would. html2canvas renders a CSS `background-image` by rasterizing it
+ * at the element's unscaled CSS pixel size and only then applying the export `scale`, which blurs
+ * it regardless of how high-res the source is — passing an image already cropped to the box's
+ * final *physical* (CSS size × scale) pixels sidesteps that entirely, since html2canvas draws
+ * plain `<img>` content (which this is swapped for during export) at full resolution.
+ */
+export async function urlToCoverDataUrl(url: string, boxWidth: number, boxHeight: number): Promise<string> {
+  const blob = await fetch(url).then((response) => response.blob());
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.max(boxWidth / image.width, boxHeight / image.height);
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(boxWidth);
+      canvas.height = Math.round(boxHeight);
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
+        context.drawImage(image, (boxWidth - drawWidth) / 2, (boxHeight - drawHeight) / 2, drawWidth, drawHeight);
+      }
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("No se pudo leer la imagen"));
+    };
+    image.src = objectUrl;
+  });
+}

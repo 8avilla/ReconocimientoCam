@@ -15,7 +15,7 @@
   width: 480px;
   height: 300px;
   padding: 24px;
-  background: url("/carnet-bg.jpg") no-repeat center / cover;
+  background: url("/carnet-fondo.png") no-repeat center / cover;
   color: #0f172a;
   border-radius: 20px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);

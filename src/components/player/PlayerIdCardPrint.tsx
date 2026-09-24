@@ -38,7 +38,7 @@ export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
         {card.championship && (
           <div className={styles.champBadge}>
             {card.championship.logoUrl ? (
-              <span className={styles.champLogo} aria-hidden data-carnet-size="30" style={{ backgroundImage: `url("${card.championship.logoUrl}")` }} />
+              <span className={styles.champLogo} aria-hidden data-carnet-w="30" data-carnet-h="30" style={{ backgroundImage: `url("${card.championship.logoUrl}")` }} />
             ) : (
               <span className={styles.champLogoFallback} aria-hidden><Trophy size={16} /></span>
             )}
@@ -53,7 +53,7 @@ export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
           // A background image (not <img>+object-fit) survives the html2canvas export used by
           // "Descargar carnet": html2canvas stretches <img> content to its box regardless of
           // object-fit, distorting any photo whose aspect ratio doesn't match the frame.
-          <span className={styles.photo} aria-hidden data-carnet-size="170" style={{ backgroundImage: `url("${card.photoUrl}")` }} />
+          <span className={styles.photo} aria-hidden data-carnet-w="130" data-carnet-h="170" style={{ backgroundImage: `url("${card.photoUrl}")` }} />
         ) : (
           <div className={styles.photoPlaceholder} aria-hidden>{initials(card.fullName)}</div>
         )}
@@ -62,7 +62,7 @@ export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
           <div className={styles.name}>{card.fullName}</div>
           {card.team && (
             <div className={styles.team}>
-              <span className={styles.teamLogo} aria-hidden data-carnet-size="24" style={{ backgroundImage: `url("${card.team.shieldUrl}")` }} />
+              <span className={styles.teamLogo} aria-hidden data-carnet-w="24" data-carnet-h="24" style={{ backgroundImage: `url("${card.team.shieldUrl}")` }} />
               <div>
                 <div className={styles.teamName}>{card.team.name}</div>
                 {card.championship && <div className={styles.champLine}>{card.championship.name} {card.championship.season}</div>}

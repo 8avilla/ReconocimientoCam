@@ -12,7 +12,7 @@ import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast, ActionMenu } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
-import { fileToResizedDataUrl, urlToResizedDataUrl } from "@/lib/client/image";
+import { fileToResizedDataUrl, urlToCoverDataUrl } from "@/lib/client/image";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
@@ -81,29 +81,31 @@ export default function PlayerProfilePage() {
         scale: EXPORT_SCALE,
         useCORS: true,
         // html2canvas can't reliably load a CSS background-image cross-origin (Azure Blob), even
-        // with useCORS — it fails silently with "Error loading background-image" and skips it. The
-        // clone it captures from is a detached document, so inlining the images there as data URLs
-        // sidesteps the cross-origin fetch entirely instead of depending on html2canvas's own loader.
-        // Resizing them here (not just re-encoding at full size) also matters: html2canvas's own
-        // downscaling of a full-size source into a small badge/photo comes out visibly blockier
-        // than doing that scaling ourselves with the canvas's high-quality smoothing.
+        // with useCORS — it fails silently with "Error loading background-image" and skips it. Worse,
+        // even when it does load one, html2canvas rasterizes a `background-image` at the element's
+        // unscaled CSS pixel size and only applies the export `scale` afterwards, so it comes out
+        // blurry no matter how high-res the source is. Swapping each one for a plain `<img>` sidesteps
+        // both problems: html2canvas renders `<img>` content directly at full export resolution, and
+        // since the clone is a detached document, pre-cropping the image into a data URL here (sized
+        // to the box's own *physical* pixels — CSS size × EXPORT_SCALE, from data-carnet-w/h since the
+        // clone isn't guaranteed to be laid out yet for getBoundingClientRect) sidesteps the
+        // cross-origin fetch too, matching CSS `background-size: cover` so the swap is visually a no-op.
         onclone: async (clonedDoc) => {
           const targets = Array.from(clonedDoc.querySelectorAll<HTMLElement>('[style*="background-image"]'));
           await Promise.all(
             targets.map(async (element) => {
               const match = /url\("?(https?:[^")]+)"?\)/.exec(element.style.backgroundImage);
               if (!match) return;
-              // Sized to the element's own CSS box (from data-carnet-size, not getBoundingClientRect:
-              // the clone html2canvas hands onclone isn't guaranteed to be laid out yet, so the
-              // measured rect can read as 0x0), scaled by EXPORT_SCALE plus headroom — a badge and
-              // the player photo need very different source resolutions, and oversizing the small
-              // ones just leaves html2canvas to do most of the shrinking itself, at lower quality.
-              const cssSize = Number(element.dataset.carnetSize) || 170;
-              const maxSize = cssSize * (EXPORT_SCALE * 1.5);
+              const boxWidth = (Number(element.dataset.carnetW) || 170) * EXPORT_SCALE;
+              const boxHeight = (Number(element.dataset.carnetH) || 170) * EXPORT_SCALE;
               try {
-                element.style.backgroundImage = `url("${await urlToResizedDataUrl(match[1], maxSize)}")`;
+                const dataUrl = await urlToCoverDataUrl(match[1], boxWidth, boxHeight);
+                const img = clonedDoc.createElement("img");
+                img.src = dataUrl;
+                img.className = element.className;
+                element.replaceWith(img);
               } catch {
-                // Leave the original URL: html2canvas will just render that spot blank.
+                // Leave the original element: html2canvas will just render that spot blank.
               }
             })
           );

@@ -97,11 +97,13 @@ export default function PlayerProfilePage() {
             targets.map(async (element) => {
               const match = /url\("?(https?:[^")]+)"?\)/.exec(element.style.backgroundImage);
               if (!match) return;
-              // Sized to the element's own box, scaled by EXPORT_SCALE plus some headroom — not a
-              // flat constant: a badge and the player photo need very different source resolutions,
-              // and oversizing the small ones just leaves html2canvas to do most of the shrinking itself.
-              const rect = element.getBoundingClientRect();
-              const maxSize = Math.max(rect.width, rect.height, 60) * (EXPORT_SCALE * 1.5);
+              // Sized to the element's own CSS box (from data-carnet-size, not getBoundingClientRect:
+              // the clone html2canvas hands onclone isn't guaranteed to be laid out yet, so the
+              // measured rect can read as 0x0), scaled by EXPORT_SCALE plus headroom — a badge and
+              // the player photo need very different source resolutions, and oversizing the small
+              // ones just leaves html2canvas to do most of the shrinking itself, at lower quality.
+              const cssSize = Number(element.dataset.carnetSize) || 170;
+              const maxSize = cssSize * (EXPORT_SCALE * 1.5);
               try {
                 element.style.backgroundImage = `url("${await urlToResizedDataUrl(match[1], maxSize)}")`;
               } catch {

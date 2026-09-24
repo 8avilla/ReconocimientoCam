@@ -29,6 +29,9 @@ export interface UploadedImage {
   blobName: string;
 }
 
+/** Every upload gets a fresh random name and is never overwritten in place, so its content never changes. */
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
 /** Uploads an image buffer under a logical folder and returns its URL and blob name. */
 export async function uploadImage(
   buffer: Buffer,
@@ -38,7 +41,7 @@ export async function uploadImage(
   const extension = contentType === "image/png" ? "png" : "jpg";
   const blobName = `${folder}/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`;
   const blockBlobClient = getContainerClient().getBlockBlobClient(blobName);
-  await blockBlobClient.uploadData(buffer, { blobHTTPHeaders: { blobContentType: contentType } });
+  await blockBlobClient.uploadData(buffer, { blobHTTPHeaders: { blobContentType: contentType, blobCacheControl: IMMUTABLE_CACHE_CONTROL } });
   return { url: blockBlobClient.url, blobName };
 }
 

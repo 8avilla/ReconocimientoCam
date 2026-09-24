@@ -5,25 +5,13 @@ import { useRef, useState } from "react";
 import { Camera, Paperclip, ScanFace, SquareUser, Trash2 } from "lucide-react";
 import { Button, ConfirmDialog, Modal, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
-import { fileToResizedDataUrl } from "@/lib/client/image";
+import { fileToResizedDataUrl, urlToDataUrl } from "@/lib/client/image";
 import type { PlayerPhotoDTO } from "@/types/api";
 
 // getUserMedia and the face detector only run in the browser.
 const SimpleCameraCapture = dynamic(() => import("@/components/camera/SimpleCameraCapture").then((mod) => mod.SimpleCameraCapture), { ssr: false });
 
 const MAX_PHOTOS = 8;
-
-/** Downloads an already-uploaded photo and re-encodes it as a data URL, to run detection on it locally. */
-async function urlToDataUrl(url: string): Promise<string> {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-    reader.readAsDataURL(blob);
-  });
-}
 
 /**
  * General photos of the player (identification, posters): no face detection, no embedding, and

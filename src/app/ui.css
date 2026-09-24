@@ -19,6 +19,7 @@
 }
 .form-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); }
 @media (min-width: 768px) { .form-grid.two { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 768px) { .form-grid.player-carnet { grid-template-columns: minmax(260px, 340px) 1fr; } }
 .card-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); }
 @media (min-width: 768px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -224,6 +225,11 @@
 }
 .list-row:last-child { border-bottom: none; }
 a.list-row:hover { background: var(--color-background); }
+
+/* ---------- Stat grid (season totals) ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); }
+.stat-tile { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: var(--space-md); background: var(--color-background); border-radius: var(--radius-md); }
+.stat-tile .value { font-size: 24px; font-weight: 800; }
 
 /* ---------- Stepper ---------- */
 .stepper { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }

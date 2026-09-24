@@ -1,55 +1,103 @@
 /* Kept out of the normal flow (top-left corner, invisible via visibility rules) until printed;
-   see the ".print-target" rules in globals.css, which reposition it for the print page. */
-.offscreen {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
+   see the ".print-target" rules in globals.css, which reposition it for the print page. Scoped to
+   screen only: at equal specificity with ".print-target", this would otherwise win the cascade
+   over its "position: fixed" during print (both are simple single-class rules on the same element),
+   leaving the card stuck off-screen instead of filling the printed page. */
+@media screen {
+  .offscreen {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+  }
 }
 
 .card {
   width: 480px;
   height: 300px;
-  padding: 20px;
-  background: #fff;
+  padding: 24px;
+  background: url("/carnet-bg.jpg") no-repeat center / cover;
   color: #0f172a;
-  border: 1px solid #cbd5e1;
-  border-radius: 16px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  position: relative;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: 140px 1fr 128px;
+  grid-template-columns: 150px 1fr 110px;
   gap: 16px;
   align-items: center;
-  position: relative;
+  padding-top: 60px;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-.logos {
+.brand {
   position: absolute;
-  top: 12px;
-  right: 16px;
-  display: flex;
-  gap: 6px;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  width: 92px;
+  height: auto;
 }
 
-.logo {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  border-radius: 6px;
-  background: #f1f5f9;
+.champBadge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  background: #fff;
+  border-radius: 14px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 160px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
 }
+.champLogo,
+.champLogoFallback {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* Background image, not <img>+object-fit: html2canvas (used by "Descargar carnet") stretches
+   <img> content to its box regardless of object-fit, distorting any logo whose own aspect ratio
+   isn't already square. background-size is rasterized correctly either way. */
+.champLogo {
+  background-color: #fff;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.champLogoFallback {
+  background: #e0f2fe;
+  color: #0369a1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.champText { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.champName { font-size: 11px; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.champSeason { font-size: 10px; color: #64748b; font-weight: 600; }
 
 .photo {
-  width: 140px;
-  height: 220px;
-  object-fit: cover;
-  border-radius: 10px;
-  background: #f1f5f9;
+  display: block;
+  width: 130px;
+  height: 170px;
+  background-color: #e2e8f0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 16px;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+  z-index: 1;
 }
-
 .photoPlaceholder {
-  width: 140px;
-  height: 220px;
-  border-radius: 10px;
+  width: 130px;
+  height: 170px;
+  border-radius: 16px;
+  border: 3px solid #fff;
   background: #e2e8f0;
   color: #64748b;
   display: flex;
@@ -57,59 +105,32 @@
   justify-content: center;
   font-size: 32px;
   font-weight: 800;
+  z-index: 1;
 }
 
-.info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
+.info { z-index: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.name { font-size: 21px; font-weight: 800; line-height: 1.15; }
 
-.championship {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: #475569;
-  text-transform: uppercase;
+.team { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.teamLogo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: #fff;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
+.teamName { font-weight: 700; font-size: 14px; }
+.champLine { font-size: 11px; color: #64748b; }
 
-.name {
-  font-size: 21px;
-  font-weight: 800;
-  line-height: 1.15;
-  margin: 2px 0 6px;
-}
+.numberRow { display: flex; align-items: baseline; gap: 10px; }
+.number { font-size: 26px; font-weight: 800; }
+.sep { color: #cbd5e1; font-weight: 300; }
+.position { font-size: 13px; color: #64748b; font-weight: 600; }
 
-.team {
-  font-size: 13px;
-  color: #334155;
-  margin-bottom: 8px;
-}
-
-.field {
-  font-size: 12px;
-  color: #334155;
-}
-
-.field span {
-  font-weight: 700;
-  color: #0f172a;
-  margin-right: 4px;
-}
-
-.qr {
-  width: 116px;
-  height: 116px;
-  justify-self: end;
-}
-
-/* The credit stays legible up close but doesn't compete with the card's own data. */
-.watermark {
-  position: absolute;
-  bottom: 8px;
-  right: 16px;
-  font-size: 9px;
-  color: #cbd5e1;
-  letter-spacing: 0.3px;
-}
+.side { z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.qr { width: 96px; height: 96px; }
+.id { font-size: 9px; color: #94a3b8; font-variant-numeric: tabular-nums; text-align: center; }

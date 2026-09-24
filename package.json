@@ -17,6 +17,7 @@
   "dependencies": {
     "@azure/storage-blob": "^12.33.0",
     "@mediapipe/tasks-vision": "^1.0.0",
+    "html2canvas": "^1.4.1",
     "jsqr": "^1.4.0",
     "lucide-react": "^1.47.0",
     "mongoose": "^9.9.1",

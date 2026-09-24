@@ -7,13 +7,15 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   breadcrumb?: { label: string; href?: string }[];
+  /** Small image (e.g. an Avatar) shown to the left of the title. */
+  avatar?: React.ReactNode;
   /** Buttons shown next to the title (on phones too, unless `mobileActions` is given). */
   actions?: React.ReactNode;
   /** On phones the header buttons are replaced by a floating "+" button with these actions. */
   mobileActions?: MenuAction[];
 }
 
-export function PageHeader({ title, description, breadcrumb, actions, mobileActions }: PageHeaderProps) {
+export function PageHeader({ title, description, breadcrumb, avatar, actions, mobileActions }: PageHeaderProps) {
   return (
     <header className="page-header">
       {breadcrumb && (
@@ -27,9 +29,12 @@ export function PageHeader({ title, description, breadcrumb, actions, mobileActi
         </nav>
       )}
       <div className="page-header-top">
-        <div>
-          <h1>{title}</h1>
-          {description && <p className="description">{description}</p>}
+        <div className="row">
+          {avatar}
+          <div>
+            <h1>{title}</h1>
+            {description && <p className="description">{description}</p>}
+          </div>
         </div>
         {actions && <div className={`page-header-actions${mobileActions ? " only-desktop" : ""}`}>{actions}</div>}
         {mobileActions && <Fab actions={mobileActions} />}

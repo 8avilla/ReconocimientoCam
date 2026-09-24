@@ -57,8 +57,9 @@ export async function normalizeShieldImage(dataUrl: string): Promise<Buffer> {
 /**
  * Enrolls the official face of a player, from a single shot the browser sends as two crops: a tight
  * one (`image`, the embedding's source, also kept as the reference photo for manual review) and a
- * looser one (`carnetImage`, shown everywhere else as the player's photo). Older clients that only
- * send `image` get the same photo in both places, like before.
+ * looser one (`carnetImage`, used as the player's carnet/profile photo, but only when they don't
+ * already have one — re-registering the face never overwrites a carnet photo someone already chose).
+ * Older clients that only send `image` get the same photo for both, like before.
  */
 export async function enrollPlayerFace(
   actor: Actor,
@@ -70,18 +71,18 @@ export async function enrollPlayerFace(
   const player = await Player.findById(playerId);
   if (!player) throw notFound("Jugador no encontrado");
 
+  // A player who already has a carnet photo keeps it: only a player with none gets this capture set as one.
+  const needsCarnetPhoto = !player.photoUrl;
   const facePhoto = await prepareFaceImage(input.image);
   const embedding = await embedFaceOrFail(facePhoto);
   const [faceUploaded, carnetUploaded] = await Promise.all([
     uploadImage(facePhoto, "players/faces"),
-    uploadImage(await prepareCarnetImage(input.carnetImage ?? input.image), "players/photos"),
+    needsCarnetPhoto ? uploadImage(await prepareCarnetImage(input.carnetImage ?? input.image), "players/photos") : null,
   ]);
 
   const previousFaceBlob = player.facePhotoBlobName;
-  const previousCarnetBlob = player.photoBlobName;
   player.set({
-    photoUrl: carnetUploaded.url,
-    photoBlobName: carnetUploaded.blobName,
+    ...(carnetUploaded ? { photoUrl: carnetUploaded.url, photoBlobName: carnetUploaded.blobName } : {}),
     facePhotoUrl: faceUploaded.url,
     facePhotoBlobName: faceUploaded.blobName,
     faceEmbedding: Array.from(embedding),
@@ -90,8 +91,8 @@ export async function enrollPlayerFace(
   });
   await player.save();
 
-  for (const blobName of new Set([previousFaceBlob, previousCarnetBlob].filter(Boolean))) {
-    deleteImage(blobName!).catch((error) => console.error("Failed to delete previous face image:", error));
+  if (previousFaceBlob) {
+    deleteImage(previousFaceBlob).catch((error) => console.error("Failed to delete previous face image:", error));
   }
 
   await recordAudit(actor, {

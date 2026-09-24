@@ -152,6 +152,29 @@ export interface MatchDTO {
 
 type PlayerRef = Pick<PlayerDTO, "_id" | "fullName" | "photoUrl">;
 
+/** Season totals for a player (finished matches only). No minutes-played total: see PlayerMatchActivityDTO. */
+export interface PlayerStatsSummaryDTO {
+  matchesPlayed: number;
+  goals: number;
+  yellowCards: number;
+  redCards: number;
+}
+
+/** One match a player was called up for, with that player's own goals/cards in it (no minutes/lineup data yet). */
+export interface PlayerMatchActivityDTO {
+  _id: string;
+  scheduledAt: string | null;
+  status: MatchStatus;
+  championship: Pick<ChampionshipDTO, "_id" | "name" | "season">;
+  homeTeamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
+  awayTeamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
+  homeScore: number | null;
+  awayScore: number | null;
+  goals: number;
+  yellowCards: number;
+  redCards: number;
+}
+
 export interface MatchEventDTO {
   _id: string;
   matchId: string;

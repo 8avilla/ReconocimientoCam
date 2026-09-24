@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Star, Trophy } from "lucide-react";
+import { Check, Star } from "lucide-react";
+import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
 import { Modal } from "@/components/ui";
 import { championshipPath, type Section } from "@/lib/paths";
 import { useChampionship } from "./ChampionshipContext";
@@ -25,7 +26,7 @@ export function ChampionshipSwitcher({ open, section, onClose }: { open: boolean
       className={`switch-row${current?._id === item._id ? " active" : ""}`}
       onClick={() => goTo(item._id)}
     >
-      <span className="champ-tile" aria-hidden style={{ width: 36, height: 36 }}><Trophy size={18} /></span>
+      <ChampionshipTile logoUrl={item.logoUrl} size={36} />
       <span className="grow" style={{ minWidth: 0, textAlign: "left" }}>
         <span className="text-strong truncate" style={{ display: "block" }}>{item.name}</span>
         <span className="text-secondary text-small">Temporada {item.season}</span>

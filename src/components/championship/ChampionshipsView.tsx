@@ -8,6 +8,7 @@ import { Layers, Pencil, Plus, Search, Star, Trash2, Trophy } from "lucide-react
 import { useRole } from "@/components/layout/RoleContext";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
+import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
 import { ActionMenu, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
@@ -57,7 +58,7 @@ export function ChampionshipsView() {
       <div key={championship._id} className="champ-row">
         {/* Tapping a championship always does the same for everyone: go into it. */}
         <Link href={championshipPath(championship._id)} className="row grow" style={{ minWidth: 0 }}>
-          <span className="champ-tile" aria-hidden><Trophy size={22} /></span>
+          <ChampionshipTile logoUrl={championship.logoUrl} size={44} />
           <div className="grow" style={{ minWidth: 0 }}>
             <div className="champ-caption">Temporada {championship.season} · {status.label}</div>
             <div className="champ-name truncate">{championship.name}</div>

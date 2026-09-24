@@ -10,7 +10,6 @@ import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
 import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
-import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
 import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast, ActionMenu } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { fileToResizedDataUrl, urlToResizedDataUrl } from "@/lib/client/image";
@@ -23,7 +22,7 @@ import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerPhotoDTO, PlayerS
 // getUserMedia only runs in the browser.
 const SimpleCameraCapture = dynamic(() => import("@/components/camera/SimpleCameraCapture").then((mod) => mod.SimpleCameraCapture), { ssr: false });
 
-type Dialog = "edit" | "face" | "registration" | "removeFace" | "delete" | null;
+type Dialog = "edit" | "face" | "removeFace" | "delete" | null;
 type Tab = "perfil" | "rostro" | "actividad";
 const TABS: { id: Tab; label: string }[] = [
   { id: "perfil", label: "Perfil" },
@@ -44,7 +43,6 @@ export default function PlayerProfilePage() {
   const liveChampionshipId = player.data?.registrations.find((registration) => registration.status !== "inactive")?.championshipId?._id;
   const stats = useFetch<PlayerStatsSummaryDTO>(`/players/${id}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}`);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [editingRegistrationId, setEditingRegistrationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photoCameraOpen, setPhotoCameraOpen] = useState(false);
   const [changingPhoto, setChangingPhoto] = useState(false);
@@ -54,7 +52,6 @@ export default function PlayerProfilePage() {
   if (!player.data) return <Loading />;
   const current = player.data;
   const liveRegistration = current.registrations.find((registration) => registration.status !== "inactive");
-  const editingRegistration = current.registrations.find((registration) => registration._id === editingRegistrationId);
   const missingData = !current.documentId || !current.birthDate;
   const headerDescription = liveRegistration
     ? [liveRegistration.teamId?.name ?? "Sin equipo", liveRegistration.championshipId && `${liveRegistration.championshipId.name} ${liveRegistration.championshipId.season}`]
@@ -68,7 +65,6 @@ export default function PlayerProfilePage() {
   };
   const closeAndReload = () => {
     setDialog(null);
-    setEditingRegistrationId(null);
     reloadAll();
   };
 
@@ -114,7 +110,9 @@ export default function PlayerProfilePage() {
         },
       });
       const link = document.createElement("a");
-      link.download = `carnet-${current.publicId}.png`;
+      // Timestamped: a fixed name means a second download either silently overwrites the first or
+      // gets suffixed "(1)" by the browser, and either way it's easy to reopen the stale file by mistake.
+      link.download = `carnet-${current.publicId}-${Date.now()}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (error) {
@@ -297,31 +295,6 @@ export default function PlayerProfilePage() {
                 <Loading />
               )}
             </section>
-
-            <section className="card stack">
-              <h3>Inscripciones</h3>
-              {current.registrations.length === 0 ? (
-                <p className="text-secondary">No está inscrito en ningún equipo.</p>
-              ) : (
-                <div className="stack-sm">
-                  {current.registrations.map((registration) => (
-                    <div key={registration._id} className="row">
-                      <Avatar src={registration.teamId?.shieldUrl} name={registration.teamId?.name ?? "Equipo"} size={36} square />
-                      <div className="grow">
-                        <div className="text-strong">{registration.teamId?.name}{registration.shirtNumber != null && ` · #${registration.shirtNumber}`}</div>
-                        <div className="text-secondary text-small">
-                          {registration.position ?? "Sin posición"} · {registration.championshipId?.name} {registration.championshipId?.season}
-                        </div>
-                      </div>
-                      <RegistrationBadge status={registration.status} />
-                      {registration.status !== "inactive" && can("roster.manage") && (
-                        <Button variant="ghost" size="small" onClick={() => { setEditingRegistrationId(registration._id); setDialog("registration"); }}>Editar</Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
         </div>
       )}
@@ -361,18 +334,8 @@ export default function PlayerProfilePage() {
 
       {canSeeCarnet && card.data && <PlayerIdCardPrint card={card.data} />}
 
-      <PlayerFormModal open={dialog === "edit"} player={current} onClose={() => setDialog(null)} onSaved={closeAndReload} />
+      <PlayerFormModal open={dialog === "edit"} player={current} registration={liveRegistration} onClose={() => setDialog(null)} onSaved={closeAndReload} />
       <FaceEnrollModal open={dialog === "face"} playerId={id} onClose={() => setDialog(null)} onSaved={closeAndReload} />
-      {dialog === "registration" && editingRegistration && (
-        <RegistrationFormModal
-          open
-          registrationId={editingRegistration._id}
-          playerName={current.fullName}
-          initial={{ shirtNumber: editingRegistration.shirtNumber, position: editingRegistration.position, status: editingRegistration.status }}
-          onClose={() => { setDialog(null); setEditingRegistrationId(null); }}
-          onSaved={closeAndReload}
-        />
-      )}
       <ConfirmDialog
         open={dialog === "removeFace"}
         title="Eliminar datos biométricos"

@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
-import { Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
+import { Users, UserCog } from "lucide-react";
+import { ActionMenu, Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
 import { REGISTRATION_STATUS_LABEL } from "@/lib/labels";
 import type { RosterEntryDTO } from "@/types/api";
@@ -16,14 +16,14 @@ interface Props {
   loading: boolean;
   error?: Error;
   onRetry: () => void;
-  /** Absent when the viewer cannot change the squad. */
-  onEdit?: (entry: RosterEntryDTO) => void;
+  /** Absent when the viewer cannot edit the player themselves (opens the full "Editar jugador" popup). */
+  onExpressEdit?: (entry: RosterEntryDTO) => void;
   /** Whether the viewer may open player profiles (visitors cannot). */
   linkPlayers?: boolean;
 }
 
 /** Squad grouped by position: photo with the shirt number, name and registration status. */
-export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onEdit, linkPlayers = true }: Props) {
+export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpressEdit, linkPlayers = true }: Props) {
   if (error) return <ErrorState message={error.message} onRetry={onRetry} />;
   if (loading && entries.length === 0) return <Loading />;
   if (entries.length === 0) {
@@ -33,7 +33,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onEdit
           icon={<Users size={28} />}
           title="Este equipo aún no tiene jugadores"
           description="Registra jugadores para armar la plantilla."
-          action={onEdit && <Link href={`/players/new?teamId=${teamId}`} className="btn primary">Agregar jugador</Link>}
+          action={onExpressEdit && <Link href={`/players/new?teamId=${teamId}`} className="btn primary">Agregar jugador</Link>}
         />
       </div>
     );
@@ -67,7 +67,12 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onEdit
                         {entry.status !== "active" && <Badge tone={status.tone}>{status.label}</Badge>}
                       </div>
                     </PlayerLink>
-                    {onEdit && <button className="btn ghost small" onClick={() => onEdit(entry)} aria-label={`Editar inscripción de ${entry.playerId.fullName}`}>Editar</button>}
+                    {onExpressEdit && (
+                      <ActionMenu
+                        label={`Más acciones de ${entry.playerId.fullName}`}
+                        actions={[{ label: "Editar", icon: <UserCog size={16} />, onClick: () => onExpressEdit(entry) }]}
+                      />
+                    )}
                   </li>
                 );
               })}

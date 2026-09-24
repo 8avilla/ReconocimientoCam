@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Shield, Trophy } from "lucide-react";
+import { Search, Shield } from "lucide-react";
+import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
 import { Avatar, Modal } from "@/components/ui";
 import { useFetch } from "@/lib/client/useFetch";
 import { canAccess } from "@/lib/roles";
@@ -52,7 +53,7 @@ function ChampionshipSearchModal({ onClose }: { onClose: () => void }) {
           <div className="flush-list" style={{ margin: "0 calc(-1 * var(--space-lg))", border: "none" }}>
             {matches.map((item) => (
               <Link key={item._id} href={championshipPath(item._id)} className="list-row" onClick={onClose}>
-                <span className="champ-tile" aria-hidden style={{ width: 36, height: 36 }}><Trophy size={18} /></span>
+                <ChampionshipTile logoUrl={item.logoUrl} size={36} />
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div className="text-strong truncate">{item.name}{favoriteIds.has(item._id) && " ★"}</div>
                   <div className="text-secondary text-small">Temporada {item.season}</div>

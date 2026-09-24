@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
+import { ChevronRight, Pencil, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
-import { Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { PlayerFormModal } from "@/components/player/PlayerFormModal";
+import { ActionMenu, Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
@@ -23,6 +24,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [teamId, setTeamId] = useState("");
   const [pages, setPages] = useState(1);
+  const [editingPlayer, setEditingPlayer] = useState<PlayerDTO | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -85,7 +87,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             <div className="table-wrap only-desktop">
               <table className="table">
                 <thead>
-                  <tr><th>Jugador</th><th>Equipo</th><th>Posición</th><th>Estado</th><th>Rostro</th></tr>
+                  <tr><th>Jugador</th><th>Equipo</th><th>Posición</th><th>Estado</th><th>Rostro</th>{manage && <th></th>}</tr>
                 </thead>
                 <tbody>
                   {players.map((player) => (
@@ -103,6 +105,14 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                       <td>{player.registration?.position ?? "—"}</td>
                       <td>{player.registration && <RegistrationBadge status={player.registration.status} />}</td>
                       <td><FaceBadge hasFace={player.hasFace} /></td>
+                      {manage && (
+                        <td>
+                          <ActionMenu
+                            label={`Más acciones de ${player.fullName}`}
+                            actions={[{ label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditingPlayer(player) }]}
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -111,22 +121,30 @@ function PlayersList({ championshipId }: { championshipId: string }) {
 
             <div className="only-mobile">
               {players.map((player) => (
-                <Link key={player._id} href={`/players/${player._id}`} className="list-row">
-                  <Avatar src={player.photoUrl} name={player.fullName} size={44} />
-                  <div className="grow" style={{ minWidth: 0 }}>
-                    <div className="champ-caption truncate">
-                      {player.registration?.team?.name ?? "Sin equipo"}
-                      {player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber} · ` : ""}${player.registration.position ?? "Sin posición"}`}
+                <div key={player._id} className="list-row">
+                  <Link href={`/players/${player._id}`} className="row grow" style={{ minWidth: 0 }}>
+                    <Avatar src={player.photoUrl} name={player.fullName} size={44} />
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div className="champ-caption truncate">
+                        {player.registration?.team?.name ?? "Sin equipo"}
+                        {player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber} · ` : ""}${player.registration.position ?? "Sin posición"}`}
+                      </div>
+                      <div className="champ-name truncate">{player.fullName}</div>
                     </div>
-                    <div className="champ-name truncate">{player.fullName}</div>
-                  </div>
-                  {player.registration && player.registration.status !== "active" && <RegistrationBadge status={player.registration.status} />}
-                  {/* Icon only on phones so the name keeps its space. */}
-                  <span title={player.hasFace ? "Rostro registrado" : "Sin rostro"} aria-label={player.hasFace ? "Rostro registrado" : "Sin rostro"} style={{ display: "inline-flex", color: player.hasFace ? "var(--color-success)" : "var(--color-warning)" }}>
-                    {player.hasFace ? <ScanFace size={22} /> : <UserRound size={22} />}
-                  </span>
-                  <ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" />
-                </Link>
+                    {player.registration && player.registration.status !== "active" && <RegistrationBadge status={player.registration.status} />}
+                    {/* Icon only on phones so the name keeps its space. */}
+                    <span title={player.hasFace ? "Rostro registrado" : "Sin rostro"} aria-label={player.hasFace ? "Rostro registrado" : "Sin rostro"} style={{ display: "inline-flex", color: player.hasFace ? "var(--color-success)" : "var(--color-warning)" }}>
+                      {player.hasFace ? <ScanFace size={22} /> : <UserRound size={22} />}
+                    </span>
+                    <ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" />
+                  </Link>
+                  {manage && (
+                    <ActionMenu
+                      label={`Más acciones de ${player.fullName}`}
+                      actions={[{ label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditingPlayer(player) }]}
+                    />
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -136,6 +154,19 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             </div>
           )}
         </>
+      )}
+
+      {editingPlayer && (
+        <PlayerFormModal
+          open
+          player={editingPlayer}
+          registration={editingPlayer.registration}
+          onClose={() => setEditingPlayer(null)}
+          onSaved={() => {
+            setEditingPlayer(null);
+            reload();
+          }}
+        />
       )}
     </>
   );

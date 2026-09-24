@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Pencil, Star, Trash2, UserPlus } from "lucide-react";
+import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { TeamMatchesTab } from "@/components/team/TeamMatchesTab";
 import { TeamRosterTab } from "@/components/team/TeamRosterTab";
 import { TeamStatsTab } from "@/components/team/TeamStatsTab";
-import { RegistrationFormModal } from "@/components/team/RegistrationFormModal";
 import { TeamFormModal } from "@/components/team/TeamFormModal";
 import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
@@ -39,7 +39,7 @@ export default function TeamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<RosterEntryDTO | null>(null);
+  const [expressEditEntry, setExpressEditEntry] = useState<RosterEntryDTO | null>(null);
 
   if (team.error) return <ErrorState message={team.error.message} onRetry={team.reload} />;
   if (!team.data) return <Loading />;
@@ -112,7 +112,15 @@ export default function TeamDetailPage() {
       {tab === "fixtures" && <TeamMatchesTab teamId={id} championshipId={current.championshipId} kind="fixtures" />}
       {tab === "stats" && <TeamStatsTab teamId={id} championshipId={current.championshipId} />}
       {tab === "roster" && (
-        <TeamRosterTab teamId={id} entries={entries} loading={roster.loading} error={roster.error} onRetry={roster.reload} onEdit={can("roster.manage") ? setEditingEntry : undefined} linkPlayers={canAccess(role, "/players/x")} />
+        <TeamRosterTab
+          teamId={id}
+          entries={entries}
+          loading={roster.loading}
+          error={roster.error}
+          onRetry={roster.reload}
+          onExpressEdit={can("player.manage") ? setExpressEditEntry : undefined}
+          linkPlayers={canAccess(role, "/players/x")}
+        />
       )}
 
       <TeamFormModal
@@ -125,15 +133,14 @@ export default function TeamDetailPage() {
           reloadAll();
         }}
       />
-      {editingEntry && (
-        <RegistrationFormModal
+      {expressEditEntry && (
+        <PlayerFormModal
           open
-          registrationId={editingEntry._id}
-          playerName={editingEntry.playerId.fullName}
-          initial={{ shirtNumber: editingEntry.shirtNumber, position: editingEntry.position, status: editingEntry.status }}
-          onClose={() => setEditingEntry(null)}
+          player={expressEditEntry.playerId}
+          registration={expressEditEntry}
+          onClose={() => setExpressEditEntry(null)}
           onSaved={() => {
-            setEditingEntry(null);
+            setExpressEditEntry(null);
             reloadAll();
           }}
         />

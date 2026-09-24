@@ -31,7 +31,7 @@
 .brand {
   position: absolute;
   top: 16px;
-  left: 16px;
+  left: 24px; /* matches the card's own padding, so it lines up with the photo's left edge below it */
   z-index: 2;
   width: 92px;
   height: auto;
@@ -125,7 +125,8 @@
 .teamName { font-weight: 700; font-size: 14px; }
 .champLine { font-size: 11px; color: #64748b; }
 
-.numberRow { display: flex; align-items: baseline; gap: 10px; }
+.numberRow { display: flex; align-items: center; gap: 10px; }
+.numberBar { width: 4px; height: 28px; border-radius: 2px; background: #16a34a; flex-shrink: 0; }
 .number { font-size: 26px; font-weight: 800; }
 .sep { color: #cbd5e1; font-weight: 300; }
 .position { font-size: 13px; color: #64748b; font-weight: 600; }

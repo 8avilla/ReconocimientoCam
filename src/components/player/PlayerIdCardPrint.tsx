@@ -71,7 +71,12 @@ export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
           )}
           {(card.shirtNumber !== null || card.position !== null) && (
             <div className={styles.numberRow}>
-              {card.shirtNumber !== null && <span className={styles.number}>#{card.shirtNumber}</span>}
+              {card.shirtNumber !== null && (
+                <>
+                  <span className={styles.numberBar} aria-hidden />
+                  <span className={styles.number}>#{card.shirtNumber}</span>
+                </>
+              )}
               {card.shirtNumber !== null && card.position !== null && <span className={styles.sep}>|</span>}
               {card.position !== null && <span className={styles.position}>{card.position}</span>}
             </div>

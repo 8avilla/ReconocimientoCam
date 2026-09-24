@@ -122,11 +122,15 @@ export default function PlayerProfilePage() {
     }
   }
 
-  /** Uploads the photo to the gallery and immediately points the profile/carnet photo at it. */
+  /** Uploads the photo to the gallery and immediately points the profile/carnet photo at it. When a
+   * face is found, uses its centered/padded crop instead of the raw shot, so the card frames the
+   * player's face rather than whatever happens to be centered in the original picture. */
   async function setProfilePhoto(image: string) {
     setChangingPhoto(true);
     try {
-      const photo = await http<PlayerPhotoDTO>(`/players/${id}/photos`, { json: { image } });
+      const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
+      const crops = await detectFaceCropsInImage(image).catch(() => null);
+      const photo = await http<PlayerPhotoDTO>(`/players/${id}/photos`, { json: { image: crops?.carnet ?? image } });
       await http(`/players/${id}/photos/${photo._id}/carnet`, { method: "POST" });
       toast.success("Foto de perfil actualizada");
       reloadAll();

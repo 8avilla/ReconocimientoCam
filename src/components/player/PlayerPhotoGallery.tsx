@@ -77,11 +77,22 @@ export function PlayerPhotoGallery({
     }
   }
 
+  /** Finds the face in the chosen photo and uses that centered/padded crop as the carnet photo
+   * instead of the raw shot, so the card frames the player's face rather than whatever happens to
+   * be centered in the original picture. Falls back to the raw photo when no face is detected. */
   async function setAsCarnet(photo: PlayerPhotoDTO) {
     setSettingCarnet(true);
     try {
-      await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });
-      toast.success("Foto de carnet actualizada");
+      const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
+      const crops = await detectFaceCropsInImage(await urlToDataUrl(photo.url)).catch(() => null);
+      if (crops) {
+        const cropped = await http<PlayerPhotoDTO>(`/players/${playerId}/photos`, { json: { image: crops.carnet } });
+        await http(`/players/${playerId}/photos/${cropped._id}/carnet`, { method: "POST" });
+        toast.success("Foto de carnet actualizada");
+      } else {
+        await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });
+        toast.success("Foto de carnet actualizada (no se detectó un rostro; se usó la foto completa)");
+      }
       setViewing(null);
       onChanged();
     } catch (error) {

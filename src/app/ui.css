@@ -11,6 +11,9 @@
 .text-small { font-size: 12px; }
 .text-caption { font-size: 11px; font-weight: 500; }
 .text-strong { font-weight: 600; }
+/* A plain <button> styled to read as a link (auth screens' "¿olvidaste tu contraseña?" and friends): color instead of bold-black text is what actually signals "clickable" here. */
+.link-button { color: var(--color-primary); font-weight: 600; font-size: 14px; min-height: 44px; }
+.link-button:hover { color: var(--color-primary-dark); text-decoration: underline; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .only-desktop { display: none !important; }
 @media (min-width: 768px) {
@@ -65,6 +68,14 @@
 .btn.ghost:hover:not(:disabled) { background: var(--color-border); color: var(--color-text-primary); }
 .btn.danger { background: var(--color-error); color: #fff; }
 .btn.danger:hover:not(:disabled) { background: #b91c1c; }
+/* Matches Google's own guidelines for a third-party "Sign in with Google" button (white, neutral border, the official G mark) instead of our brand green, so it reads as Google's action, not ours. */
+.btn.google { background: #fff; color: #3c4043; border-color: #dadce0; box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08); }
+.btn.google:hover:not(:disabled) { background: #f8f9fa; box-shadow: 0 1px 3px rgba(60, 64, 67, 0.16); }
+/* "or" separator between the Google button and the email/password alternative on auth screens. */
+.auth-divider { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-text-secondary); font-size: 13px; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
+/* Signed-in summary (avatar + name/email) at the top of the account panel. */
+.account-summary { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: var(--color-background); border-radius: var(--radius-lg); }
 .icon-button {
   width: 44px; height: 44px; border-radius: var(--radius-md);
   display: inline-flex; align-items: center; justify-content: center; color: var(--color-text-secondary);

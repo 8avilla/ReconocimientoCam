@@ -30,8 +30,7 @@ export interface ChampionshipRulesDTO {
   redCardSuspensionMatches?: number;
   yellowCardFine?: number;
   redCardFine?: number;
-  verifyThreshold: number;
-  reviewThreshold: number;
+  registrationFeeAmount?: number;
   allowManualReview: boolean;
   walkoverGoals?: number;
   periodsCount?: number;
@@ -113,8 +112,9 @@ export interface PlayerDetailDTO extends Omit<PlayerDTO, "registration"> {
 }
 
 export interface RosterEntryDTO extends Omit<RegistrationDTO, "playerId"> {
-  playerId: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "documentId" | "photoUrl" | "birthDate">;
+  playerId: Pick<PlayerDTO, "_id" | "publicId" | "fullName" | "documentId" | "photoUrl" | "birthDate" | "hasFace">;
 }
+
 
 export interface PlayerCardDTO {
   publicId: string;
@@ -434,7 +434,7 @@ export interface FineDTO {
   teamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
   playerId?: Pick<PlayerDTO, "_id" | "fullName" | "photoUrl"> | null;
   matchId?: { _id: string; homeTeamId: { name: string }; awayTeamId: { name: string } } | null;
-  type: "yellow_card" | "red_card" | "manual";
+  type: "yellow_card" | "red_card" | "manual" | "registration";
   concept: string;
   amount: number;
   payments: { _id: string; amount: number; method: "cash" | "transfer" | "nequi" | "daviplata" | "other"; note?: string; receiptUrl?: string; paidAt: string; receivedBy: string }[];
@@ -501,6 +501,12 @@ export interface ChampionshipOrganizersDTO {
   owner: OrganizerPersonDTO | null;
   organizers: OrganizerPersonDTO[];
   invited: string[];
+}
+
+/** App-wide face-verification thresholds (Administración → Configuración), the same for every championship. */
+export interface SystemSettingsDTO {
+  verifyThreshold: number;
+  reviewThreshold: number;
 }
 
 export interface RoleDTO {

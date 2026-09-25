@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil } from "lucide-react";
-import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
-import { Badge, Button } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL, formatDate, formatMoney } from "@/lib/labels";
 
 const NO_FINE = "Sin multa";
 
-/** The championship's data and rules at a glance, with a shortcut to change them. */
+/** The championship's data and rules at a glance. Use "Editar campeonato" above (in ManageView's hub
+ * header) to change them — that's the single edit entry point across the app, so it isn't repeated here. */
 export function RulesSummary() {
-  const { current, reload } = useChampionship();
-  const [editOpen, setEditOpen] = useState(false);
+  const { current } = useChampionship();
   if (!current) return null;
   const rules = current.rules;
   const status = CHAMPIONSHIP_STATUS_LABEL[current.status];
@@ -45,20 +42,12 @@ export function RulesSummary() {
         ["Multa por roja", rules.redCardFine ? formatMoney(rules.redCardFine) : NO_FINE],
       ],
     },
-    {
-      title: "Verificación facial",
-      rows: [
-        ["Umbral de verificación", String(rules.verifyThreshold)],
-        ["Umbral de revisión manual", String(rules.reviewThreshold)],
-      ],
-    },
   ];
 
   return (
     <>
-      <div className="row-between" style={{ marginBottom: "var(--space-lg)" }}>
-        <div className="row"><Badge tone={status.tone}>{status.label}</Badge></div>
-        <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>Editar reglas y datos</Button>
+      <div className="row" style={{ marginBottom: "var(--space-lg)" }}>
+        <Badge tone={status.tone}>{status.label}</Badge>
       </div>
       <div className="stack">
         {groups.map((group) => (
@@ -73,7 +62,6 @@ export function RulesSummary() {
           </section>
         ))}
       </div>
-      <ChampionshipFormModal open={editOpen} championship={current} onClose={() => setEditOpen(false)} onSaved={() => { setEditOpen(false); reload(); }} />
     </>
   );
 }

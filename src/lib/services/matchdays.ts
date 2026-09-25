@@ -83,16 +83,29 @@ export async function ensureKnockoutMatchday(phase: { _id: Types.ObjectId; champ
   return (await Matchday.create({ championshipId: phase.championshipId, phaseId: phase._id, number: (last?.number ?? 0) + 1, name, roundId, leg })).toObject();
 }
 
-/** Every matchday of a championship, in phase order, with the phase name (for filters). */
+/** Every matchday of a championship, in phase order, with the phase name (for filters) and match counts. */
 export async function listChampionshipMatchdays(championshipId: string) {
   const [phases, matchdays] = await Promise.all([
     Phase.find({ championshipId }).select("name order").lean(),
     Matchday.find({ championshipId }).lean(),
   ]);
   const phase = new Map(phases.map((entry) => [entry._id.toString(), entry]));
+  const stats = await Match.aggregate<{ _id: Types.ObjectId; total: number; finished: number }>([
+    { $match: { matchdayId: { $in: matchdays.map((matchday) => matchday._id) } } },
+    { $group: { _id: "$matchdayId", total: { $sum: 1 }, finished: { $sum: { $cond: [{ $in: ["$status", ["finished", "walkover"]] }, 1, 0] } } } },
+  ]);
+  const byMatchday = new Map(stats.map((row) => [row._id.toString(), row]));
   return matchdays
     .filter((matchday) => phase.has(matchday.phaseId.toString()))
-    .map((matchday) => ({ ...matchday, phaseName: phase.get(matchday.phaseId.toString())!.name, phaseOrder: phase.get(matchday.phaseId.toString())!.order }))
+    .map((matchday) => {
+      const row = byMatchday.get(matchday._id.toString());
+      return {
+        ...matchday,
+        phaseName: phase.get(matchday.phaseId.toString())!.name,
+        phaseOrder: phase.get(matchday.phaseId.toString())!.order,
+        matches: { total: row?.total ?? 0, finished: row?.finished ?? 0 },
+      };
+    })
     .sort((a, b) => a.phaseOrder - b.phaseOrder || a.number - b.number);
 }
 

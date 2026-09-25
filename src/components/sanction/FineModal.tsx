@@ -18,7 +18,7 @@ interface Props {
 /** One fine: what it is for, the payments received, and the form to register a new payment (or waive it). */
 export function FineModal({ fine, onClose, onChanged }: Props) {
   return (
-    <Modal open title="Multa" onClose={onClose}>
+    <Modal open title={fine.type === "registration" ? "Cuota de inscripción" : "Multa"} onClose={onClose}>
       <FineDetail key={fine._id} fine={fine} onChanged={onChanged} onClose={onClose} />
     </Modal>
   );

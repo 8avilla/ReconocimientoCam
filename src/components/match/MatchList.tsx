@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import { Layers } from "lucide-react";
+import { ChevronRight, Layers, MapPin } from "lucide-react";
 import { Avatar, Badge } from "@/components/ui";
-import { MATCH_STATUS_LABEL } from "@/lib/labels";
+import { useRole } from "@/components/layout/RoleContext";
+import { MATCH_PERIOD_LABEL, MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO } from "@/types/api";
 
 const RESULT = {
@@ -20,6 +23,8 @@ const timeOf = (value?: string | null) => (value ? new Date(value).toLocaleTimeS
  * team is marked G/E/P and its name is bold.
  */
 export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: string }) {
+  const { can } = useRole();
+  const canOperate = can("match.operate");
   const groups: { key: string; phase: string; sub: string; items: MatchDTO[] }[] = [];
   for (const match of matches) {
     const key = `${match.phaseId?._id}:${match.matchdayId?._id}`;
@@ -50,14 +55,23 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
               ? match.walkoverWinnerTeamId._id === teamId ? "W" : "L"
               : mine > theirs ? "W" : mine === theirs ? "D" : "L";
             const status = MATCH_STATUS_LABEL[match.status];
+            const finished = match.status === "finished" || match.status === "walkover";
+            const winner = finished
+              ? match.walkoverWinnerTeamId?._id ?? (home > away ? match.homeTeamId._id : away > home ? match.awayTeamId._id : null)
+              : null;
             return (
-              <Link key={match._id} href={`/matches/${match._id}`} className="list-row match-row">
-                <div className="match-date">{shortDate(match.scheduledAt)}</div>
+              <Link key={match._id} href={`/matches/${match._id}`} className={`list-row match-row${match.status === "live" ? " match-row-live" : ""}`}>
+                <div className="match-date">
+                  {shortDate(match.scheduledAt)}
+                  {match.status === "scheduled" && match.venue && (
+                    <div className="text-secondary text-small row" style={{ gap: 2, whiteSpace: "nowrap" }}><MapPin size={11} aria-hidden /> {match.venue}</div>
+                  )}
+                </div>
                 <div className="grow stack-sm" style={{ gap: 6, minWidth: 0 }}>
                   {[match.homeTeamId, match.awayTeamId].map((team) => (
                     <div key={team._id} className="row" style={{ gap: 8, minWidth: 0 }}>
-                      <Avatar src={team.shieldUrl} name={team.name} size={24} square />
-                      <span className={`truncate${team._id === teamId ? " text-strong" : ""}`}>{team.name}</span>
+                      <Avatar src={team.shieldUrl} name={team.name} size={32} square />
+                      <span className={`truncate${team._id === teamId || team._id === winner ? " text-strong" : ""}`}>{team.name}</span>
                     </div>
                   ))}
                 </div>
@@ -65,7 +79,7 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
                   <>
                     <div className="match-score" aria-label={`Marcador ${home} a ${away}`}><span>{home}</span><span>{away}</span></div>
                     {match.status === "live" ? (
-                      <Badge tone="error">En juego</Badge>
+                      <Badge tone="error">En vivo · {MATCH_PERIOD_LABEL[match.period]}</Badge>
                     ) : (
                       teamId && <span className="result-chip" style={{ background: RESULT[result].color }} title={RESULT[result].name} aria-label={RESULT[result].name}>{RESULT[result].text}</span>
                     )}
@@ -76,6 +90,11 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
                   <span className="match-time">{timeOf(match.scheduledAt)}</span>
                 ) : (
                   <span className="match-time text-secondary" style={{ fontSize: 12 }}>Sin día ni hora</span>
+                )}
+                {match.status === "live" && canOperate ? (
+                  <span className="text-small text-strong row" style={{ gap: 2, color: "var(--color-error)", flexShrink: 0 }}>Registrar <ChevronRight size={14} aria-hidden /></span>
+                ) : (
+                  <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" style={{ flexShrink: 0 }} />
                 )}
               </Link>
             );

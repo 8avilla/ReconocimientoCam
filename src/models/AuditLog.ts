@@ -19,6 +19,7 @@ export const AUDIT_ENTITY_TYPES = [
   "venue",
   "user",
   "role",
+  "system_settings",
 ] as const;
 
 export const AUDIT_ACTIONS = ["create", "update", "delete", "call_up_change", "check_in", "face_enroll", "face_remove", "void", "transition", "lift", "pay"] as const;

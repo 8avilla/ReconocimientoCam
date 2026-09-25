@@ -75,9 +75,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={208} height={69} priority className={styles.brandLogo} />
         </div>
         {scoped && (
-          <div className={styles.scopeBlock}>
+          <div className="scopeBlock">
             <Link href="/" className={styles.scopeBack}>← Todos los campeonatos</Link>
             <button className={styles.scopeButton} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de campeonato">
+              <Trophy size={18} style={{ color: "var(--color-primary)", gridColumn: 1, gridRow: "1 / span 2" }} />
               <span className={styles.scopeName}>{current?.name ?? "Campeonato"}</span>
               <span className={styles.scopeSeason}>{current ? `Temporada ${current.season}` : ""}</span>
               <ChevronDown size={16} aria-hidden />
@@ -109,8 +110,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <GlobalSearch championshipId={scopeId ?? undefined} />
             {scoped && (
               <button className={styles.scopeChip} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de campeonato">
+                <Trophy size={14} style={{ color: "#facc15" }} />
                 <span className="truncate">{current?.name ?? "Campeonato"}</span>
-                <ChevronDown size={16} aria-hidden />
+                <ChevronDown size={14} aria-hidden />
               </button>
             )}
           </div>
@@ -139,36 +141,60 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className={styles.bottomNav} aria-label={scoped ? "Campeonato" : "Principal"}>
           {bottom.map((item) => (
             <Link key={item.href} href={item.href} className={`${styles.bottomItem} ${isActive(pathname, item) ? styles.active : ""}`}>
-              <item.icon size={24} aria-hidden /> {item.label}
+              <item.icon size={22} aria-hidden /> {item.label}
             </Link>
           ))}
           <button className={`${styles.bottomItem} ${more.some((item) => isActive(pathname, item)) ? styles.active : ""}`} onClick={() => setMoreOpen(true)}>
-            <MoreHorizontal size={24} aria-hidden /> Más
+            <MoreHorizontal size={22} aria-hidden /> Más
           </button>
         </nav>
       </div>
 
       <Modal open={moreOpen} title="Más opciones" onClose={() => setMoreOpen(false)}>
-        <div className="stack-sm">
-          {more.map((item) => (
-            <Link key={item.href} href={item.href} className="btn secondary block" onClick={() => setMoreOpen(false)}>
-              <item.icon size={20} aria-hidden /> {item.label}
-            </Link>
-          ))}
-          {scoped && (
-            <button className="btn secondary block" onClick={() => { setMoreOpen(false); setSwitchOpen(true); }}>
-              <Trophy size={20} aria-hidden /> Cambiar de campeonato
-            </button>
+        <div className="stack" style={{ gap: "var(--space-md)" }}>
+          {more.length > 0 && (
+            <div>
+              <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
+                Operación del Torneo
+              </div>
+              <div className="stack-sm">
+                {more.map((item) => (
+                  <Link key={item.href} href={item.href} className="btn secondary block" onClick={() => setMoreOpen(false)}>
+                    <item.icon size={20} aria-hidden /> {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
-          {scoped && (
-            <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los campeonatos</Link>
-          )}
-          {scoped && canAccess(role, "/admin") && (
-            <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
-          )}
-          <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => { setMoreOpen(false); setAccountOpen(true); }} />
+
+          <div>
+            <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
+              Navegación del Sistema
+            </div>
+            <div className="stack-sm">
+              {scoped && (
+                <button className="btn secondary block" onClick={() => { setMoreOpen(false); setSwitchOpen(true); }}>
+                  <Trophy size={20} aria-hidden /> Cambiar de campeonato
+                </button>
+              )}
+              {scoped && (
+                <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los campeonatos</Link>
+              )}
+              {scoped && canAccess(role, "/admin") && (
+                <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
+              Mi Cuenta
+            </div>
+            <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => { setMoreOpen(false); setAccountOpen(true); }} />
+          </div>
         </div>
       </Modal>
+
 
       {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
       <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />

@@ -11,9 +11,10 @@ export const GET = route(async (request) => {
   const actor = getActor(request);
   requireAdmin(actor);
   const query = parseQuery(request, userListQuery);
-  const filter = query.q
-    ? { $or: [{ name: { $regex: escapeRegex(query.q), $options: "i" } }, { email: { $regex: escapeRegex(query.q), $options: "i" } }] }
-    : {};
+  const filter = {
+    ...(query.q ? { $or: [{ name: { $regex: escapeRegex(query.q), $options: "i" } }, { email: { $regex: escapeRegex(query.q), $options: "i" } }] } : {}),
+    ...(query.isAdmin !== undefined ? { isAdmin: query.isAdmin } : {}),
+  };
   const [users, total] = await Promise.all([
     User.find(filter)
       .select("name email image isAdmin roleId createdAt")

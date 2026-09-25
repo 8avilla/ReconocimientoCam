@@ -176,7 +176,18 @@ function ModeToggle({ mode, onChange }: { mode: StandingsMode; onChange: (mode: 
   );
 }
 
-export function StandingsTable({ rows, highlightTeamId, title }: { rows: StandingsRowDTO[]; highlightTeamId?: string; title?: string }) {
+export function StandingsTable({
+  rows,
+  highlightTeamId,
+  title,
+  qualifyCount,
+}: {
+  rows: StandingsRowDTO[];
+  highlightTeamId?: string;
+  title?: string;
+  /** Marks the top N rows as the direct-qualification zone (a green accent), e.g. 4 for a top-4 cutoff. */
+  qualifyCount?: number;
+}) {
   const [mode, setMode] = useStandingsMode();
   if (rows.length === 0) {
     return <div className="card"><EmptyState icon={<ChartColumn size={28} />} title="Sin equipos" description="Registra equipos y juega partidos para ver la tabla." /></div>;
@@ -200,7 +211,10 @@ export function StandingsTable({ rows, highlightTeamId, title }: { rows: Standin
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.teamId} className={row.teamId === highlightTeamId ? "highlight" : undefined}>
+                <tr
+                  key={row.teamId}
+                  className={[row.teamId === highlightTeamId ? "highlight" : "", qualifyCount && row.position <= qualifyCount ? "qualify-zone" : ""].filter(Boolean).join(" ") || undefined}
+                >
                   <td className="sticky-col">
                     <Link href={`/teams/${row.teamId}`} className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
                       <span className="text-strong" style={{ width: 20, textAlign: "right" }}>{row.position}</span>
@@ -224,7 +238,11 @@ export function StandingsTable({ rows, highlightTeamId, title }: { rows: Standin
             <span role="columnheader" title="Partidos jugados">PJ</span><span role="columnheader" title="Goles a favor : en contra">G</span><span role="columnheader" title="Puntos">PTS</span>
           </div>
           {rows.map((row) => (
-            <div key={row.teamId} role="row" className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}`}>
+            <div
+              key={row.teamId}
+              role="row"
+              className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}${qualifyCount && row.position <= qualifyCount ? " qualify-zone" : ""}`}
+            >
               <span className="standings-pos" role="cell">{row.position}</span>
               <Link href={`/teams/${row.teamId}`} className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
                 <Avatar src={row.shieldUrl} name={row.name} size={28} square />

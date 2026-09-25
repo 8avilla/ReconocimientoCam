@@ -3,21 +3,21 @@
 import dynamic from "next/dynamic";
 import { useRef, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, Camera, Copy, Download, Goal, Paperclip, Pencil, Printer, ShieldAlert, ShieldOff, SquareStack, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, CheckCircle2, Copy, Download, Goal, Paperclip, Pencil, Printer, ScanFace, ShieldAlert, ShieldOff, Sparkles, SquareStack, Trash2 } from "lucide-react";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
 import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
-import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast, ActionMenu } from "@/components/ui";
+import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { fileToResizedDataUrl, urlToCoverDataUrl } from "@/lib/client/image";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
 import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
-import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerPhotoDTO, PlayerStatsSummaryDTO, SuspensionDTO } from "@/types/api";
+import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerStatsSummaryDTO, SuspensionDTO } from "@/types/api";
 
 // getUserMedia only runs in the browser.
 const SimpleCameraCapture = dynamic(() => import("@/components/camera/SimpleCameraCapture").then((mod) => mod.SimpleCameraCapture), { ssr: false });
@@ -71,8 +71,6 @@ export default function PlayerProfilePage() {
   async function downloadCarnet() {
     const node = document.querySelector<HTMLElement>(".print-target");
     if (!node) return;
-    // Print-quality, not screen-quality: at scale 2 the ~480x300 card exports at only ~192 DPI for
-    // a physical card-sized print, soft enough to read as "pixelated" once printed or zoomed in.
     const EXPORT_SCALE = 4;
     try {
       const { default: html2canvas } = await import("html2canvas");
@@ -80,16 +78,6 @@ export default function PlayerProfilePage() {
         backgroundColor: "#ffffff",
         scale: EXPORT_SCALE,
         useCORS: true,
-        // html2canvas can't reliably load a CSS background-image cross-origin (Azure Blob), even
-        // with useCORS — it fails silently with "Error loading background-image" and skips it. Worse,
-        // even when it does load one, html2canvas rasterizes a `background-image` at the element's
-        // unscaled CSS pixel size and only applies the export `scale` afterwards, so it comes out
-        // blurry no matter how high-res the source is. Swapping each one for a plain `<img>` sidesteps
-        // both problems: html2canvas renders `<img>` content directly at full export resolution, and
-        // since the clone is a detached document, pre-cropping the image into a data URL here (sized
-        // to the box's own *physical* pixels — CSS size × EXPORT_SCALE, from data-carnet-w/h since the
-        // clone isn't guaranteed to be laid out yet for getBoundingClientRect) sidesteps the
-        // cross-origin fetch too, matching CSS `background-size: cover` so the swap is visually a no-op.
         onclone: async (clonedDoc) => {
           const targets = Array.from(clonedDoc.querySelectorAll<HTMLElement>('[style*="background-image"]'));
           await Promise.all(
@@ -105,15 +93,13 @@ export default function PlayerProfilePage() {
                 img.className = element.className;
                 element.replaceWith(img);
               } catch {
-                // Leave the original element: html2canvas will just render that spot blank.
+                // Leave original
               }
             })
           );
         },
       });
       const link = document.createElement("a");
-      // Timestamped: a fixed name means a second download either silently overwrites the first or
-      // gets suffixed "(1)" by the browser, and either way it's easy to reopen the stale file by mistake.
       link.download = `carnet-${current.publicId}-${Date.now()}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
@@ -122,16 +108,12 @@ export default function PlayerProfilePage() {
     }
   }
 
-  /** Uploads the photo to the gallery and immediately points the profile/carnet photo at it. When a
-   * face is found, uses its centered/padded crop instead of the raw shot, so the card frames the
-   * player's face rather than whatever happens to be centered in the original picture. */
   async function setProfilePhoto(image: string) {
     setChangingPhoto(true);
     try {
       const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
       const crops = await detectFaceCropsInImage(image).catch(() => null);
-      const photo = await http<PlayerPhotoDTO>(`/players/${id}/photos`, { json: { image: crops?.carnet ?? image } });
-      await http(`/players/${id}/photos/${photo._id}/carnet`, { method: "POST" });
+      await http(`/players/${id}/carnet-photo`, { json: { image: crops?.carnet ?? image } });
       toast.success("Foto de perfil actualizada");
       reloadAll();
     } catch (error) {
@@ -232,36 +214,87 @@ export default function PlayerProfilePage() {
 
       {tab === "perfil" && (
         <div className="form-grid player-carnet" style={{ alignItems: "start" }}>
-          <section className="card stack" aria-label="Resumen del jugador" style={{ alignItems: "center", textAlign: "center" }}>
-            <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={140} square />
-            {can("player.manage") && (
-              <div className="row-wrap" style={{ justifyContent: "center", gap: "var(--space-xs)" }}>
-                <Button variant="ghost" size="small" icon={<Camera size={16} />} loading={changingPhoto} onClick={() => setPhotoCameraOpen(true)}>
-                  Tomar foto
-                </Button>
-                <Button variant="ghost" size="small" icon={<Paperclip size={16} />} loading={changingPhoto} onClick={() => photoInputRef.current?.click()}>
-                  Adjuntar
-                </Button>
-                <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={handleProfilePhotoFile} />
-                <Modal open={photoCameraOpen} title="Tomar foto de perfil" onClose={() => setPhotoCameraOpen(false)}>
-                  <SimpleCameraCapture onCapture={handleProfilePhotoCamera} onCancel={() => setPhotoCameraOpen(false)} />
-                </Modal>
+          {/* Player Hero Summary Card */}
+          <section className="player-hero-card" aria-label="Resumen del jugador">
+            <div className="player-hero-cover">
+              <div className="player-hero-cover-accent" />
+            </div>
+
+            <div className="player-hero-body">
+              {/* Avatar with touch photo trigger */}
+              <div className="player-avatar-touchable">
+                <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={130} square />
+                {can("player.manage") && (
+                  <button
+                    className="player-avatar-camera-btn"
+                    title="Cambiar foto de perfil"
+                    aria-label="Cambiar foto de perfil"
+                    disabled={changingPhoto}
+                    onClick={() => setPhotoCameraOpen(true)}
+                  >
+                    <Camera size={18} />
+                  </button>
+                )}
               </div>
-            )}
-            {liveRegistration && <RegistrationBadge status={liveRegistration.status} />}
-            <h2 style={{ marginTop: "var(--space-sm)" }}>{current.fullName}</h2>
-            {liveRegistration?.teamId && (
-              <div className="row" style={{ justifyContent: "center" }}>
-                <Avatar src={liveRegistration.teamId.shieldUrl} name={liveRegistration.teamId.name} size={22} square />
-                <span className="text-secondary">{liveRegistration.teamId.name}</span>
+
+              {can("player.manage") && (
+                <div className="row-wrap" style={{ justifyContent: "center", gap: "var(--space-xs)", marginTop: "var(--space-sm)" }}>
+                  <Button variant="ghost" size="small" icon={<Camera size={14} />} loading={changingPhoto} onClick={() => setPhotoCameraOpen(true)}>
+                    Tomar foto
+                  </Button>
+                  <Button variant="ghost" size="small" icon={<Paperclip size={14} />} loading={changingPhoto} onClick={() => photoInputRef.current?.click()}>
+                    Adjuntar
+                  </Button>
+                  <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={handleProfilePhotoFile} />
+                  <Modal open={photoCameraOpen} title="Tomar foto de perfil" onClose={() => setPhotoCameraOpen(false)}>
+                    <SimpleCameraCapture onCapture={handleProfilePhotoCamera} onCancel={() => setPhotoCameraOpen(false)} />
+                  </Modal>
+                </div>
+              )}
+
+              <div className="row-wrap" style={{ justifyContent: "center", gap: "var(--space-xs)", marginTop: "var(--space-md)" }}>
+                {liveRegistration && <RegistrationBadge status={liveRegistration.status} />}
+                {liveRegistration?.shirtNumber != null && (
+                  <span className="number-badge-hero">#{liveRegistration.shirtNumber}</span>
+                )}
               </div>
-            )}
-            {(liveRegistration?.shirtNumber != null || liveRegistration?.position) && (
-              <div>
-                {liveRegistration?.shirtNumber != null && <div style={{ fontSize: 28, fontWeight: 800 }}>#{liveRegistration.shirtNumber}</div>}
-                {liveRegistration?.position && <div className="text-secondary">{liveRegistration.position}</div>}
-              </div>
-            )}
+
+              <h2 style={{ marginTop: "var(--space-xs)", fontSize: 22 }}>{current.fullName}</h2>
+
+              {liveRegistration?.teamId && (
+                <div className="row" style={{ justifyContent: "center", marginTop: 4 }}>
+                  <Avatar src={liveRegistration.teamId.shieldUrl} name={liveRegistration.teamId.name} size={20} square />
+                  <span className="text-secondary" style={{ fontWeight: 600 }}>{liveRegistration.teamId.name}</span>
+                  {liveRegistration.position && (
+                    <span className="text-secondary">· {liveRegistration.position}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Biometric Status Callout inside summary */}
+              {current.hasFace ? (
+                <div className="face-alert-callout success">
+                  <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+                  <div>
+                    <strong>Rostro biométrico registrado</strong>
+                    <div className="text-small" style={{ opacity: 0.85 }}>Listo para verificación automática en cancha</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="face-alert-callout">
+                  <ScanFace size={20} style={{ flexShrink: 0 }} />
+                  <div className="grow">
+                    <strong>Sin registro de rostro</strong>
+                    <div className="text-small">Requerido para la toma de asistencia</div>
+                  </div>
+                  {can("player.manage") && (
+                    <Button size="small" icon={<Camera size={14} />} onClick={() => setDialog("face")}>
+                      Enrolar
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </section>
 
           <div className="stack" style={{ gap: "var(--space-2xl)" }}>
@@ -292,10 +325,27 @@ export default function PlayerProfilePage() {
             <section className="card stack">
               <h3>Estadísticas en el campeonato</h3>
               {stats.data ? (
-                <div className="stat-grid">
-                  <StatTile icon={<SquareStack size={20} />} label="Partidos" value={stats.data.matchesPlayed} />
-                  <StatTile icon={<Goal size={20} />} label="Goles" value={stats.data.goals} />
-                  <StatTile icon={<AlertCircle size={20} />} label="Tarjetas" value={stats.data.yellowCards + stats.data.redCards} />
+                <div className="stat-grid-enhanced">
+                  <StatTileEnhanced
+                    color="blue"
+                    icon={<SquareStack size={20} />}
+                    label="Partidos"
+                    value={stats.data.matchesPlayed}
+                  />
+                  <StatTileEnhanced
+                    color="green"
+                    icon={<Goal size={20} />}
+                    label="Goles"
+                    value={stats.data.goals}
+                    sub={stats.data.matchesPlayed > 0 ? `${(stats.data.goals / stats.data.matchesPlayed).toFixed(2)} por p.` : undefined}
+                  />
+                  <StatTileEnhanced
+                    color="amber"
+                    icon={<AlertCircle size={20} />}
+                    label="Tarjetas"
+                    value={stats.data.yellowCards + stats.data.redCards}
+                    sub={`${stats.data.yellowCards} amarillas / ${stats.data.redCards} rojas`}
+                  />
                 </div>
               ) : (
                 <Loading />
@@ -377,12 +427,14 @@ function Row({ label, value, pending, action }: { label: string; value: string; 
   );
 }
 
-function StatTile({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+function StatTileEnhanced({ icon, label, value, color, sub }: { icon: ReactNode; label: string; value: number; color: "blue" | "green" | "amber" | "red"; sub?: string }) {
   return (
-    <div className="stat-tile">
-      {icon}
-      <span className="value">{value}</span>
-      <span className="text-secondary text-small">{label}</span>
+    <div className="stat-tile-enhanced">
+      <div className={`stat-tile-icon-box ${color}`}>{icon}</div>
+      <div className="val">{value}</div>
+      <div className="lbl">{label}</div>
+      {sub && <div className="sub">{sub}</div>}
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 import { EMBEDDING_VERSION } from "@/lib/faceEngine/embedding";
 import { notFound } from "@/lib/api";
 import { syncMatchCallUps } from "@/lib/services/callups";
-import { Championship } from "@/models/Championship";
+import { getSystemSettings } from "@/lib/services/systemSettings";
 import { Match } from "@/models/Match";
 import { MatchCallUp } from "@/models/MatchCallUp";
 import { IPlayer } from "@/models/Player";
@@ -50,8 +50,7 @@ async function buildGallery(matchId: string): Promise<Gallery> {
   await syncMatchCallUps(matchId);
   const match = await Match.findById(matchId).lean();
   if (!match) throw notFound("Partido no encontrado");
-  const championship = await Championship.findById(match.championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  const thresholds = await getSystemSettings();
 
   const teamIds = [match.homeTeamId, match.awayTeamId];
   const [checkIns, callUps, suspensions, teams] = await Promise.all([
@@ -94,7 +93,7 @@ async function buildGallery(matchId: string): Promise<Gallery> {
   return {
     championshipId: match.championshipId.toString(),
     matchStatus: match.status,
-    thresholds: { verifyThreshold: championship.rules.verifyThreshold, reviewThreshold: championship.rules.reviewThreshold },
+    thresholds,
     entries, withoutFace, builtAt: Date.now(),
   };
 }

@@ -67,8 +67,7 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
           />
         </div>
       ) : (
-        <ol className="flush-list" style={{ listStyle: "none" }} aria-label="Fases del campeonato">
-          <li className="band band-muted band-small" style={{ padding: "var(--space-sm) var(--space-lg)" }}>Fases ({list.length})</li>
+        <div className="stack" aria-label="Fases del campeonato">
           {list.map((phase) => {
             const knockout = phase.type === "knockout";
             const needsTeams = phase.teamCount < 2;
@@ -80,7 +79,6 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
               table: { label: "Tabla", icon: <ChartColumn size={18} />, href: championshipPath(championshipId, "clasificacion", `?phase=${phase._id}`) },
               brackets: { label: "Llaves", icon: <Swords size={18} />, href: `/phases/${phase._id}` },
             };
-            // The main next step depends on where the phase is; everything else goes to the menu.
             const primary = knockout ? actions.brackets : needsTeams ? actions.teams : noCalendar ? actions.fixture : actions.table;
             const others = [actions.teams, actions.matchdays, ...(knockout ? [] : [actions.fixture, actions.table])].filter((item) => item !== primary);
             const menu = [
@@ -88,39 +86,60 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
               { label: "Editar fase", icon: <Pencil size={18} />, onClick: () => setDialog({ kind: "form", phase }) },
               { label: "Eliminar fase", icon: <Trash2 size={18} />, danger: true, onClick: () => setDialog({ kind: "delete", phase }) },
             ];
-            const summary = [
-              `${phase.teamCount} equipos`,
-              knockout
-                ? phase.rounds.length === 0 ? "sin rondas" : `${phase.rounds.length} rondas · ${phase.ties?.decided ?? 0}/${phase.ties?.total ?? 0} cruces definidos`
-                : `${phase.matchdayCount} fechas`,
-              noCalendar ? "sin calendario" : `${phase.matches.finished}/${phase.matches.total} partidos jugados`,
-            ].join(" · ");
+
+            const matchProgressPercent = phase.matches.total > 0 ? Math.round((phase.matches.finished / phase.matches.total) * 100) : 0;
+
             return (
-              <li key={phase._id} className="phase-row">
-                <div className="row-between">
-                  <div className="row grow">
-                    <span className="avatar" style={{ width: 36, height: 36 }} aria-hidden>{phase.order}</span>
+              <div key={phase._id} className="phase-stage-card">
+                <div className="phase-stage-header">
+                  <div className="row grow" style={{ gap: "var(--space-md)" }}>
+                    <span className="phase-order-badge" aria-hidden>{phase.order}</span>
                     <div className="grow">
-                      <h3>{phase.name}</h3>
+                      <h3 style={{ fontSize: 18 }}>{phase.name}</h3>
                       <p className="text-secondary text-small">
                         {PHASE_TYPE_LABEL[phase.type]}{phase.type === "groups" && ` (${phase.groupCount} grupos)`}{!knockout && ` · ${LEGS_LABEL[phase.legs]}`}
+                        {` · ${phase.teamCount} equipos`}
                       </p>
                     </div>
                   </div>
                   <ActionMenu label={`Más acciones de ${phase.name}`} actions={menu} />
                 </div>
-                <p className="text-secondary text-small">{summary}</p>
-                {needsTeams && !knockout && <Badge tone="warning">Elige al menos 2 equipos para generar el calendario</Badge>}
-                {primary.href ? (
-                  <Link href={primary.href} className="btn primary block-mobile">{primary.icon}{primary.label}</Link>
-                ) : (
-                  <Button className="block-mobile" icon={primary.icon} disabled={primary.disabled} onClick={primary.onClick}>{primary.label}</Button>
+
+                {!knockout && phase.matches.total > 0 && (
+                  <div style={{ background: "var(--color-background)", padding: "var(--space-sm) var(--space-md)", borderRadius: "var(--radius-md)" }}>
+                    <div className="row-between text-small" style={{ fontWeight: 600, marginBottom: 4 }}>
+                      <span>Avance de partidos</span>
+                      <span>{phase.matches.finished} / {phase.matches.total} partidos ({matchProgressPercent}%)</span>
+                    </div>
+                    <div className="manage-progress-track">
+                      <div className="manage-progress-bar" style={{ width: `${matchProgressPercent}%` }} />
+                    </div>
+                  </div>
                 )}
-              </li>
+
+                {needsTeams && !knockout && (
+                  <Badge tone="warning">Elige al menos 2 equipos para generar el calendario</Badge>
+                )}
+
+                <div className="row-between" style={{ gap: "var(--space-md)", flexWrap: "wrap", marginTop: 4 }}>
+                  <div className="text-secondary text-small">
+                    {knockout
+                      ? phase.rounds.length === 0 ? "Sin rondas configuradas" : `${phase.rounds.length} rondas · ${phase.ties?.decided ?? 0}/${phase.ties?.total ?? 0} cruces definidos`
+                      : `${phase.matchdayCount} fechas creadas`}
+                  </div>
+
+                  {primary.href ? (
+                    <Link href={primary.href} className="btn primary">{primary.icon}{primary.label}</Link>
+                  ) : (
+                    <Button icon={primary.icon} disabled={primary.disabled} onClick={primary.onClick}>{primary.label}</Button>
+                  )}
+                </div>
+              </div>
             );
           })}
-        </ol>
+        </div>
       )}
+
 
       <PhaseFormModal open={dialog?.kind === "form"} championshipId={championshipId} phase={dialog?.kind === "form" ? dialog.phase : null} onClose={close} onSaved={saved} />
       {dialog?.kind === "matchdays" && dialog.phase && <MatchdaysModal open phase={dialog.phase} onClose={close} onChanged={phases.reload} />}

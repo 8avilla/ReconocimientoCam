@@ -86,8 +86,8 @@ export function PlayerPhotoGallery({
       const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
       const crops = await detectFaceCropsInImage(await urlToDataUrl(photo.url)).catch(() => null);
       if (crops) {
-        const cropped = await http<PlayerPhotoDTO>(`/players/${playerId}/photos`, { json: { image: crops.carnet } });
-        await http(`/players/${playerId}/photos/${cropped._id}/carnet`, { method: "POST" });
+        // Sets the crop directly as the carnet photo — it never becomes its own gallery entry.
+        await http(`/players/${playerId}/carnet-photo`, { json: { image: crops.carnet } });
         toast.success("Foto de carnet actualizada");
       } else {
         await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });

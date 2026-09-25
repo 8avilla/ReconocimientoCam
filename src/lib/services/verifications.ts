@@ -8,6 +8,7 @@ import { getGallery, type GalleryEntry } from "@/lib/services/faceGallery";
 import { classifySimilarity } from "@/lib/faceEngine/verification";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { embedFaceOrFail, prepareFaceImage } from "@/lib/services/players";
+import { getSystemSettings } from "@/lib/services/systemSettings";
 import { Championship, IChampionship } from "@/models/Championship";
 import { IdentityVerification, VerificationResult } from "@/models/IdentityVerification";
 import { IMatch, Match } from "@/models/Match";
@@ -121,7 +122,7 @@ export async function verifyFace(actor: Actor, matchId: string, playerId: string
 
   const captured = await embedFaceOrFail(await prepareFaceImage(image), { padFirst: true });
   const similarity = cosineSimilarity(captured, Float32Array.from(context.player.faceEmbedding));
-  const result: VerificationResult = classifySimilarity(similarity, context.championship.rules);
+  const result: VerificationResult = classifySimilarity(similarity, await getSystemSettings());
 
   const verification = await IdentityVerification.create({
     matchId,

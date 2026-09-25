@@ -22,15 +22,17 @@ export function AttentionList({ championshipId, overview }: { championshipId: st
   const live = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=live&limit=10`);
   const todays = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&from=${encodeURIComponent(today.from)}&to=${encodeURIComponent(today.to)}&order=date&limit=10`);
 
-  const items: { key: string; icon: React.ReactNode; tone: "live" | "today" | "todo"; text: string; detail?: string; href: string; action: string }[] = [
+  const items: { key: string; icon: React.ReactNode; tone: "live" | "today" | "todo"; text: string; time?: string; detail?: string; href: string; action: string }[] = [
     ...(live.data?.data ?? []).map((match) => ({
       key: `live-${match._id}`, icon: <CircleDot size={20} />, tone: "live" as const,
-      text: `En juego: ${match.homeTeamId.name} ${match.homeScore ?? 0} – ${match.awayScore ?? 0} ${match.awayTeamId.name}`,
+      text: `${match.homeTeamId.name} ${match.homeScore ?? 0} – ${match.awayScore ?? 0} ${match.awayTeamId.name}`,
+      time: "EN VIVO",
       href: `/matches/${match._id}?tab=events`, action: "Registrar",
     })),
     ...(todays.data?.data ?? []).map((match) => ({
       key: `today-${match._id}`, icon: <Swords size={20} />, tone: "today" as const,
-      text: `Hoy ${timeOf(match.scheduledAt)}: ${match.homeTeamId.name} vs ${match.awayTeamId.name}`,
+      text: `${match.homeTeamId.name} vs ${match.awayTeamId.name}`,
+      time: timeOf(match.scheduledAt),
       href: `/matches/${match._id}?tab=attendance`, action: "Asistencia",
     })),
     ...(overview.unscheduledMatches > 0
@@ -60,6 +62,9 @@ export function AttentionList({ championshipId, overview }: { championshipId: st
               <div className="text-strong">{item.text}</div>
               {item.detail && <div className="text-secondary text-small truncate">{item.detail}</div>}
             </div>
+            {item.time && (
+              <span className={`attention-time-chip${item.tone === "live" ? " live" : ""}`}>{item.time}</span>
+            )}
             <span className="text-small text-strong" style={{ color: "var(--color-primary)" }}>{item.action}</span>
             <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
           </Link>

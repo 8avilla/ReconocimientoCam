@@ -83,22 +83,45 @@ export default function TeamDetailPage() {
         }
       />
 
-      <section className="team-hero">
-        <Avatar src={current.shieldUrl} name={current.name} size={72} square />
-        <div className="stack-sm grow" style={{ minWidth: 0 }}>
-          <div className="row-between">
-            <h2>{current.name}</h2>
-            <button className={`star-button${favoriteTeams.has(id) ? " on" : ""}`} aria-pressed={favoriteTeams.has(id)} aria-label={favoriteTeams.has(id) ? "Dejar de seguir este equipo" : "Seguir este equipo"} onClick={() => { toggleFavoriteTeam(id); toast.success(favoriteTeams.has(id) ? `Dejaste de seguir ${current.name}` : `Ahora sigues ${current.name}`); }}>
+      <section className="team-hero-card" aria-label={`Ficha de ${current.name}`}>
+        <div className="team-hero-cover">
+          <div className="team-hero-cover-pattern" />
+        </div>
+
+        <div className="team-hero-body">
+          <div className="team-shield-box">
+            <Avatar src={current.shieldUrl} name={current.name} size={84} square />
+          </div>
+
+          <div className="row" style={{ justifyContent: "center", gap: 8, marginTop: 4 }}>
+            <h2 style={{ fontSize: 24 }}>{current.name}</h2>
+            <button
+              className={`star-button${favoriteTeams.has(id) ? " on" : ""}`}
+              aria-pressed={favoriteTeams.has(id)}
+              aria-label={favoriteTeams.has(id) ? "Dejar de seguir este equipo" : "Seguir este equipo"}
+              onClick={() => {
+                toggleFavoriteTeam(id);
+                toast.success(favoriteTeams.has(id) ? `Dejaste de seguir ${current.name}` : `Ahora sigues ${current.name}`);
+              }}
+            >
               <Star size={22} fill={favoriteTeams.has(id) ? "currentColor" : "none"} />
             </button>
           </div>
-          <div className="row-wrap" style={{ gap: 8 }}>
-            <span className="text-secondary">{current.playerCount ?? 0} jugadores</span>
+
+          <div className="row-wrap" style={{ justifyContent: "center", gap: 12, marginTop: 6 }}>
+            <span className="text-secondary" style={{ fontWeight: 600 }}>
+              {current.playerCount ?? 0} jugadores inscritos
+            </span>
             {!current.active && <Badge tone="neutral">Inactivo</Badge>}
+            {current.delegateName && (
+              <span className="text-secondary text-small">
+                Delegado: <strong>{current.delegateName}</strong>
+              </span>
+            )}
           </div>
-          <span className="text-secondary text-small">Delegado: {current.delegateName || "Sin asignar"}</span>
         </div>
       </section>
+
 
       <div className="tabs-line" role="tablist" aria-label="Secciones del equipo">
         {TABS.map((item) => (

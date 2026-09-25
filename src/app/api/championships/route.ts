@@ -3,7 +3,6 @@ import { getActor } from "@/lib/actor";
 import { recordAudit } from "@/lib/audit";
 import { championshipCreateSchema, championshipListQuery } from "@/lib/validation/schemas";
 import { skipFor } from "@/lib/validation/common";
-import { assertThresholdOrder } from "@/lib/rules/championship";
 import { Championship, DEFAULT_RULES, IChampionship } from "@/models/Championship";
 
 export const GET = route(async (request) => {
@@ -32,7 +31,6 @@ export const POST = route(async (request) => {
   if (!actor.userId) throw new ApiError(401, "Inicia sesión con Google para crear un campeonato", "unauthenticated");
   const input = await parseBody(request, championshipCreateSchema);
   const rules = { ...DEFAULT_RULES, ...input.rules };
-  assertThresholdOrder(rules);
 
   const duplicate = await Championship.exists({ name: input.name, season: input.season });
   if (duplicate) throw conflict("Ya existe un campeonato con ese nombre y temporada", "duplicate");

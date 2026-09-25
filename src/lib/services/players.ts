@@ -219,3 +219,34 @@ export async function setPlayerCarnetPhoto(actor: Actor, playerId: string, photo
   });
   return { photoUrl: player.photoUrl };
 }
+
+/**
+ * Sets the carnet/profile photo directly from a raw image (already cropped/focused on the face by
+ * the caller) instead of pointing at an existing gallery entry. Unlike `setPlayerCarnetPhoto`, this
+ * never touches the general `photos[]` gallery — the crop is only ever the carnet photo, it isn't
+ * meant to also clutter the gallery, same as the one `enrollPlayerFace` sets for a player with none yet.
+ */
+export async function setPlayerCarnetImage(actor: Actor, playerId: string, image: string) {
+  await requireOrganizerOfPlayer(actor, playerId);
+  const player = await Player.findById(playerId);
+  if (!player) throw notFound("Jugador no encontrado");
+
+  const previousBlob = player.photoBlobName;
+  const uploaded = await uploadImage(await prepareCarnetImage(image), "players/photos");
+  player.set({ photoUrl: uploaded.url, photoBlobName: uploaded.blobName });
+  await player.save();
+
+  // The old carnet blob is only deleted if the gallery isn't also pointing to it (it's independent otherwise).
+  const stillInGallery = photosOf(player).some((item) => item.blobName === previousBlob);
+  if (previousBlob && previousBlob !== uploaded.blobName && !stillInGallery) {
+    deleteImage(previousBlob).catch((error) => console.error("Failed to delete previous carnet photo:", error));
+  }
+
+  await recordAudit(actor, {
+    action: "update",
+    entityType: "player",
+    entityId: player._id,
+    summary: `Foto de carnet actualizada para ${player.fullName}`,
+  });
+  return { photoUrl: player.photoUrl };
+}

@@ -14,7 +14,20 @@ import type { PhaseDTO, PhaseStandingsDTO } from "@/types/api";
  * Table of the phases a team plays in, with its own row highlighted; without `teamId` it is the championship's table
  * (all its phases; knockout ones link to their bracket). `maxRows` trims each table for summaries.
  */
-export function TeamStandingsTab({ teamId, championshipId, maxRows, phaseSelector = true }: { teamId?: string; championshipId: string; maxRows?: number; phaseSelector?: boolean }) {
+export function TeamStandingsTab({
+  teamId,
+  championshipId,
+  maxRows,
+  phaseSelector = true,
+  qualifyCount,
+}: {
+  teamId?: string;
+  championshipId: string;
+  maxRows?: number;
+  phaseSelector?: boolean;
+  /** Marks the top N rows of a league table as the direct-qualification zone (see `StandingsTable`). */
+  qualifyCount?: number;
+}) {
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const [choice, setChoice] = useState("");
   const tablePhases = (phases.data?.data ?? []).filter((phase) => !teamId || (phase.type !== "knockout" && phase.teamIds.includes(teamId)))
@@ -63,7 +76,7 @@ export function TeamStandingsTab({ teamId, championshipId, maxRows, phaseSelecto
       ) : (
         tables.map((table) => (
           <section key={table.group ?? "league"} aria-label={table.group ?? phase.name}>
-            <StandingsTable rows={maxRows ? table.rows.slice(0, maxRows) : table.rows} highlightTeamId={teamId} title={table.group ? `${phase.name} · ${table.group}` : phase.name} />
+            <StandingsTable rows={maxRows ? table.rows.slice(0, maxRows) : table.rows} highlightTeamId={teamId} title={table.group ? `${phase.name} · ${table.group}` : phase.name} qualifyCount={qualifyCount} />
           </section>
         ))
       )}

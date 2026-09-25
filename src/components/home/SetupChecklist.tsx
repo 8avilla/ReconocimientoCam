@@ -24,15 +24,16 @@ export function SetupChecklist({ championshipId, overview }: { championshipId: s
   const completed = steps.filter((step) => step.done).length;
   if (completed === steps.length) return null;
   const next = steps.find((step) => !step.done);
+  const percent = Math.round((completed / steps.length) * 100);
 
   return (
     <section className="card stack" aria-label="Configuración del campeonato">
       <div className="row-between">
         <h2>Configura tu campeonato</h2>
-        <span className="text-secondary text-small">{completed} de {steps.length}</span>
+        <span className="badge success">{percent}% listo ⚽</span>
       </div>
-      <div className="progress" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={steps.length} aria-label="Pasos completados">
-        <span style={{ width: `${(completed / steps.length) * 100}%` }} />
+      <div className="progress gradient" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={steps.length} aria-label="Pasos completados">
+        <span style={{ width: `${percent}%` }} />
       </div>
       <ol className="checklist">
         {steps.map((step, index) => (

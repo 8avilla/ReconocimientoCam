@@ -12,6 +12,7 @@ import { useFetch } from "@/lib/client/useFetch";
 import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
 
 const PAGE_SIZE = 25;
+type FilterMode = "all" | "no_face" | "has_face" | "incomplete";
 
 export function PlayersView() {
   return <RequireChampionship>{(championship) => <PlayersList championshipId={championship._id} />}</RequireChampionship>;
@@ -23,6 +24,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [teamId, setTeamId] = useState("");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [pages, setPages] = useState(1);
   const [editingPlayer, setEditingPlayer] = useState<PlayerDTO | null>(null);
 
@@ -39,7 +41,18 @@ function PlayersList({ championshipId }: { championshipId: string }) {
 
   const players = data?.data ?? [];
   const hasMore = data ? data.data.length < data.meta.total : false;
-  const filtered = Boolean(debouncedSearch || teamId);
+  const filtered = Boolean(debouncedSearch || teamId || filterMode !== "all");
+
+  const withFaceCount = players.filter((p) => p.hasFace).length;
+  const noFaceCount = players.filter((p) => !p.hasFace).length;
+  const incompleteCount = players.filter((p) => !p.documentId || !p.birthDate).length;
+
+  const displayedPlayers = players.filter((player) => {
+    if (filterMode === "no_face") return !player.hasFace;
+    if (filterMode === "has_face") return player.hasFace;
+    if (filterMode === "incomplete") return !player.documentId || !player.birthDate;
+    return true;
+  });
 
   return (
     <>
@@ -50,7 +63,8 @@ function PlayersList({ championshipId }: { championshipId: string }) {
         mobileActions={manage ? [{ label: "Nuevo jugador", icon: <Plus size={20} />, href: "/players/new" }] : undefined}
       />
 
-      <div className="row-wrap" style={{ marginBottom: "var(--space-lg)" }}>
+      {/* Search & Team Select Bar */}
+      <div className="row-wrap" style={{ marginBottom: "var(--space-md)" }}>
         <div className="search grow" style={{ minWidth: 220, maxWidth: 420 }}>
           <Search size={18} aria-hidden />
           <input
@@ -67,30 +81,50 @@ function PlayersList({ championshipId }: { championshipId: string }) {
         </select>
       </div>
 
+      {/* Quick Filter Chips */}
+      {players.length > 0 && (
+        <div className="filter-chips" style={{ marginBottom: "var(--space-lg)" }}>
+          <button className={`filter-chip${filterMode === "all" ? " active" : ""}`} onClick={() => setFilterMode("all")}>
+            Todos <span className="filter-chip-badge">{players.length}</span>
+          </button>
+          <button className={`filter-chip${filterMode === "no_face" ? " active" : ""}`} onClick={() => setFilterMode("no_face")}>
+            ⚠️ Sin Rostro <span className="filter-chip-badge">{noFaceCount}</span>
+          </button>
+          <button className={`filter-chip${filterMode === "has_face" ? " active" : ""}`} onClick={() => setFilterMode("has_face")}>
+            ✅ Con Rostro <span className="filter-chip-badge">{withFaceCount}</span>
+          </button>
+          <button className={`filter-chip${filterMode === "incomplete" ? " active" : ""}`} onClick={() => setFilterMode("incomplete")}>
+            ⚠️ Datos Incompletos <span className="filter-chip-badge">{incompleteCount}</span>
+          </button>
+        </div>
+      )}
+
       {error ? (
         <ErrorState message={error.message} onRetry={reload} />
       ) : loading && !data ? (
         <Loading />
-      ) : players.length === 0 ? (
+      ) : displayedPlayers.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={<Users size={28} />}
             title={filtered ? "Sin resultados" : "Aún no hay jugadores"}
-            description={filtered ? "Prueba con otros filtros." : "Registra el primer jugador de este campeonato."}
+            description={filtered ? "Prueba cambiando la búsqueda o los filtros." : "Registra el primer jugador de este campeonato."}
             action={manage && !filtered && <Link href="/players/new" className="btn primary">Registrar jugador</Link>}
           />
         </div>
       ) : (
         <>
           <div className="flush-list">
-            <h2 className="band band-muted band-small">Jugadores ({data?.meta.total ?? players.length})</h2>
+            <h2 className="band band-muted band-small">
+              Jugadores ({displayedPlayers.length} {filterMode !== "all" ? `de ${players.length}` : ""})
+            </h2>
             <div className="table-wrap only-desktop">
               <table className="table">
                 <thead>
                   <tr><th>Jugador</th><th>Equipo</th><th>Posición</th><th>Estado</th><th>Rostro</th>{manage && <th></th>}</tr>
                 </thead>
                 <tbody>
-                  {players.map((player) => (
+                  {displayedPlayers.map((player) => (
                     <tr key={player._id}>
                       <td>
                         <Link href={`/players/${player._id}`} className="row">
@@ -120,7 +154,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             </div>
 
             <div className="only-mobile">
-              {players.map((player) => (
+              {displayedPlayers.map((player) => (
                 <div key={player._id} className="list-row">
                   <Link href={`/players/${player._id}`} className="row grow" style={{ minWidth: 0 }}>
                     <Avatar src={player.photoUrl} name={player.fullName} size={44} />
@@ -132,7 +166,6 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                       <div className="champ-name truncate">{player.fullName}</div>
                     </div>
                     {player.registration && player.registration.status !== "active" && <RegistrationBadge status={player.registration.status} />}
-                    {/* Icon only on phones so the name keeps its space. */}
                     <span title={player.hasFace ? "Rostro registrado" : "Sin rostro"} aria-label={player.hasFace ? "Rostro registrado" : "Sin rostro"} style={{ display: "inline-flex", color: player.hasFace ? "var(--color-success)" : "var(--color-warning)" }}>
                       {player.hasFace ? <ScanFace size={22} /> : <UserRound size={22} />}
                     </span>
@@ -171,3 +204,4 @@ function PlayersList({ championshipId }: { championshipId: string }) {
     </>
   );
 }
+

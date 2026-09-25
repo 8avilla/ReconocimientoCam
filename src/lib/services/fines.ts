@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/audit";
 import { deleteImage, uploadImage } from "@/lib/azureBlob";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { fineBalance, fineStatus } from "@/lib/rules/fines";
-import { Fine, type FineStatus, type IFine, type PaymentMethod } from "@/models/Fine";
+import { Fine, type FineStatus, type FineType, type IFine, type PaymentMethod } from "@/models/Fine";
 import { Team } from "@/models/Team";
 
 interface CardFineInput {
@@ -36,6 +36,74 @@ export async function createCardFine(actor: Actor, input: CardFineInput) {
   return fine;
 }
 
+interface RegistrationFineInput {
+  championshipId: Types.ObjectId;
+  teamId: Types.ObjectId;
+  amount: number;
+}
+
+/**
+ * Charges the team's registration fee set by the championship rules (nothing when the amount is 0 or the
+ * team already has one). The existence check isn't atomic with the insert, so two near-simultaneous calls
+ * (e.g. the fines list backfilling several teams at once) could both pass it — the schema's unique index
+ * on (teamId, type: "registration") is the real guard; a duplicate-key error here just means the other
+ * call won the race, which is fine.
+ */
+export async function createRegistrationFine(actor: Actor, input: RegistrationFineInput) {
+  if (input.amount <= 0) return null;
+  if (await Fine.exists({ teamId: input.teamId, type: "registration" })) return null;
+  let fine;
+  try {
+    fine = await Fine.create({ ...input, type: "registration", concept: "Inscripción al campeonato", createdBy: actor.name });
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === 11000) return null;
+    throw error;
+  }
+  await recordAudit(actor, {
+    action: "create",
+    entityType: "fine",
+    entityId: fine._id,
+    championshipId: input.championshipId,
+    summary: `Cuota de inscripción: $${input.amount}`,
+    changes: { teamId: input.teamId.toString() },
+  });
+  return fine;
+}
+
+/**
+ * Every team gets a registration fine once the fee is set — including teams that joined before the fee
+ * existed, or before it was raised above 0. Missing ones are created here (idempotent, via
+ * `createRegistrationFine`'s own check) so the "Cuotas de inscripción" list always covers every team,
+ * whichever came first: the team or the fee.
+ */
+export async function ensureRegistrationFines(actor: Actor, championshipId: Types.ObjectId, amount: number) {
+  if (amount <= 0) return;
+  const teams = await Team.find({ championshipId }).select("_id").lean();
+  await Promise.all(teams.map((team) => createRegistrationFine(actor, { championshipId, teamId: team._id, amount })));
+}
+
+/**
+ * Keeps every registration fine in step with the championship's current fee, so a team's balance always
+ * reflects the current rule instead of a frozen snapshot from when it registered. Waived fines are left
+ * alone — those were settled explicitly, another way. Turning the fee off (0) only cancels fines with
+ * nothing collected yet (pending); a partial or full payment is real money received, so it must stay
+ * visible in the money summary rather than disappear because the fee later got disabled. Turning the fee
+ * back on revives any fine this same function had cancelled (a team can't be stuck "cancelled" forever
+ * just because the fee was off for a while).
+ */
+export async function syncRegistrationFeeAmount(championshipId: Types.ObjectId, amount: number) {
+  const fines = await Fine.find({ championshipId, type: "registration", status: { $in: ["pending", "partial", "paid", "cancelled"] } });
+  for (const fine of fines) {
+    if (amount <= 0) {
+      if (fine.status === "pending") fine.status = "cancelled";
+    } else {
+      fine.amount = amount;
+      fine.status = fineStatus(fine.status === "cancelled" ? "pending" : fine.status, fine.amount, fine.paidAmount);
+    }
+    await fine.save();
+  }
+}
+
 /**
  * The card events were voided: unpaid fines are cancelled; when money was already received the fine stays
  * (marked) so the organizer can decide to return it by removing the payment.
@@ -60,6 +128,8 @@ export interface FineListFilter {
   championshipId: string;
   teamId?: string;
   status?: "open" | "paid" | "waived" | "cancelled";
+  /** Defaults to every type except "registration" — team registration fees have their own view (in Equipos), so they stay out of the general Multas list unless asked for explicitly. */
+  type?: FineType;
   skip: number;
   limit: number;
 }
@@ -67,7 +137,8 @@ export interface FineListFilter {
 export async function listFines(input: FineListFilter) {
   const championshipId = new Types.ObjectId(input.championshipId);
   const statusFilter: { status?: FineStatus | { $in: FineStatus[] } } = input.status === "open" ? { status: { $in: ["pending", "partial"] } } : input.status ? { status: input.status } : {};
-  const filter = { championshipId, ...(input.teamId ? { teamId: new Types.ObjectId(input.teamId) } : {}), ...statusFilter };
+  const typeFilter: { type: FineType | { $ne: FineType } } = input.type ? { type: input.type } : { type: { $ne: "registration" } };
+  const filter = { championshipId, ...(input.teamId ? { teamId: new Types.ObjectId(input.teamId) } : {}), ...statusFilter, ...typeFilter };
 
   const [data, total, open] = await Promise.all([
     Fine.find(filter)
@@ -79,9 +150,9 @@ export async function listFines(input: FineListFilter) {
       .populate({ path: "matchId", select: "homeTeamId awayTeamId", populate: [{ path: "homeTeamId", select: "name" }, { path: "awayTeamId", select: "name" }] })
       .lean(),
     Fine.countDocuments(filter),
-    // Money picture of the whole championship, whatever the list is filtered by.
+    // Money picture of the whole championship (ignoring team/status filters, but keeping the type split).
     Fine.aggregate<{ _id: Types.ObjectId; owed: number; collected: number }>([
-      { $match: { championshipId, status: { $ne: "cancelled" } } },
+      { $match: { championshipId, status: { $ne: "cancelled" }, ...typeFilter } },
       {
         $group: {
           _id: "$teamId",

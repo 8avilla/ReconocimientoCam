@@ -2,6 +2,7 @@ import { badRequest, conflict, escapeRegex, json, notFound, parseBody, parseQuer
 import { getActor } from "@/lib/actor";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
+import { createRegistrationFine } from "@/lib/services/fines";
 import { teamCreateSchema, teamListQuery } from "@/lib/validation/schemas";
 import { skipFor } from "@/lib/validation/common";
 import { Championship } from "@/models/Championship";
@@ -35,7 +36,7 @@ export const GET = route(async (request) => {
 export const POST = route(async (request) => {
   const actor = getActor(request);
   const input = await parseBody(request, teamCreateSchema);
-  const championship = await Championship.exists({ _id: input.championshipId });
+  const championship = await Championship.findById(input.championshipId).select("rules.registrationFeeAmount").lean();
   if (!championship) throw notFound("Campeonato no encontrado");
   await requireOrganizerOfChampionship(actor, input.championshipId);
 
@@ -52,6 +53,11 @@ export const POST = route(async (request) => {
   if (phase) {
     await Phase.updateOne({ _id: phase._id }, { $addToSet: { teamIds: team._id } });
   }
+  await createRegistrationFine(actor, {
+    championshipId: toObjectId(input.championshipId),
+    teamId: team._id,
+    amount: championship.rules.registrationFeeAmount,
+  });
   await recordAudit(actor, {
     action: "create",
     entityType: "team",

@@ -13,7 +13,21 @@ export const GET = route<Params>(async (request, { id }) => {
 
   const roster = await TeamRegistration.find({ teamId: id, ...(status ? { status } : {}) })
     .sort({ shirtNumber: 1 })
-    .populate({ path: "playerId", select: "publicId fullName documentId photoUrl birthDate" })
+    .populate({ path: "playerId", select: "publicId fullName documentId photoUrl birthDate biometricConsentAt" })
     .lean();
-  return json({ data: roster });
+
+  const data = roster.map((item) => {
+    if (!item.playerId || typeof item.playerId !== "object") return item;
+    const p = item.playerId as unknown as { biometricConsentAt?: string };
+    return {
+      ...item,
+      playerId: {
+        ...item.playerId,
+        hasFace: Boolean(p.biometricConsentAt),
+      },
+    };
+  });
+
+  return json({ data });
 });
+

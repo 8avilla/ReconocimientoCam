@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { championshipPath } from "@/lib/paths";
-import { Layers, Pencil, Plus, Search, Star, Trash2, Trophy } from "lucide-react";
+import { Layers, Plus, Search, Star, Trash2, Trophy } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
@@ -19,16 +19,11 @@ export function ChampionshipsView() {
   const router = useRouter();
   const { championships, favoriteIds, toggleFavorite, loading, error, reload } = useChampionship();
   const { user, isSignedIn, canManageChampionship } = useRole();
-  const [editing, setEditing] = useState<ChampionshipDTO | null>(null);
   const [search, setSearch] = useState("");
+  // Creates a new championship only — editing an existing one now happens from its own "Gestionar" panel.
   const [formOpen, setFormOpen] = useState(false);
   const [deleting, setDeleting] = useState<ChampionshipDTO | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const openForm = (championship: ChampionshipDTO | null) => {
-    setEditing(championship);
-    setFormOpen(true);
-  };
 
   async function confirmDelete() {
     if (!deleting) return;
@@ -81,7 +76,6 @@ export function ChampionshipsView() {
             actions={[
               ...(manageThis ? [
                 { label: "Gestionar", icon: <Layers size={18} />, href: championshipPath(championship.slug || championship._id, "gestionar") },
-                { label: "Editar", icon: <Pencil size={18} />, onClick: () => openForm(championship) },
               ] : []),
               ...(user?.isAdmin ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
             ]}
@@ -96,8 +90,8 @@ export function ChampionshipsView() {
       <PageHeader
         title="Campeonatos"
         description="Elige un campeonato para entrar. Con la estrella marcas los que sigues."
-        actions={isSignedIn && <Button icon={<Plus size={18} />} onClick={() => openForm(null)}>Nuevo campeonato</Button>}
-        mobileActions={isSignedIn ? [{ label: "Nuevo campeonato", icon: <Plus size={20} />, onClick: () => openForm(null) }] : undefined}
+        actions={isSignedIn && <Button icon={<Plus size={18} />} onClick={() => setFormOpen(true)}>Nuevo campeonato</Button>}
+        mobileActions={isSignedIn ? [{ label: "Nuevo campeonato", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }] : undefined}
       />
 
       {error ? (
@@ -109,7 +103,7 @@ export function ChampionshipsView() {
           icon={<Trophy size={28} />}
           title="Aún no hay campeonatos"
           description={isSignedIn ? "Crea tu primer campeonato para comenzar." : "Inicia sesión con Google para crear el primero."}
-          action={isSignedIn && <Button onClick={() => openForm(null)}>Crear campeonato</Button>}
+          action={isSignedIn && <Button onClick={() => setFormOpen(true)}>Crear campeonato</Button>}
         />
       ) : (
         <>
@@ -140,11 +134,11 @@ export function ChampionshipsView() {
 
       <ChampionshipFormModal
         open={formOpen}
-        championship={editing}
+        championship={null}
         onClose={() => setFormOpen(false)}
         onSaved={(saved) => {
           setFormOpen(false);
-          if (!editing) router.push(championshipPath(saved.slug || saved._id, "gestionar"));
+          router.push(championshipPath(saved.slug || saved._id, "gestionar"));
           reload();
         }}
       />

@@ -2,9 +2,9 @@ import { conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { requireAdmin, requireOrganizer } from "@/lib/permissions";
 import { diffChanges, recordAudit } from "@/lib/audit";
+import { ensureRegistrationFines, syncRegistrationFeeAmount } from "@/lib/services/fines";
 import { findChampionshipByIdOrSlug } from "@/lib/services/championships";
 import { championshipUpdateSchema } from "@/lib/validation/schemas";
-import { assertThresholdOrder } from "@/lib/rules/championship";
 import { Championship, IChampionship } from "@/models/Championship";
 import { Match } from "@/models/Match";
 import { Matchday } from "@/models/Matchday";
@@ -44,8 +44,12 @@ export const PATCH = route<Params>(async (request, { id }) => {
   if (rules) {
     for (const [key, value] of Object.entries(rules)) championship.set(`rules.${key}`, value);
   }
-  assertThresholdOrder(championship.rules);
   await championship.save();
+
+  if (rules?.registrationFeeAmount !== undefined && rules.registrationFeeAmount !== beforeRules.registrationFeeAmount) {
+    await syncRegistrationFeeAmount(championship._id, rules.registrationFeeAmount);
+    await ensureRegistrationFines(actor, championship._id, rules.registrationFeeAmount);
+  }
 
   const changes = {
     ...diffChanges(before, fields as Partial<IChampionship>, ["name", "season", "status", "format", "startDate", "endDate", "slug", "visibility"]),

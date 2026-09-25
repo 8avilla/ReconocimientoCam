@@ -5,6 +5,7 @@ import { Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { ActionMenu, Button, ConfirmDialog, EmptyState, ErrorState, Loading, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
+import { PERMISSION_LABEL } from "@/lib/labels";
 import { RoleFormModal } from "./RoleFormModal";
 import type { Paginated, RoleDTO } from "@/types/api";
 
@@ -45,20 +46,29 @@ export function RolesManager() {
       ) : roles.length === 0 ? (
         <div className="card"><EmptyState icon={<ShieldCheck size={28} />} title="Sin roles todavía" description="Crea un rol y elige qué permisos tiene." action={<Button onClick={() => setEditing("new")}>Crear rol</Button>} /></div>
       ) : (
-        <div className="flush-list">
+        <div className="card-grid">
           {roles.map((role) => (
-            <div key={role._id} className="list-row">
-              <div className="grow" style={{ minWidth: 0 }}>
-                <div className="text-strong truncate">{role.name}</div>
-                <div className="text-secondary text-small">{role.permissions.length} {role.permissions.length === 1 ? "permiso" : "permisos"}</div>
+            <div key={role._id} className="card stack-sm">
+              <div className="row-between">
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <div className="text-strong truncate">{role.name}</div>
+                  <div className="text-secondary text-small">{role.permissions.length} {role.permissions.length === 1 ? "permiso" : "permisos"}</div>
+                </div>
+                <ActionMenu
+                  label={`Más acciones de ${role.name}`}
+                  actions={[
+                    { label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditing(role) },
+                    { label: "Eliminar", icon: <Trash2 size={16} />, danger: true, onClick: () => setDeleting(role) },
+                  ]}
+                />
               </div>
-              <ActionMenu
-                label={`Más acciones de ${role.name}`}
-                actions={[
-                  { label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditing(role) },
-                  { label: "Eliminar", icon: <Trash2 size={16} />, danger: true, onClick: () => setDeleting(role) },
-                ]}
-              />
+              {role.permissions.length > 0 && (
+                <div className="row-wrap" style={{ gap: 6 }}>
+                  {role.permissions.map((permission) => (
+                    <span key={permission} className="filter-chip" style={{ cursor: "default" }}>{PERMISSION_LABEL[permission]}</span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

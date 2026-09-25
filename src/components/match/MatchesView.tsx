@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarClock, CalendarDays, CalendarPlus, ChevronDown, FilterX, Plus, SlidersHorizontal, X } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, ChevronDown, FilterX, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FixtureModal } from "@/components/match/FixtureModal";
 import { MatchFormModal } from "@/components/match/MatchFormModal";
@@ -49,7 +49,12 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const [fixtureOpen, setFixtureOpen] = useState(false);
   const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : ""}${phaseId ? `&phaseId=${phaseId}` : ""}${teamId ? `&teamId=${teamId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
   const { data, error, loading, reload } = useFetch<Paginated<MatchDTO>>(query);
-  const matches = data?.data ?? [];
+  const [search, setSearch] = useState("");
+  const matches = (data?.data ?? []).filter((match) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return match.homeTeamId.name.toLowerCase().includes(q) || match.awayTeamId.name.toLowerCase().includes(q) || match.venue.toLowerCase().includes(q);
+  });
   const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); };
   const { can } = useRole();
   const manage = can("match.manage");
@@ -95,7 +100,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
           className={`fecha-tab${matchdayId === item._id ? " active" : ""}`}
           onClick={() => setMatchdayId(item._id)}
         >
-          {item.name}
+          {item.name} <span className="fecha-tab-badge">{item.matches.total}</span>
         </button>
       ))}
     </div>
@@ -142,6 +147,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
           <Link href={championshipPath(championshipId, "gestionar")} className="btn secondary small">Configurar fases</Link>
         </div>
       )}
+
       <div className="stack-sm" style={{ marginBottom: "var(--space-lg)" }}>
         <div className="row-between">
           <div className="row-wrap" style={{ columnGap: "var(--space-lg)", rowGap: 0 }}>
@@ -151,6 +157,10 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
           <Button variant="secondary" icon={<SlidersHorizontal size={18} />} onClick={() => setFiltersOpen(true)}>
             Filtros{extraActive > 0 ? ` (${extraActive})` : ""}
           </Button>
+        </div>
+        <div className="search" style={{ maxWidth: 420 }}>
+          <Search size={18} aria-hidden />
+          <input className="input" type="search" placeholder="Buscar equipo o cancha..." aria-label="Buscar equipo o cancha" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {fechaTabs}
         {(filtered || matchdayId) && (

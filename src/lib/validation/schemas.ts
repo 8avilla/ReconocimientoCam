@@ -4,6 +4,7 @@ import {
   CHAMPIONSHIP_STATUSES,
   CHAMPIONSHIP_VISIBILITIES,
 } from "@/models/Championship";
+import { FINE_TYPES } from "@/models/Fine";
 import { POSITIONS, REGISTRATION_STATUSES } from "@/models/TeamRegistration";
 import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES } from "@/lib/constants";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/models/AuditLog";
@@ -31,21 +32,13 @@ const rulesSchema = z
     redCardSuspensionMatches: z.number().int().min(1).max(20),
     yellowCardFine: z.number().int().min(0).max(100_000_000),
     redCardFine: z.number().int().min(0).max(100_000_000),
-    verifyThreshold: z.number().min(0).max(1),
-    reviewThreshold: z.number().min(0).max(1),
+    registrationFeeAmount: z.number().int().min(0).max(100_000_000),
     allowManualReview: z.boolean(),
     walkoverGoals: z.number().int().min(0).max(50),
     periodsCount: z.number().int().min(1).max(20),
     periodLabels: z.array(z.string().trim().min(1).max(40)).max(20),
   })
-  .partial()
-  .refine(
-    (rules) =>
-      rules.verifyThreshold === undefined ||
-      rules.reviewThreshold === undefined ||
-      rules.reviewThreshold <= rules.verifyThreshold,
-    { message: "El umbral de revisión no puede superar el umbral de verificación", path: ["reviewThreshold"] }
-  );
+  .partial();
 
 /** Lowercase letters, numbers and hyphens only, so it drops cleanly into "/c/<slug>". */
 const slugSchema = z
@@ -423,6 +416,8 @@ export const fineListQuery = paginationSchema.extend({
   teamId: objectIdSchema.optional(),
   /** "open" = pending or partially paid. */
   status: z.enum(["open", "paid", "waived", "cancelled"]).optional(),
+  /** Defaults to every type except "registration" (see `listFines`). */
+  type: z.enum(FINE_TYPES).optional(),
 });
 
 export const fineCreateSchema = z.object({
@@ -491,7 +486,7 @@ export const userUpdateSchema = z.object({
   roleId: objectIdSchema.nullable(),
   isAdmin: z.boolean(),
 }).partial();
-export const userListQuery = paginationSchema.extend({ q: z.string().trim().max(60).optional() });
+export const userListQuery = paginationSchema.extend({ q: z.string().trim().max(60).optional(), isAdmin: z.coerce.boolean().optional() });
 
 export const roleCreateSchema = z.object({
   name: requiredText(60),
@@ -499,3 +494,10 @@ export const roleCreateSchema = z.object({
 });
 export const roleUpdateSchema = roleCreateSchema.partial();
 export const roleListQuery = paginationSchema;
+
+// ---------- System settings ----------
+
+export const systemSettingsUpdateSchema = z.object({
+  verifyThreshold: z.number().min(0).max(1),
+  reviewThreshold: z.number().min(0).max(1),
+});

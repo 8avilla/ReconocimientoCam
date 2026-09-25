@@ -18,10 +18,6 @@ export interface ChampionshipRules {
   maxRosterSize: number;
   /** Minimum checked-in players required to start a match. */
   minPlayersToStart: number;
-  /** Cosine similarity at or above which a face is verified. */
-  verifyThreshold: number;
-  /** Cosine similarity at or above which a face goes to manual review (below verifyThreshold). */
-  reviewThreshold: number;
   /** Non-voided yellow cards that trigger an automatic suspension. */
   yellowCardsForSuspension: number;
   /** Matches a player sits out after accumulating the yellow cards above. */
@@ -32,6 +28,8 @@ export interface ChampionshipRules {
   yellowCardFine: number;
   /** Fine (COP) charged for each red card; 0 = no fine. */
   redCardFine: number;
+  /** Fee (COP) charged once per team when it registers for the championship; 0 = no fee. */
+  registrationFeeAmount: number;
   /** Whether referees may resolve a failed verification manually. Fixed to true for now. */
   allowManualReview: boolean;
   /** Goals credited to the winner of a walkover (W.O.); the loser gets 0. 0 = no goals, only the win. */
@@ -71,21 +69,18 @@ export interface IChampionship {
   updatedAt: Date;
 }
 
-// Face thresholds validated on LFW with the aligned pipeline (see docs/CALIBRACION_FACIAL.md);
-// recalibrate with the league's own photos when available.
 export const DEFAULT_RULES: ChampionshipRules = {
   pointsPerWin: 3,
   pointsPerDraw: 1,
   pointsPerLoss: 0,
   maxRosterSize: 25,
   minPlayersToStart: 7,
-  verifyThreshold: 0.35,
-  reviewThreshold: 0.25,
   yellowCardsForSuspension: 3,
   yellowSuspensionMatches: 1,
   redCardSuspensionMatches: 1,
   yellowCardFine: 0,
   redCardFine: 0,
+  registrationFeeAmount: 0,
   allowManualReview: true,
   walkoverGoals: 0,
   periodsCount: 2,
@@ -99,13 +94,12 @@ const RulesSchema = new Schema<ChampionshipRules>(
     pointsPerLoss: { type: Number, default: DEFAULT_RULES.pointsPerLoss, min: 0 },
     maxRosterSize: { type: Number, default: DEFAULT_RULES.maxRosterSize, min: 1 },
     minPlayersToStart: { type: Number, default: DEFAULT_RULES.minPlayersToStart, min: 1 },
-    verifyThreshold: { type: Number, default: DEFAULT_RULES.verifyThreshold, min: 0, max: 1 },
-    reviewThreshold: { type: Number, default: DEFAULT_RULES.reviewThreshold, min: 0, max: 1 },
     yellowCardsForSuspension: { type: Number, default: DEFAULT_RULES.yellowCardsForSuspension, min: 1 },
     yellowSuspensionMatches: { type: Number, default: DEFAULT_RULES.yellowSuspensionMatches, min: 1 },
     redCardSuspensionMatches: { type: Number, default: DEFAULT_RULES.redCardSuspensionMatches, min: 1 },
     yellowCardFine: { type: Number, default: DEFAULT_RULES.yellowCardFine, min: 0 },
     redCardFine: { type: Number, default: DEFAULT_RULES.redCardFine, min: 0 },
+    registrationFeeAmount: { type: Number, default: DEFAULT_RULES.registrationFeeAmount, min: 0 },
     allowManualReview: { type: Boolean, default: DEFAULT_RULES.allowManualReview },
     walkoverGoals: { type: Number, default: DEFAULT_RULES.walkoverGoals, min: 0, max: 50 },
     periodsCount: { type: Number, default: DEFAULT_RULES.periodsCount, min: 1, max: 20 },

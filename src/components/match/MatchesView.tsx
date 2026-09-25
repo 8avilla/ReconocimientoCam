@@ -28,7 +28,15 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const [storedPhaseId, setPhaseId] = useStoredState<string>(key("phase"), "");
   const [storedTeamId, setTeamId] = useStoredState<string>(key("team"), "");
   const [storedMatchdayId, setMatchdayId] = useStoredState<string>(key("matchday"), "");
-  const [scheduledFilter, setScheduledFilter] = useStoredState<string>(key("scheduled"), "", undefined, initialScheduled);
+  // A "?programacion=" deep link (e.g. from the "Programar" quick action) only overrides this one visit —
+  // it must not become the remembered default for future visits to this page.
+  const [storedScheduledFilter, setStoredScheduledFilter] = useStoredState<string>(key("scheduled"), "");
+  const [scheduledOverrideActive, setScheduledOverrideActive] = useState(initialScheduled !== undefined);
+  const scheduledFilter = scheduledOverrideActive && initialScheduled !== undefined ? initialScheduled : storedScheduledFilter;
+  const setScheduledFilter = (value: string) => {
+    setScheduledOverrideActive(false);
+    setStoredScheduledFilter(value);
+  };
   const [scheduleOpen, setScheduleOpen] = useState(false);
   // Calendar-day range ("YYYY-MM-DD", local time).
   const [fromDay, setFromDay] = useStoredState<string>(key("from"), "");
@@ -44,18 +52,18 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const teamId = teamsFetch.data && storedTeamId && !teamList.some((item) => item._id === storedTeamId) ? "" : storedTeamId;
   const matchdayId = matchdaysFetch.data && storedMatchdayId && !allMatchdays.some((item) => item._id === storedMatchdayId) ? "" : storedMatchdayId;
   const matchdayList = phaseId ? allMatchdays.filter((item) => item.phaseId === phaseId) : allMatchdays;
-  const filtered = Boolean(status || phaseId || teamId || matchdayId || scheduledFilter || fromDay || toDay);
+  const [search, setSearch] = useState("");
+  const filtered = Boolean(status || phaseId || teamId || matchdayId || scheduledFilter || fromDay || toDay || search.trim());
   const [formOpen, setFormOpen] = useState(false);
   const [fixtureOpen, setFixtureOpen] = useState(false);
   const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : ""}${phaseId ? `&phaseId=${phaseId}` : ""}${teamId ? `&teamId=${teamId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
   const { data, error, loading, reload } = useFetch<Paginated<MatchDTO>>(query);
-  const [search, setSearch] = useState("");
   const matches = (data?.data ?? []).filter((match) => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return match.homeTeamId.name.toLowerCase().includes(q) || match.awayTeamId.name.toLowerCase().includes(q) || match.venue.toLowerCase().includes(q);
   });
-  const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); };
+  const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); setSearch(""); };
   const { can } = useRole();
   const manage = can("match.manage");
   const [filtersOpen, setFiltersOpen] = useState(false);

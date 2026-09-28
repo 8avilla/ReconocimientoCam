@@ -4,7 +4,8 @@ import { Fab } from "./Fab";
 import type { MenuAction } from "./ActionMenu";
 
 interface PageHeaderProps {
-  title: string;
+  /** Omit when the page needs the breadcrumb/actions row without a visible title (e.g. a match's own scoreboard already shows who's playing). */
+  title?: string;
   description?: string;
   breadcrumb?: { label: string; href?: string }[];
   /** Small image (e.g. an Avatar) shown to the left of the title. */
@@ -32,7 +33,7 @@ export function PageHeader({ title, description, breadcrumb, avatar, actions, mo
         <div className="row">
           {avatar}
           <div>
-            <h1>{title}</h1>
+            {title && <h1>{title}</h1>}
             {description && <p className="description">{description}</p>}
           </div>
         </div>

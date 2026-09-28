@@ -390,6 +390,14 @@ a.list-row:hover { background: var(--color-background); }
 }
 @media (min-width: 768px) { .tabs-line { position: static; } }
 
+/* ---------- Match lineup (mirrored home/away columns, Flashscore-style compact rows) ---------- */
+.lineup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-md); padding: var(--space-lg); }
+.lineup-player { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 8px 0; font-size: 13px; color: var(--color-text-primary); }
+.lineup-player.away { flex-direction: row-reverse; text-align: right; }
+.lineup-number { width: 18px; flex-shrink: 0; font-size: 13px; color: var(--color-text-secondary); text-align: right; }
+.lineup-player.away .lineup-number { text-align: left; }
+.lineup-icons { display: flex; gap: 2px; flex-shrink: 0; }
+
 /* ---------- Compact standings (phones): # team PJ G PTS ---------- */
 .standings-line { display: grid; grid-template-columns: 36px 1fr 36px 56px 40px; align-items: center; gap: 4px; min-height: 52px; padding: 0 var(--space-md); border-bottom: 1px solid var(--color-border); text-align: center; }
 .standings-line > :nth-child(2) { text-align: left; }

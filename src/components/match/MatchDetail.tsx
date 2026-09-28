@@ -9,6 +9,7 @@ import { EventComposerModal, type PresentPlayer } from "@/components/match/Event
 import { EventTimeline } from "@/components/match/EventTimeline";
 import { MatchClock } from "@/components/match/MatchClock";
 import { MatchQuickStatus } from "@/components/match/MatchQuickStatus";
+import { MatchLineup } from "@/components/match/MatchLineup";
 import { MatchRoster } from "@/components/match/MatchRoster";
 import { MatchScoreboard } from "@/components/match/MatchScoreboard";
 import { MatchSummary } from "@/components/match/MatchSummary";
@@ -21,11 +22,12 @@ import { useFetch } from "@/lib/client/useFetch";
 import { suggestedMinute } from "@/lib/rules/match";
 import type { AttendanceDTO, ChampionshipDTO, MatchDTO, MatchEventDTO, Paginated, PhaseDTO, SuspensionDTO } from "@/types/api";
 
-export type MatchTab = "attendance" | "events" | "summary";
+export type MatchTab = "attendance" | "lineup" | "events" | "summary";
 const TABS: { id: MatchTab; label: string }[] = [
-  { id: "attendance", label: "Asistencia" },
-  { id: "events", label: "Eventos" },
   { id: "summary", label: "Resumen" },
+  { id: "lineup", label: "Alineación" },
+  { id: "events", label: "Eventos" },
+  { id: "attendance", label: "Asistencia" },
 ];
 
 export function MatchDetail({ id, initialTab }: { id: string; initialTab?: MatchTab }) {
@@ -55,7 +57,9 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   // to fix a mistake while the match is live or just after finishing (see `canVoid` below).
   const canRegisterEvents = current.status !== "walkover" && current.status !== "finished";
   const canVoidEvents = current.status === "live" || current.status === "finished";
-  const tabs = operate ? TABS : TABS.filter((item) => item.id !== "attendance");
+  // Asistencia and Eventos expose operational detail (check-in method, voiding events); for now only
+  // whoever can operate the match (the championship's organizer or an admin) gets to see them.
+  const tabs = operate ? TABS : TABS.filter((item) => item.id !== "attendance" && item.id !== "events");
   const requested = tab ?? (canRegisterEvents || canVoidEvents ? "events" : operate ? "attendance" : "summary");
   const activeTab = tabs.some((item) => item.id === requested) ? requested : tabs[0].id;
 
@@ -96,7 +100,6 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   return (
     <>
       <PageHeader
-        title={`${current.homeTeamId.name} vs ${current.awayTeamId.name}`}
         breadcrumb={[{ label: "Partidos", href: championshipPath(current.championshipId, "partidos") }, { label: `${current.homeTeamId.name} vs ${current.awayTeamId.name}` }]}
         actions={manage && (
           <ActionMenu
@@ -135,6 +138,15 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
           <Loading />
         ) : (
           <AttendancePanel matchId={id} match={current} attendance={attendance.data} onChanged={reloadAll} readOnly={!operate} />
+        ))}
+
+      {activeTab === "lineup" &&
+        (attendance.error ? (
+          <ErrorState message={attendance.error.message} onRetry={attendance.reload} />
+        ) : !attendance.data ? (
+          <Loading />
+        ) : (
+          <MatchLineup checkIns={rows} events={eventList} teams={teams} />
         ))}
 
       {activeTab === "events" && (

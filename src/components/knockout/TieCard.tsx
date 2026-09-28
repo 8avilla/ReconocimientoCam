@@ -47,7 +47,7 @@ export function TieCard({ tie, round, onChanged }: Props) {
       <div className="text-secondary text-small">Cruce {tie.position}</div>
       {teams.map((team, index) =>
         team ? (
-          <div key={team._id} className="row" style={{ fontWeight: tie.winnerTeamId === team._id ? 700 : 500 }}>
+          <div key={team._id} className="row" style={{ fontWeight: tie.winnerTeamId === team._id ? 700 : 400 }}>
             <Avatar src={team.shieldUrl} name={team.name} size={32} square />
             <span className="grow truncate">{team.name}</span>
             {tie.aggregate && tie.aggregate.played > 0 && <span className="text-strong" aria-label="Global">{index === 0 ? tie.aggregate.home : tie.aggregate.away}</span>}

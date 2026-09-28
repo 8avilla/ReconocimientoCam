@@ -18,7 +18,9 @@ export const GET = route<Params>(async (_request, { id }) => {
     teamId: id,
     status: { $in: LIVE_REGISTRATION_STATUSES },
   });
-  return json({ ...team, playerCount });
+  // Teams created before the coaching-staff field existed have no `staff` key in storage; a `.lean()`
+  // read (unlike a hydrated document) does not apply the schema default, so it must be backfilled here.
+  return json({ ...team, staff: team.staff ?? [], playerCount });
 });
 
 export const PATCH = route<Params>(async (request, { id }) => {

@@ -72,7 +72,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className={styles.container}>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={208} height={69} priority className={styles.brandLogo} />
+          <Image src="/brand-wordmark.png" alt="Super Torneos" width={208} height={69} priority className={styles.brandLogo} />
         </div>
         {scoped && (
           <div className="scopeBlock">
@@ -104,7 +104,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className={styles.viewport}>
         <header className={styles.topbar}>
           <Link href="/" aria-label="Todos los campeonatos" className={styles.topbarLogoLink}>
-            <Image src="/logo-wordmark.jpg" alt="Super Torneos" width={96} height={32} priority className={styles.topbarLogo} />
+            <Image src="/brand-wordmark.png" alt="Super Torneos" width={96} height={32} priority className={styles.topbarLogo} />
           </Link>
           <div className={styles.topbarActions}>
             <GlobalSearch championshipId={scopeId ?? undefined} />

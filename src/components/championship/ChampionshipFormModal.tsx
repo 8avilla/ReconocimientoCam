@@ -282,7 +282,7 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.8 }}>
                   Dirección pública del torneo
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{previewUrl}</div>
+                <div style={{ fontWeight: 400, fontSize: 13 }}>{previewUrl}</div>
               </div>
             </div>
             <Button size="small" variant="secondary" icon={<Copy size={14} />} onClick={copyPreviewUrl}>

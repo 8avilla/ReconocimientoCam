@@ -17,7 +17,7 @@
 .scopeChip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 38px; max-width: 100%; min-width: 0; padding: 0 14px;
   border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff; font-weight: 600; font-size: 13px; transition: background 0.15s ease;
+  color: #fff; font-weight: 700; font-size: 13px; transition: background 0.15s ease;
 }
 .scopeChip:active { background: rgba(255, 255, 255, 0.25); }
 .scopeBlock { padding: var(--space-md) var(--space-md) 0; }
@@ -32,7 +32,7 @@
 }
 .bottomItem {
   flex: 1; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
+  gap: 2px; font-size: 11px; font-weight: 400; color: var(--color-text-secondary);
   transition: color 0.15s ease;
 }
 .bottomItem.active { color: var(--color-primary); font-weight: 700; }
@@ -62,7 +62,7 @@
   .nav { display: flex; flex-direction: column; gap: 4px; padding: var(--space-lg) var(--space-md); }
   .navItem {
     display: flex; align-items: center; gap: var(--space-md); min-height: 44px; padding: 0 var(--space-lg);
-    border-radius: var(--radius-md); color: var(--color-text-disabled); font-weight: 500;
+    border-radius: var(--radius-md); color: var(--color-text-disabled); font-weight: 400;
     transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
   }
   .navItem:hover { background: var(--color-navy-light); color: #fff; transform: translateX(4px); }

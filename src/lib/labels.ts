@@ -1,4 +1,4 @@
-import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus } from "@/lib/constants";
+import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus, TeamStaffRole } from "@/lib/constants";
 import type { Permission } from "@/lib/roles";
 
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
@@ -20,6 +20,16 @@ export const CHAMPIONSHIP_STATUS_LABEL: Record<ChampionshipStatus, { label: stri
   registration_open: { label: "Inscripciones abiertas", tone: "info" },
   in_progress: { label: "En curso", tone: "success" },
   finished: { label: "Finalizado", tone: "neutral" },
+};
+
+export const TEAM_STAFF_ROLE_LABEL: Record<TeamStaffRole, string> = {
+  head_coach: "Entrenador",
+  assistant_coach: "Asistente técnico",
+  physical_trainer: "Preparador físico",
+  specialist_coach: "Entrenador especialista",
+  medical_staff: "Médico / Fisioterapeuta",
+  equipment_manager: "Utilero",
+  other: "Otro",
 };
 
 export const CHAMPIONSHIP_FORMAT_LABEL: Record<ChampionshipFormat, string> = {

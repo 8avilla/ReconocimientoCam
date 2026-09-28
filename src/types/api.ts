@@ -9,6 +9,7 @@ import type {
   ChampionshipStatus,
   Position,
   RegistrationStatus,
+  TeamStaffRole,
 } from "@/lib/constants";
 import type { Permission } from "@/lib/roles";
 
@@ -58,6 +59,12 @@ export interface ChampionshipDTO {
   counts?: { teams: number; matches: number };
 }
 
+export interface TeamStaffDTO {
+  _id: string;
+  name: string;
+  role: TeamStaffRole;
+}
+
 export interface TeamDTO {
   _id: string;
   championshipId: string;
@@ -66,6 +73,7 @@ export interface TeamDTO {
   primaryColor: string;
   secondaryColor: string;
   delegateName: string;
+  staff: TeamStaffDTO[];
   active: boolean;
   playerCount?: number;
 }
@@ -350,6 +358,7 @@ export interface PhaseDTO {
   type: PhaseType;
   legs: 1 | 2;
   groupCount?: number;
+  qualifyCount?: number;
   teamIds: string[];
   groups: { name: string; teamIds: string[] }[];
   rounds: { _id: string; name: string; order: number; legs: 1 | 2 }[];
@@ -413,7 +422,7 @@ export interface BracketDTO {
 }
 
 export interface PhaseStandingsDTO {
-  phase: { _id: string; name: string; type: PhaseType };
+  phase: { _id: string; name: string; type: PhaseType; qualifyCount?: number };
   tables: { group: string | null; rows: StandingsRowDTO[] }[];
 }
 

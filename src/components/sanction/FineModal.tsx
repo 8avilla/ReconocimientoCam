@@ -133,7 +133,7 @@ function FineDetail({ fine, onChanged, onClose }: Props) {
             <Input label="Valor recibido ($)" type="number" min={1} max={balance} step={1000} inputMode="numeric" required value={amount} onChange={(e) => setAmount(e.target.value)} hint={`Debe ${formatMoney(balance)}`} />
           </div>
           <div className="field">
-            <span id="method-label" style={{ fontSize: 12, fontWeight: 500, color: "var(--color-label)" }}>Tipo de pago</span>
+            <span id="method-label" style={{ fontSize: 12, fontWeight: 400, color: "var(--color-label)" }}>Tipo de pago</span>
             <div className="phase-chips" style={{ marginBottom: 0, flexWrap: "wrap", overflow: "visible" }} role="radiogroup" aria-labelledby="method-label">
               {Object.entries(PAYMENT_METHOD_LABEL).map(([id, label]) => (
                 <button key={id} type="button" role="radio" aria-checked={method === id} className={`phase-chip${method === id ? " active" : ""}`} onClick={() => setMethod(id)}>{label}</button>
@@ -142,7 +142,7 @@ function FineDetail({ fine, onChanged, onClose }: Props) {
           </div>
           <Input label="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} hint="Por ejemplo: quién pagó o el número de la transferencia." />
           <div className="field">
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-label)" }}>Comprobante (opcional)</span>
+            <span style={{ fontSize: 12, fontWeight: 400, color: "var(--color-label)" }}>Comprobante (opcional)</span>
             {receipt ? (
               <div className="receipt-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

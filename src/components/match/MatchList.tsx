@@ -71,7 +71,7 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
                   {[match.homeTeamId, match.awayTeamId].map((team) => (
                     <div key={team._id} className="row" style={{ gap: 8, minWidth: 0 }}>
                       <Avatar src={team.shieldUrl} name={team.name} size={32} square />
-                      <span className={`truncate${team._id === teamId || team._id === winner ? " text-strong" : ""}`}>{team.name}</span>
+                      <span className={`match-team-name truncate${team._id === teamId || team._id === winner ? " text-strong" : ""}`}>{team.name}</span>
                     </div>
                   ))}
                 </div>

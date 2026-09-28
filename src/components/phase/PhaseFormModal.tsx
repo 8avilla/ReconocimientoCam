@@ -32,6 +32,7 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
   const [type, setType] = useState<PhaseType>(phase?.type ?? "league");
   const [legs, setLegs] = useState(String(phase?.legs ?? 1));
   const [groupCount, setGroupCount] = useState(String(phase?.groupCount ?? 2));
+  const [qualifyCount, setQualifyCount] = useState(phase?.qualifyCount ? String(phase.qualifyCount) : "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,7 +40,8 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
     name.trim() !== (phase?.name ?? "") ||
     type !== (phase?.type ?? "league") ||
     legs !== String(phase?.legs ?? 1) ||
-    groupCount !== String(phase?.groupCount ?? 2);
+    groupCount !== String(phase?.groupCount ?? 2) ||
+    qualifyCount !== (phase?.qualifyCount ? String(phase.qualifyCount) : "");
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
   // The format cannot change once the phase has a calendar.
@@ -51,6 +53,7 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Este campo es obligatorio";
     if (type === "groups" && (!Number.isInteger(Number(groupCount)) || Number(groupCount) < 2)) next.groupCount = "Mínimo 2 grupos";
+    if (type === "league" && qualifyCount.trim() && (!Number.isInteger(Number(qualifyCount)) || Number(qualifyCount) < 1)) next.qualifyCount = "Mínimo 1 equipo";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -59,6 +62,8 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
       const payload = {
         name: name.trim(),
         ...(locked ? {} : { type, legs: Number(legs), ...(type === "groups" ? { groupCount: Number(groupCount) } : {}) }),
+        // Purely informational: editable even once the phase has a calendar, so it's outside the `locked` gate above.
+        ...(type === "league" ? { qualifyCount: qualifyCount.trim() ? Number(qualifyCount) : null } : {}),
       };
       if (phase) await http(`/phases/${phase._id}`, { method: "PATCH", json: payload });
       else await http(`/championships/${championshipId}/phases`, { json: payload });
@@ -92,6 +97,19 @@ function PhaseForm({ championshipId, phase, onClose, onSaved }: Omit<Props, "ope
           <Input label="Número de grupos" required type="number" min={2} max={26} value={groupCount} onChange={(e) => setGroupCount(e.target.value)} error={errors.groupCount} disabled={locked} />
         )}
       </div>
+      {type === "league" && (
+        <Input
+          label="Equipos que clasifican (opcional)"
+          type="number"
+          min={1}
+          max={64}
+          value={qualifyCount}
+          onChange={(e) => setQualifyCount(e.target.value)}
+          error={errors.qualifyCount}
+          placeholder="Ej.: 8"
+          hint="Resalta a los primeros N equipos en la tabla de posiciones."
+        />
+      )}
       {locked && (
         <div className="alert info" role="note">
           <AlertCircle size={18} /> La fase ya tiene calendario: solo puedes cambiar su nombre. Para cambiar el formato, reemplaza o elimina sus partidos.

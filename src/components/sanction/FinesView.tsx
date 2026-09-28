@@ -130,7 +130,7 @@ export function FinesView({
                   <div className="champ-caption truncate">
                     <span className="text-strong">{fine.teamId.name}</span> • {fine.concept}
                   </div>
-                  <div className="champ-name truncate" style={{ fontSize: 16, fontWeight: 600 }}>
+                  <div className="champ-name truncate" style={{ fontSize: 16, fontWeight: 700 }}>
                     {fine.playerId?.fullName ?? fine.concept}
                   </div>
                   {match && <div className="text-secondary text-small truncate">Partido: {match}</div>}

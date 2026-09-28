@@ -28,7 +28,9 @@ export const GET = route(async (request) => {
   ]);
   const countByTeam = new Map(counts.map((row) => [row._id.toString(), row.count]));
 
-  const data = teams.map((team) => ({ ...team, playerCount: countByTeam.get(team._id.toString()) ?? 0 }));
+  // Teams created before the coaching-staff field existed have no `staff` key in storage; a `.lean()`
+  // read (unlike a hydrated document) does not apply the schema default, so it must be backfilled here.
+  const data = teams.map((team) => ({ ...team, staff: team.staff ?? [], playerCount: countByTeam.get(team._id.toString()) ?? 0 }));
   const body: Paginated<(typeof data)[number]> = { data, meta: { page: query.page, limit: query.limit, total } };
   return json(body);
 });

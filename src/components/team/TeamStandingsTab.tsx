@@ -19,14 +19,11 @@ export function TeamStandingsTab({
   championshipId,
   maxRows,
   phaseSelector = true,
-  qualifyCount,
 }: {
   teamId?: string;
   championshipId: string;
   maxRows?: number;
   phaseSelector?: boolean;
-  /** Marks the top N rows of a league table as the direct-qualification zone (see `StandingsTable`). */
-  qualifyCount?: number;
 }) {
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const [choice, setChoice] = useState("");
@@ -76,7 +73,12 @@ export function TeamStandingsTab({
       ) : (
         tables.map((table) => (
           <section key={table.group ?? "league"} aria-label={table.group ?? phase.name}>
-            <StandingsTable rows={maxRows ? table.rows.slice(0, maxRows) : table.rows} highlightTeamId={teamId} title={table.group ? `${phase.name} · ${table.group}` : phase.name} qualifyCount={qualifyCount} />
+            <StandingsTable
+              rows={maxRows ? table.rows.slice(0, maxRows) : table.rows}
+              highlightTeamId={teamId}
+              title={table.group ? `${phase.name} · ${table.group}` : phase.name}
+              qualifyCount={phase.type === "league" ? phase.qualifyCount : undefined}
+            />
           </section>
         ))
       )}

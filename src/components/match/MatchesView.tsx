@@ -9,7 +9,7 @@ import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { MatchdayScheduleModal } from "@/components/match/MatchdayScheduleModal";
 import { MatchList } from "@/components/match/MatchList";
 import { Button, EmptyState, ErrorState, Loading, Modal, PageHeader } from "@/components/ui";
-import { MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
+import { PLAYED_MATCH_STATUSES, UNPLAYED_MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
@@ -21,18 +21,37 @@ export function MatchesView({ initialScheduled }: { initialScheduled?: "true" | 
   return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} initialScheduled={initialScheduled} />}</RequireChampionship>;
 }
 
+type MatchesTab = "results" | "upcoming";
+const MATCHES_TABS: { id: MatchesTab; label: string }[] = [
+  { id: "results", label: "Resultados de partidos" },
+  { id: "upcoming", label: "Próximos partidos" },
+];
+
 function MatchesList({ championshipId, initialScheduled }: { championshipId: string; initialScheduled?: "true" | "false" }) {
   // Filters are remembered per championship, so coming back to the list keeps what the organizer was looking at.
   const key = (name: string) => `super-torneos:matches:${championshipId}:${name}`;
-  const [status, setStatus] = useStoredState<string>(key("status"), "");
+  // A "?programacion=" deep link (e.g. from the "Programar" quick action) only makes sense among upcoming
+  // matches: it overrides the tab and the "scheduled" filter for this one visit, without becoming the
+  // remembered default for future visits (each is consumed the moment the organizer changes it themselves).
+  const [storedTab, setStoredTab] = useStoredState<MatchesTab>(key("tab"), "upcoming", (value) => MATCHES_TABS.some((item) => item.id === value));
+  const [tabOverrideActive, setTabOverrideActive] = useState(initialScheduled !== undefined);
+  const tab = tabOverrideActive && initialScheduled !== undefined ? "upcoming" : storedTab;
+  const setTab = (value: MatchesTab) => {
+    setTabOverrideActive(false);
+    setStoredTab(value);
+  };
+  const tabStatuses: readonly MatchStatus[] = tab === "results" ? PLAYED_MATCH_STATUSES : UNPLAYED_MATCH_STATUSES;
+
+  const [storedStatus, setStatus] = useStoredState<string>(key("status"), "");
+  // A remembered status from the other tab (e.g. "Finalizado" while now viewing "Próximos partidos") doesn't apply here.
+  const status = tabStatuses.includes(storedStatus as MatchStatus) ? storedStatus : "";
   const [storedPhaseId, setPhaseId] = useStoredState<string>(key("phase"), "");
   const [storedTeamId, setTeamId] = useStoredState<string>(key("team"), "");
   const [storedMatchdayId, setMatchdayId] = useStoredState<string>(key("matchday"), "");
-  // A "?programacion=" deep link (e.g. from the "Programar" quick action) only overrides this one visit —
-  // it must not become the remembered default for future visits to this page.
   const [storedScheduledFilter, setStoredScheduledFilter] = useStoredState<string>(key("scheduled"), "");
   const [scheduledOverrideActive, setScheduledOverrideActive] = useState(initialScheduled !== undefined);
-  const scheduledFilter = scheduledOverrideActive && initialScheduled !== undefined ? initialScheduled : storedScheduledFilter;
+  // Only meaningful among upcoming matches (an already-played match virtually always has a day and time).
+  const scheduledFilter = tab !== "upcoming" ? "" : scheduledOverrideActive && initialScheduled !== undefined ? initialScheduled : storedScheduledFilter;
   const setScheduledFilter = (value: string) => {
     setScheduledOverrideActive(false);
     setStoredScheduledFilter(value);
@@ -56,13 +75,17 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const filtered = Boolean(status || phaseId || teamId || matchdayId || scheduledFilter || fromDay || toDay || search.trim());
   const [formOpen, setFormOpen] = useState(false);
   const [fixtureOpen, setFixtureOpen] = useState(false);
-  const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : ""}${phaseId ? `&phaseId=${phaseId}` : ""}${teamId ? `&teamId=${teamId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
+  const query = `/matches?championshipId=${championshipId}&limit=100${status ? `&status=${status}` : `&played=${tab === "results" ? "true" : "false"}`}${phaseId ? `&phaseId=${phaseId}` : ""}${teamId ? `&teamId=${teamId}` : ""}${matchdayId ? `&matchdayId=${matchdayId}` : ""}${scheduledFilter ? `&scheduled=${scheduledFilter}` : ""}${fromDay ? `&from=${encodeURIComponent(new Date(`${fromDay}T00:00:00`).toISOString())}` : ""}${toDay ? `&to=${encodeURIComponent(new Date(`${toDay}T23:59:59.999`).toISOString())}` : ""}`;
   const { data, error, loading, reload } = useFetch<Paginated<MatchDTO>>(query);
-  const matches = (data?.data ?? []).filter((match) => {
+  const searched = (data?.data ?? []).filter((match) => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return match.homeTeamId.name.toLowerCase().includes(q) || match.awayTeamId.name.toLowerCase().includes(q) || match.venue.toLowerCase().includes(q);
   });
+  // Results read best most-recent-first; upcoming matches follow the tournament's own phase/fecha order.
+  const matches = tab === "results"
+    ? [...searched].sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime())
+    : searched;
   const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); setSearch(""); };
   const { can } = useRole();
   const manage = can("match.manage");
@@ -70,7 +93,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const statusSelect = (
     <select className="select" aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)}>
       <option value="">Todos los estados</option>
-      {MATCH_STATUSES.map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}
+      {tabStatuses.map((item) => <option key={item} value={item}>{MATCH_STATUS_LABEL[item].label}</option>)}
     </select>
   );
   // Styled as plain text + a chevron (not a boxed dropdown): the phase this championship is in, tap to change.
@@ -156,6 +179,14 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
         </div>
       )}
 
+      <div className="tabs-line" role="tablist" aria-label="Tipo de partidos">
+        {MATCHES_TABS.map((item) => (
+          <button key={item.id} role="tab" aria-selected={tab === item.id} className={`tab-line${tab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="stack-sm" style={{ marginBottom: "var(--space-lg)" }}>
         <div className="row-between">
           <div className="row-wrap" style={{ columnGap: "var(--space-lg)", rowGap: 0 }}>
@@ -179,7 +210,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
                 <button aria-label={`Quitar filtro ${chip.label}`} onClick={chip.clear}><X size={14} aria-hidden /></button>
               </span>
             ))}
-            {manage && matchdayId && (
+            {manage && matchdayId && tab === "upcoming" && (
               <Button variant="secondary" size="small" icon={<CalendarClock size={16} />} onClick={() => setScheduleOpen(true)}>Programar esta fecha</Button>
             )}
             {filtered && (
@@ -202,7 +233,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
       >
         <div className="stack">
           {statusSelect}
-          {scheduledSelect}
+          {tab === "upcoming" && scheduledSelect}
           <div className="form-grid two">
             <div className="field"><label htmlFor="from-day">Desde</label>{fromInput}</div>
             <div className="field"><label htmlFor="to-day">Hasta</label>{toInput}</div>
@@ -218,9 +249,15 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
         <div className="card">
           <EmptyState
             icon={<CalendarDays size={28} />}
-            title={filtered ? "Sin resultados" : "Aún no hay partidos"}
-            description={filtered ? "No hay partidos con esos filtros." : "Programa el primer partido del campeonato."}
-            action={manage && !filtered && phaseList.length > 0 && (
+            title={filtered ? "Sin resultados" : tab === "results" ? "Aún no hay resultados" : "Aún no hay partidos programados"}
+            description={
+              filtered
+                ? "No hay partidos con esos filtros."
+                : tab === "results"
+                  ? "Aquí aparecerán los partidos finalizados."
+                  : "Programa el primer partido del campeonato."
+            }
+            action={manage && !filtered && tab === "upcoming" && phaseList.length > 0 && (
               <div className="row-wrap" style={{ justifyContent: "center" }}>
                 <Button onClick={() => setFixtureOpen(true)}>Generar calendario</Button>
                 <Button variant="secondary" onClick={() => setFormOpen(true)}>Crear partido</Button>

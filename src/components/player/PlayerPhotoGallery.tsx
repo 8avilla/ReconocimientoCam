@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { Camera, Paperclip, ScanFace, SquareUser, Trash2 } from "lucide-react";
 import { Button, ConfirmDialog, Modal, useToast } from "@/components/ui";
@@ -183,11 +184,12 @@ export function PlayerPhotoGallery({
                 style={{ padding: 0, border: 0, background: "none", cursor: "pointer" }}
                 onClick={() => setViewing(photo)}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={photo.url}
                   alt="Foto del jugador"
-                  style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "var(--radius-md)", outline: isCarnet ? "2px solid var(--color-primary)" : undefined }}
+                  width={96}
+                  height={96}
+                  style={{ objectFit: "cover", borderRadius: "var(--radius-md)", outline: isCarnet ? "2px solid var(--color-primary)" : undefined }}
                 />
               </button>
             );
@@ -198,8 +200,7 @@ export function PlayerPhotoGallery({
       <Modal open={Boolean(viewing)} title="Foto" onClose={() => setViewing(null)}>
         {viewing && (
           <div className="stack" style={{ alignItems: "center" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={viewing.url} alt="Foto del jugador ampliada" style={{ width: "100%", maxWidth: 360, borderRadius: "var(--radius-lg)" }} />
+            <Image src={viewing.url} alt="Foto del jugador ampliada" width={360} height={360} style={{ width: "100%", height: "auto", maxWidth: 360, borderRadius: "var(--radius-lg)" }} />
             {canManage && (
               <div className="stack-sm" style={{ width: "100%" }}>
                 <Button

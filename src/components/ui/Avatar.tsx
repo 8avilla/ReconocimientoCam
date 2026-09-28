@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import { initials } from "@/lib/labels";
+import Image from "next/image";
 
 interface AvatarProps {
   src?: string;
@@ -12,7 +12,7 @@ interface AvatarProps {
 export function Avatar({ src, name, size = 44, square }: AvatarProps) {
   const style = { width: size, height: size, fontSize: Math.max(11, size / 3) };
   const className = `avatar${square ? " square" : ""}`;
-  if (src) return <img src={src} alt={name} className={className} style={style} loading="lazy" />;
+  if (src) return <Image src={src} alt={name} width={size} height={size} className={className} style={{ ...style, objectFit: "cover" }} />;
   return (
     <span className={className} style={style} role="img" aria-label={name}>
       {initials(name)}

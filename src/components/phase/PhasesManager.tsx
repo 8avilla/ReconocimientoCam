@@ -97,7 +97,7 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
                     <div className="grow">
                       <h3 style={{ fontSize: 18 }}>{phase.name}</h3>
                       <p className="text-secondary text-small">
-                        {PHASE_TYPE_LABEL[phase.type]}{phase.type === "groups" && ` (${phase.groupCount} grupos)`}{!knockout && ` · ${LEGS_LABEL[phase.legs]}`}
+                        {PHASE_TYPE_LABEL[phase.type]}{phase.type === "groups" && ` (${phase.groupCount} grupos)`}{!knockout && ` · ${LEGS_LABEL[phase.legs]}`}{phase.type === "league" && phase.qualifyCount ? ` · Clasifican ${phase.qualifyCount}` : ""}
                         {` · ${phase.teamCount} equipos`}
                       </p>
                     </div>
@@ -107,7 +107,7 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
 
                 {!knockout && phase.matches.total > 0 && (
                   <div style={{ background: "var(--color-background)", padding: "var(--space-sm) var(--space-md)", borderRadius: "var(--radius-md)" }}>
-                    <div className="row-between text-small" style={{ fontWeight: 600, marginBottom: 4 }}>
+                    <div className="row-between text-small" style={{ fontWeight: 400, marginBottom: 4 }}>
                       <span>Avance de partidos</span>
                       <span>{phase.matches.finished} / {phase.matches.total} partidos ({matchProgressPercent}%)</span>
                     </div>

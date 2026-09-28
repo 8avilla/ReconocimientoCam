@@ -7,6 +7,7 @@ import { Pencil, Star, Trash2, UserPlus } from "lucide-react";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { TeamMatchesTab } from "@/components/team/TeamMatchesTab";
 import { TeamRosterTab } from "@/components/team/TeamRosterTab";
+import { TeamStaffBlock } from "@/components/team/TeamStaffBlock";
 import { TeamStatsTab } from "@/components/team/TeamStatsTab";
 import { TeamFormModal } from "@/components/team/TeamFormModal";
 import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
@@ -21,10 +22,16 @@ import type { RosterEntryDTO, TeamDTO } from "@/types/api";
 
 type TeamTab = "results" | "fixtures" | "stats" | "roster";
 const TABS: { id: TeamTab; label: string }[] = [
-  { id: "results", label: "Resultados" },
-  { id: "fixtures", label: "Partidos" },
+  { id: "results", label: "Resultados de partidos" },
+  { id: "fixtures", label: "Próximos Partidos" },
   { id: "stats", label: "Estadísticas" },
   { id: "roster", label: "Plantilla" },
+];
+
+type RosterSubTab = "players" | "staff";
+const ROSTER_SUB_TABS: { id: RosterSubTab; label: string }[] = [
+  { id: "players", label: "Jugadores" },
+  { id: "staff", label: "Cuerpo técnico" },
 ];
 
 export default function TeamDetailPage() {
@@ -36,6 +43,7 @@ export default function TeamDetailPage() {
   const { can, role } = useRole();
   const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);
   const [tab, setTab] = useStoredState<TeamTab>("super-torneos:team:tab", "results", (value) => TABS.some((item) => item.id === value));
+  const [rosterTab, setRosterTab] = useStoredState<RosterSubTab>("super-torneos:team:rosterTab", "players", (value) => ROSTER_SUB_TABS.some((item) => item.id === value));
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -109,7 +117,7 @@ export default function TeamDetailPage() {
           </div>
 
           <div className="row-wrap" style={{ justifyContent: "center", gap: 12, marginTop: 6 }}>
-            <span className="text-secondary" style={{ fontWeight: 600 }}>
+            <span className="text-secondary" style={{ fontWeight: 400 }}>
               {current.playerCount ?? 0} jugadores inscritos
             </span>
             {!current.active && <Badge tone="neutral">Inactivo</Badge>}
@@ -135,15 +143,28 @@ export default function TeamDetailPage() {
       {tab === "fixtures" && <TeamMatchesTab teamId={id} championshipId={current.championshipId} kind="fixtures" />}
       {tab === "stats" && <TeamStatsTab teamId={id} championshipId={current.championshipId} />}
       {tab === "roster" && (
-        <TeamRosterTab
-          teamId={id}
-          entries={entries}
-          loading={roster.loading}
-          error={roster.error}
-          onRetry={roster.reload}
-          onExpressEdit={can("player.manage") ? setExpressEditEntry : undefined}
-          linkPlayers={canAccess(role, "/players/x")}
-        />
+        <>
+          <div className="tabs-line" role="tablist" aria-label="Tipo de plantilla">
+            {ROSTER_SUB_TABS.map((item) => (
+              <button key={item.id} role="tab" aria-selected={rosterTab === item.id} className={`tab-line${rosterTab === item.id ? " active" : ""}`} onClick={() => setRosterTab(item.id)}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {rosterTab === "staff" ? (
+            <TeamStaffBlock teamId={id} staff={current.staff} canManage={can("team.manage")} onChanged={team.reload} />
+          ) : (
+            <TeamRosterTab
+              teamId={id}
+              entries={entries}
+              loading={roster.loading}
+              error={roster.error}
+              onRetry={roster.reload}
+              onExpressEdit={can("player.manage") ? setExpressEditEntry : undefined}
+              linkPlayers={canAccess(role, "/players/x")}
+            />
+          )}
+        </>
       )}
 
       <TeamFormModal

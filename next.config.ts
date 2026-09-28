@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   // Keep the dev-only badge from covering the mobile bottom navigation.
   devIndicators: false,
   serverExternalPackages: ["onnxruntime-node", "sharp"],
+  images: {
+    minimumCacheTTL: 86400,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
   async headers() {
     return [
       {

@@ -72,7 +72,11 @@ function Stats({ championshipId, initialPhaseId }: { championshipId: string; ini
             <div className="stack" style={{ gap: "var(--space-lg)" }}>
               {(phaseStandings.data?.tables ?? []).map((table) => (
                 <section key={table.group ?? "league"} aria-label={table.group ?? phase.name}>
-                  <StandingsTable rows={table.rows} title={table.group ? `${phase.name} · ${table.group}` : phase.name} />
+                  <StandingsTable
+                    rows={table.rows}
+                    title={table.group ? `${phase.name} · ${table.group}` : phase.name}
+                    qualifyCount={phase.type === "league" ? phaseStandings.data?.phase.qualifyCount : undefined}
+                  />
                 </section>
               ))}
             </div>
@@ -185,7 +189,7 @@ export function StandingsTable({
   rows: StandingsRowDTO[];
   highlightTeamId?: string;
   title?: string;
-  /** Marks the top N rows as the direct-qualification zone (a green accent), e.g. 4 for a top-4 cutoff. */
+  /** Fills the position badge of the top N rows (a phase's own `qualifyCount`), e.g. 8 for a top-8 cutoff. */
   qualifyCount?: number;
 }) {
   const [mode, setMode] = useStandingsMode();
@@ -211,15 +215,12 @@ export function StandingsTable({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr
-                  key={row.teamId}
-                  className={[row.teamId === highlightTeamId ? "highlight" : "", qualifyCount && row.position <= qualifyCount ? "qualify-zone" : ""].filter(Boolean).join(" ") || undefined}
-                >
+                <tr key={row.teamId} className={row.teamId === highlightTeamId ? "highlight" : undefined}>
                   <td className="sticky-col">
                     <Link href={`/teams/${row.teamId}`} className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
-                      <span className="text-strong" style={{ width: 20, textAlign: "right" }}>{row.position}</span>
+                      <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`}>{row.position}</span>
                       <Avatar src={row.shieldUrl} name={row.name} size={28} square />
-                      <span className="text-strong">{row.name}</span>
+                      <span className={row.teamId === highlightTeamId ? "text-strong" : undefined}>{row.name}</span>
                     </Link>
                   </td>
                   <td>{row.played}</td><td>{row.won}</td><td>{row.drawn}</td><td>{row.lost}</td>
@@ -238,15 +239,11 @@ export function StandingsTable({
             <span role="columnheader" title="Partidos jugados">PJ</span><span role="columnheader" title="Goles a favor : en contra">G</span><span role="columnheader" title="Puntos">PTS</span>
           </div>
           {rows.map((row) => (
-            <div
-              key={row.teamId}
-              role="row"
-              className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}${qualifyCount && row.position <= qualifyCount ? " qualify-zone" : ""}`}
-            >
-              <span className="standings-pos" role="cell">{row.position}</span>
+            <div key={row.teamId} role="row" className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}`}>
+              <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`} role="cell">{row.position}</span>
               <Link href={`/teams/${row.teamId}`} className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
                 <Avatar src={row.shieldUrl} name={row.name} size={28} square />
-                <span className="truncate">{row.name}</span>
+                <span className={`truncate${row.teamId === highlightTeamId ? " text-strong" : ""}`}>{row.name}</span>
               </Link>
               <span role="cell">{row.played}</span>
               <span role="cell">{row.goalsFor}:{row.goalsAgainst}</span>

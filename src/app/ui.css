@@ -9,10 +9,10 @@
 .grow { flex: 1; min-width: 0; }
 .text-secondary { color: var(--color-text-secondary); }
 .text-small { font-size: 12px; }
-.text-caption { font-size: 11px; font-weight: 500; }
-.text-strong { font-weight: 600; }
+.text-caption { font-size: 11px; font-weight: 400; }
+.text-strong { font-weight: 700; }
 /* A plain <button> styled to read as a link (auth screens' "¿olvidaste tu contraseña?" and friends): color instead of bold-black text is what actually signals "clickable" here. */
-.link-button { color: var(--color-primary); font-weight: 600; font-size: 14px; min-height: 44px; }
+.link-button { color: var(--color-primary); font-weight: 700; font-size: 14px; min-height: 44px; }
 .link-button:hover { color: var(--color-primary-dark); text-decoration: underline; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .only-desktop { display: none !important; }
@@ -32,7 +32,7 @@
 .page-header { display: flex; flex-direction: column; gap: var(--space-md); margin-bottom: var(--space-2xl); }
 .page-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); }
 .page-header .breadcrumb { font-size: 12px; color: var(--color-text-secondary); }
-.page-header .description { color: var(--color-text-secondary); margin-top: 2px; }
+.page-header .description { color: var(--color-text-secondary); margin-top: 2px; font-size: 16px; }
 .page-header-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
 
 /* ---------- Card ---------- */
@@ -52,7 +52,7 @@
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
   height: 44px; padding: 0 var(--space-lg);
-  border-radius: var(--radius-md); font-size: 14px; font-weight: 600;
+  border-radius: var(--radius-md); font-size: 14px; font-weight: 700;
   border: 1px solid transparent; transition: background 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
 }
@@ -93,10 +93,10 @@
 
 /* ---------- Forms ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.field > label { font-size: 12px; font-weight: 500; color: var(--color-label); }
+.field > label { font-size: 12px; font-weight: 400; color: var(--color-label); }
 .field .required { color: var(--color-error); margin-left: 2px; }
 .input, .select, .textarea {
-  width: 100%; min-height: 44px; padding: 0 12px;
+  width: 100%; min-height: 44px; padding: 0 12px; font-size: 16px;
   background: var(--color-surface); color: var(--color-text-primary);
   border: 1px solid var(--color-border-input); border-radius: var(--radius-md);
 }
@@ -126,9 +126,9 @@
 .fecha-tab {
   flex-shrink: 0; min-height: 40px; padding: 0 var(--space-md);
   border-radius: var(--radius-pill); border: 1px solid var(--color-border);
-  background: var(--color-surface); font-size: 14px; font-weight: 600; color: var(--color-text-primary);
+  background: var(--color-surface); font-size: 14px; font-weight: 400; color: var(--color-text-primary);
 }
-.fecha-tab.active { background: var(--color-text-primary); border-color: var(--color-text-primary); color: #fff; }
+.fecha-tab.active { background: var(--color-text-primary); border-color: var(--color-text-primary); color: #fff; font-weight: 700; }
 .checkbox-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--color-primary); flex-shrink: 0; }
 .search { position: relative; }
 .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-disabled); pointer-events: none; }
@@ -138,7 +138,7 @@
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 10px; border-radius: var(--radius-pill);
-  font-size: 12px; font-weight: 600; white-space: nowrap;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
 }
 .badge.success { background: var(--color-success-bg); color: #166534; }
 .badge.warning { background: var(--color-warning-bg); color: #92400e; }
@@ -195,7 +195,7 @@
 .toast {
   pointer-events: auto; display: flex; align-items: center; gap: var(--space-sm);
   padding: 12px var(--space-lg); border-radius: var(--radius-md); background: var(--color-navy);
-  color: #fff; font-weight: 500; box-shadow: var(--shadow-lg);
+  color: #fff; font-weight: 400; box-shadow: var(--shadow-lg);
 }
 .toast.success svg { color: #4ade80; }
 .toast.error { background: #7f1d1d; }
@@ -213,7 +213,8 @@
   display: flex; align-items: center; justify-content: center; color: var(--color-text-secondary);
 }
 .empty-state h3 { color: var(--color-text-primary); }
-.alert { display: flex; gap: var(--space-sm); padding: var(--space-md); border-radius: var(--radius-md); font-size: 13px; }
+.empty-state p { font-size: 16px; }
+.alert { display: flex; gap: var(--space-sm); padding: var(--space-md); border-radius: var(--radius-md); font-size: 16px; }
 .alert.error { background: var(--color-error-bg); color: #991b1b; }
 .alert.warning { background: var(--color-warning-bg); color: #92400e; }
 .alert.info { background: var(--color-info-bg); color: #1d4ed8; }
@@ -223,7 +224,7 @@
 .table-wrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; }
 .table th {
-  text-align: left; font-size: 12px; font-weight: 600; color: var(--color-text-secondary);
+  text-align: left; font-size: 12px; font-weight: 400; color: var(--color-text-secondary);
   padding: 10px var(--space-lg); border-bottom: 1px solid var(--color-border); background: var(--color-background);
 }
 .table td { padding: 10px var(--space-lg); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
@@ -241,7 +242,7 @@ a.list-row:hover { background: var(--color-background); }
 /* ---------- Stat grid (season totals) ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); }
 .stat-tile { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: var(--space-md); background: var(--color-background); border-radius: var(--radius-md); }
-.stat-tile .value { font-size: 24px; font-weight: 800; }
+.stat-tile .value { font-size: 24px; font-weight: 700; }
 
 /* ---------- Stepper ---------- */
 .stepper { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
@@ -254,7 +255,7 @@ a.list-row:hover { background: var(--color-background); }
   width: 28px; height: 28px; border-radius: 50%; background: var(--color-border); color: var(--color-text-secondary);
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
 }
-.step.current { color: var(--color-text-primary); font-weight: 600; }
+.step.current { color: var(--color-text-primary); font-weight: 700; }
 .step.current .dot { background: var(--color-primary); color: #fff; }
 .step.done { color: var(--color-text-secondary); }
 .step.done .dot { background: var(--color-primary); color: #fff; }
@@ -274,7 +275,7 @@ a.list-row:hover { background: var(--color-background); }
 }
 .action-menu-item {
   display: flex; align-items: center; gap: var(--space-md); min-height: 44px; padding: 0 var(--space-md);
-  border-radius: var(--radius-md); font-size: 14px; font-weight: 500; text-align: left; color: var(--color-text-primary); width: 100%;
+  border-radius: var(--radius-md); font-size: 14px; font-weight: 400; text-align: left; color: var(--color-text-primary); width: 100%;
 }
 .action-menu-item:hover:not(:disabled) { background: var(--color-background); }
 .action-menu-item:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
@@ -311,7 +312,7 @@ a.list-row:hover { background: var(--color-background); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 6px 0 12px;
-  border-radius: var(--radius-pill); background: var(--color-info-bg); color: #1d4ed8; font-size: 12px; font-weight: 600;
+  border-radius: var(--radius-pill); background: var(--color-info-bg); color: #1d4ed8; font-size: 12px; font-weight: 700;
 }
 .chip button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: inherit; }
 
@@ -372,13 +373,13 @@ a.list-row:hover { background: var(--color-background); }
 }
 .tabs-line::-webkit-scrollbar { display: none; }
 .tab-line {
-  flex: 1 0 auto; min-height: 48px; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: uppercase;
+  flex: 1 0 auto; min-height: 48px; padding: 0 8px; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: uppercase;
   color: var(--color-text-secondary); border-bottom: 3px solid transparent;
 }
-.tab-line.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.tab-line.active { color: var(--color-primary); border-bottom-color: var(--color-primary); font-weight: 700; }
 .band { padding: var(--space-md) var(--space-lg); background: var(--color-border); font-size: 15px; }
 .match-row { gap: var(--space-md); }
-.match-date { width: 52px; flex-shrink: 0; font-size: 13px; color: var(--color-text-secondary); font-weight: 600; }
+.match-date { width: 52px; flex-shrink: 0; font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
 .match-score { display: flex; flex-direction: column; gap: 6px; font-weight: 700; text-align: right; min-width: 20px; }
 .match-score span { height: 24px; display: flex; align-items: center; justify-content: flex-end; }
 .result-chip { width: 26px; height: 26px; border-radius: var(--radius-sm); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -392,10 +393,12 @@ a.list-row:hover { background: var(--color-background); }
 /* ---------- Compact standings (phones): # team PJ G PTS ---------- */
 .standings-line { display: grid; grid-template-columns: 36px 1fr 36px 56px 40px; align-items: center; gap: 4px; min-height: 52px; padding: 0 var(--space-md); border-bottom: 1px solid var(--color-border); text-align: center; }
 .standings-line > :nth-child(2) { text-align: left; }
-.standings-line.head { min-height: 40px; background: var(--color-background); font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.standings-line.head { min-height: 40px; background: var(--color-background); font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
 .standings-line.highlight { background: var(--color-info-bg); }
 .standings-line:last-child { border-bottom: none; }
-.standings-pos { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+/* Position number: plain by default; `.qualify` marks it as inside the qualification cutoff with a filled badge. */
+.standings-pos { width: 26px; height: 26px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 400; color: var(--color-text-secondary); border-radius: var(--radius-sm); }
+.standings-pos.qualify { background: var(--color-navy); color: #fff; font-weight: 700; }
 
 .hero-tile { width: 72px; height: 72px; border-radius: var(--radius-lg); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
@@ -406,7 +409,7 @@ a.list-row:hover { background: var(--color-background); }
 .band-muted { background: var(--color-border); }
 .champ-row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
 .champ-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.champ-caption { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-secondary); }
+.champ-caption { font-size: 12px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-secondary); }
 .champ-name { font-size: 17px; font-weight: 700; }
 .star-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--color-text-disabled); flex-shrink: 0; }
 .star-button.on { color: #f59e0b; }
@@ -421,16 +424,19 @@ a.list-row:hover { background: var(--color-background); }
 /* ---------- Match list (grouped by phase and fecha) ---------- */
 .match-group-head { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-lg); background: var(--color-border); }
 .group-tile { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.match-time { min-width: 56px; text-align: right; color: var(--color-text-secondary); font-weight: 500; }
+.match-time { min-width: 56px; text-align: right; color: var(--color-text-secondary); font-weight: 700; }
 .flush-list .list-row { background: var(--color-surface); padding-left: var(--space-lg); padding-right: var(--space-lg); }
 @media (min-width: 768px) { .flush-list { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; } }
 
 .band-small { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
 
+/* ---------- Match team name (used in Partidos and in a team's own Resultados/Próximos) ---------- */
+.match-team-name { font-size: 16px; font-weight: 400; }
+
 /* ---------- Simple / detailed standings ---------- */
 .segmented { display: inline-flex; background: var(--color-surface); border: 1px solid var(--color-border-input); border-radius: var(--radius-pill); padding: 2px; text-transform: none; letter-spacing: 0; }
-.segmented button { min-height: 32px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
-.segmented button.active { background: var(--color-primary); color: #fff; }
+.segmented button { min-height: 32px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
+.segmented button.active { background: var(--color-primary); color: #fff; font-weight: 700; }
 .standings-detail { min-width: 100%; }
 .standings-detail th, .standings-detail td { padding: 10px 4px; text-align: center; white-space: nowrap; }
 .standings-detail th:first-child, .standings-detail td:first-child { text-align: left; padding-left: var(--space-md); }
@@ -444,8 +450,8 @@ a.list-row:hover { background: var(--color-background); }
 /* ---------- Phase selector (chips, current phase marked) ---------- */
 .phase-chips { display: flex; gap: var(--space-sm); overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: var(--space-lg); }
 .phase-chips::-webkit-scrollbar { display: none; }
-.phase-chip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 44px; padding: 0 var(--space-lg); border-radius: var(--radius-pill); border: 1px solid var(--color-border-input); background: var(--color-surface); font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
-.phase-chip.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.phase-chip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 44px; padding: 0 var(--space-lg); border-radius: var(--radius-pill); border: 1px solid var(--color-border-input); background: var(--color-surface); font-size: 14px; font-weight: 400; color: var(--color-text-primary); }
+.phase-chip.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; font-weight: 700; }
 .phase-chip-now { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 6px; border-radius: var(--radius-pill); background: var(--color-success-bg); color: #166534; }
 .phase-chip.active .phase-chip-now { background: rgba(255, 255, 255, 0.22); color: #fff; }
 
@@ -469,7 +475,7 @@ a.list-row:hover { background: var(--color-background); }
 .check-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--color-border); color: var(--color-text-secondary); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 .check-step.done .check-dot { background: var(--color-primary); color: #fff; }
 .check-step.current .check-dot { background: var(--color-navy); color: #fff; }
-.check-step.done .text-strong { text-decoration: line-through; font-weight: 500; }
+.check-step.done .text-strong { text-decoration: line-through; }
 .attention-icon { width: 36px; height: 36px; border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .attention-icon.live { background: var(--color-error-bg); color: var(--color-error); }
 .attention-icon.today { background: var(--color-info-bg); color: #1d4ed8; }
@@ -602,7 +608,7 @@ a.list-row:hover { background: var(--color-background); }
   background: var(--color-navy);
   color: #ffffff;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.5px;
 }
 
@@ -668,14 +674,14 @@ a.list-row:hover { background: var(--color-background); }
 
 .stat-tile-enhanced .val {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
   color: var(--color-text-primary);
 }
 
 .stat-tile-enhanced .lbl {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-secondary);
   margin-top: 2px;
 }
@@ -683,7 +689,7 @@ a.list-row:hover { background: var(--color-background); }
 .stat-tile-enhanced .sub {
   font-size: 11px;
   color: var(--color-text-disabled);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* Filter Chips Bar */
@@ -710,7 +716,7 @@ a.list-row:hover { background: var(--color-background); }
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   white-space: nowrap;
   transition: all 0.15s ease;
   user-select: none;
@@ -726,6 +732,7 @@ a.list-row:hover { background: var(--color-background); }
   background: var(--color-navy);
   color: #ffffff;
   border-color: var(--color-navy);
+  font-weight: 700;
 }
 
 .filter-chip-badge {
@@ -773,14 +780,14 @@ a.list-row:hover { background: var(--color-background); }
 
 .metric-summary-num {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
 }
 
 .metric-summary-label {
   font-size: 12px;
   color: var(--color-text-secondary);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* ---------- Team Profile & List UX/UI Enhancements ---------- */
@@ -837,7 +844,7 @@ a.list-row:hover { background: var(--color-background); }
   height: 24px;
   border-radius: var(--radius-sm);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -945,7 +952,7 @@ a.list-row:hover { background: var(--color-background); }
   padding: 6px 12px;
   border-radius: var(--radius-md);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
@@ -958,6 +965,7 @@ a.list-row:hover { background: var(--color-background); }
   background: var(--color-navy);
   color: #ffffff;
   border-color: var(--color-navy);
+  font-weight: 700;
 }
 
 /* ---------- Manage Championship UX/UI Enhancements ---------- */
@@ -983,7 +991,7 @@ a.list-row:hover { background: var(--color-background); }
 
 .manage-hub-title {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-text-primary);
   display: flex;
   align-items: center;
@@ -1003,7 +1011,7 @@ a.list-row:hover { background: var(--color-background); }
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   margin-bottom: 6px;
 }
 
@@ -1096,7 +1104,7 @@ a.list-row:hover { background: var(--color-background); }
   border-radius: var(--radius-pill);
   background: var(--color-navy);
   color: #ffffff;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   display: inline-flex;
   align-items: center;
@@ -1121,7 +1129,7 @@ a.list-row:hover { background: var(--color-background); }
   gap: 6px;
   padding: 10px 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--color-text-secondary);
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
@@ -1204,8 +1212,8 @@ a.list-row:hover { background: var(--color-background); }
 }
 .champ-metric-pill:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-1px); }
 .champ-metric-icon { width: 34px; height: 34px; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.14); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.champ-metric-num { font-size: 18px; font-weight: 800; line-height: 1.1; }
-.champ-metric-label { font-size: 11px; color: rgba(255, 255, 255, 0.72); font-weight: 600; }
+.champ-metric-num { font-size: 18px; font-weight: 700; line-height: 1.1; }
+.champ-metric-label { font-size: 11px; color: rgba(255, 255, 255, 0.72); font-weight: 400; }
 .champ-hero-actions { position: relative; display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--space-lg); }
 /* Scoped under .champ-hero (extra specificity) so it always wins over whatever base variant class (.secondary, .ghost) the button also carries. */
 .champ-hero .btn.hero { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.22); }
@@ -1239,7 +1247,7 @@ a.list-row:hover { background: var(--color-background); }
 .match-spotlight-teams { display: flex; align-items: center; justify-content: space-around; gap: var(--space-md); }
 .match-spotlight-vs {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-  background: var(--color-navy); color: #fff; font-size: 13px; font-weight: 800;
+  background: var(--color-navy); color: #fff; font-size: 13px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-base);
 }
@@ -1247,14 +1255,8 @@ a.list-row:hover { background: var(--color-background); }
 .match-spotlight-chip {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--color-background); border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 600; color: var(--color-text-primary);
+  border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--color-text-primary);
 }
-
-/* Standings: direct-qualification zone accent (top rows of the table) */
-tr.qualify-zone td:first-child { box-shadow: inset 3px 0 0 var(--color-success); }
-tr.qualify-zone .standings-pos,
-.standings-line.qualify-zone .standings-pos { color: var(--color-success); }
-.standings-line.qualify-zone { box-shadow: inset 3px 0 0 var(--color-success); }
 
 /* ---------- Matches hub: live rows, date/jornada chips, metrics ---------- */
 .match-row-live { box-shadow: inset 3px 0 0 var(--color-error); animation: match-row-pulse 2s ease-in-out infinite; }
@@ -1270,7 +1272,7 @@ tr.qualify-zone .standings-pos,
   display: inline-flex;
   align-items: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-pill, 9999px);
   background: var(--color-bg-subtle, rgba(255, 255, 255, 0.06));

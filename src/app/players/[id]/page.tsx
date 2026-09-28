@@ -264,7 +264,7 @@ export default function PlayerProfilePage() {
               {liveRegistration?.teamId && (
                 <div className="row" style={{ justifyContent: "center", marginTop: 4 }}>
                   <Avatar src={liveRegistration.teamId.shieldUrl} name={liveRegistration.teamId.name} size={20} square />
-                  <span className="text-secondary" style={{ fontWeight: 600 }}>{liveRegistration.teamId.name}</span>
+                  <span className="text-secondary" style={{ fontWeight: 700 }}>{liveRegistration.teamId.name}</span>
                   {liveRegistration.position && (
                     <span className="text-secondary">· {liveRegistration.position}</span>
                   )}

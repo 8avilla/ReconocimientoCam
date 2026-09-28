@@ -3,6 +3,7 @@
 import { CalendarDays } from "lucide-react";
 import { MatchList } from "@/components/match/MatchList";
 import { EmptyState, ErrorState, Loading } from "@/components/ui";
+import { PLAYED_MATCH_STATUSES } from "@/lib/constants";
 import { useFetch } from "@/lib/client/useFetch";
 import type { MatchDTO, Paginated } from "@/types/api";
 
@@ -14,7 +15,7 @@ export function TeamMatchesTab({ teamId, championshipId, kind }: { teamId?: stri
   if (loading && !data) return <Loading />;
 
   const all = data?.data ?? [];
-  const isPlayed = (match: MatchDTO) => match.status === "finished" || match.status === "walkover";
+  const isPlayed = (match: MatchDTO) => (PLAYED_MATCH_STATUSES as readonly string[]).includes(match.status);
   const matches = kind === "results"
     ? all.filter(isPlayed).sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime())
     : all.filter((match) => !isPlayed(match));

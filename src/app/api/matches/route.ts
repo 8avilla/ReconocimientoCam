@@ -5,6 +5,7 @@ import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { recordAudit } from "@/lib/audit";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { assertMatchFitsPhase } from "@/lib/services/phases";
+import { PLAYED_MATCH_STATUSES, UNPLAYED_MATCH_STATUSES } from "@/lib/constants";
 import { skipFor } from "@/lib/validation/common";
 import { matchCreateSchema, matchListQuery } from "@/lib/validation/schemas";
 import { Matchday } from "@/models/Matchday";
@@ -21,6 +22,8 @@ export const GET = route(async (request) => {
   if (query.phaseId) conditions.push({ phaseId: toObjectId(query.phaseId) });
   if (query.matchdayId) conditions.push({ matchdayId: toObjectId(query.matchdayId) });
   if (query.status) conditions.push({ status: query.status });
+  else if (query.played === "true") conditions.push({ status: { $in: PLAYED_MATCH_STATUSES } });
+  else if (query.played === "false") conditions.push({ status: { $in: UNPLAYED_MATCH_STATUSES } });
   if (query.from || query.to) {
     conditions.push({ scheduledAt: { ...(query.from ? { $gte: query.from } : {}), ...(query.to ? { $lte: query.to } : {}) } });
   }

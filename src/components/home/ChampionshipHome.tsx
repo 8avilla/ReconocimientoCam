@@ -57,7 +57,7 @@ function Dashboard({ championship }: { championship: ChampionshipDTO }) {
               <h2>Clasificación</h2>
               <Link href={championshipPath(championshipId, "clasificacion")} className="btn ghost small">Ver todo</Link>
             </div>
-            <TeamStandingsTab championshipId={championshipId} maxRows={8} qualifyCount={4} />
+            <TeamStandingsTab championshipId={championshipId} maxRows={8} />
           </section>
 
           <section aria-label="Próximo partido">

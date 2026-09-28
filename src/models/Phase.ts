@@ -33,6 +33,8 @@ export interface IPhase {
   legs: 1 | 2;
   /** Number of groups for a group phase. */
   groupCount?: number;
+  /** How many teams qualify from a league phase (e.g. to the next stage); purely informational, shown as an accent on the standings table. */
+  qualifyCount?: number;
   /** Participating teams. */
   teamIds: Types.ObjectId[];
   /** Team distribution for a group phase. */
@@ -65,6 +67,7 @@ const PhaseSchema = new Schema<IPhase>(
     type: { type: String, enum: PHASE_TYPES, required: true },
     legs: { type: Number, enum: [1, 2], default: 1 },
     groupCount: { type: Number, min: 2, max: 26 },
+    qualifyCount: { type: Number, min: 1, max: 64 },
     teamIds: [{ type: Schema.Types.ObjectId, ref: "Team" }],
     groups: { type: [PhaseGroupSchema], default: [] },
     rounds: { type: [PhaseRoundSchema], default: [] },

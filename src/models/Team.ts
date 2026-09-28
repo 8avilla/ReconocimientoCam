@@ -1,4 +1,11 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { TEAM_STAFF_ROLES, type TeamStaffRole } from "@/lib/constants";
+
+export interface ITeamStaffMember {
+  _id: Types.ObjectId;
+  name: string;
+  role: TeamStaffRole;
+}
 
 export interface ITeam {
   _id: Types.ObjectId;
@@ -9,10 +16,17 @@ export interface ITeam {
   primaryColor: string;
   secondaryColor: string;
   delegateName: string;
+  /** Coaching staff: head coach, assistants, physical trainer, etc. — separate from the single `delegateName` field. */
+  staff: ITeamStaffMember[];
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const TeamStaffSchema = new Schema<ITeamStaffMember>(
+  { name: { type: String, required: true, trim: true }, role: { type: String, enum: TEAM_STAFF_ROLES, required: true } },
+  { _id: true }
+);
 
 const TeamSchema = new Schema<ITeam>(
   {
@@ -23,6 +37,7 @@ const TeamSchema = new Schema<ITeam>(
     primaryColor: { type: String, default: "#16A34A" },
     secondaryColor: { type: String, default: "#0F172A" },
     delegateName: { type: String, default: "", trim: true },
+    staff: { type: [TeamStaffSchema], default: [] },
     active: { type: Boolean, default: true },
   },
   { timestamps: true }

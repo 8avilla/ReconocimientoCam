@@ -63,6 +63,7 @@ export interface PhaseInput {
   type: PhaseType;
   legs: 1 | 2;
   groupCount?: number;
+  qualifyCount?: number | null;
 }
 
 export async function createPhase(actor: Actor, championshipId: string, input: PhaseInput) {
@@ -79,6 +80,7 @@ export async function createPhase(actor: Actor, championshipId: string, input: P
     type: input.type,
     legs: input.legs,
     groupCount: input.type === "groups" ? input.groupCount : undefined,
+    qualifyCount: input.type === "league" ? input.qualifyCount ?? undefined : undefined,
   });
   await recordAudit(actor, {
     action: "create",
@@ -112,6 +114,8 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
     ...(input.type ? { type: input.type } : {}),
     ...(input.legs ? { legs: input.legs } : {}),
     groupCount: type === "groups" ? input.groupCount ?? phase.groupCount : undefined,
+    // Purely informational (never blocks the phase from having a calendar), so it's not part of `structural` above.
+    qualifyCount: type === "league" ? (input.qualifyCount === undefined ? phase.qualifyCount : input.qualifyCount ?? undefined) : undefined,
   });
   // A different format invalidates the previous group distribution.
   if (structural) {
@@ -120,7 +124,7 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
   }
   await phase.save();
 
-  const changes = diffChanges(before, phase.toObject() as IPhase, ["name", "type", "legs", "groupCount"]);
+  const changes = diffChanges(before, phase.toObject() as IPhase, ["name", "type", "legs", "groupCount", "qualifyCount"]);
   if (Object.keys(changes).length > 0) {
     await recordAudit(actor, { action: "update", entityType: "phase", entityId: phase._id, championshipId: phase.championshipId, summary: `Fase actualizada: ${phase.name}`, changes });
   }
@@ -256,9 +260,9 @@ export async function getPhaseStandings(id: string) {
     ).map((row) => ({ ...row, shieldUrl: team.get(row.teamId)?.shieldUrl ?? "" }));
 
   if (phase.type === "groups") {
-    return { phase: { _id: phase._id, name: phase.name, type: phase.type }, tables: phase.groups.map((group) => ({ group: group.name, rows: table(group.teamIds, matches.filter((match) => match.group === group.name)) })) };
+    return { phase: { _id: phase._id, name: phase.name, type: phase.type, qualifyCount: phase.qualifyCount }, tables: phase.groups.map((group) => ({ group: group.name, rows: table(group.teamIds, matches.filter((match) => match.group === group.name)) })) };
   }
-  return { phase: { _id: phase._id, name: phase.name, type: phase.type }, tables: [{ group: null, rows: table(phase.teamIds, matches) }] };
+  return { phase: { _id: phase._id, name: phase.name, type: phase.type, qualifyCount: phase.qualifyCount }, tables: [{ group: null, rows: table(phase.teamIds, matches) }] };
 }
 
 /**

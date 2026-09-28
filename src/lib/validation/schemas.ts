@@ -6,7 +6,7 @@ import {
 } from "@/models/Championship";
 import { FINE_TYPES } from "@/models/Fine";
 import { POSITIONS, REGISTRATION_STATUSES } from "@/models/TeamRegistration";
-import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES } from "@/lib/constants";
+import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES, TEAM_STAFF_ROLES } from "@/lib/constants";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/models/AuditLog";
 import { ALL_PERMISSIONS } from "@/lib/roles";
 import {
@@ -112,6 +112,13 @@ export const teamUpdateSchema = z
     active: z.boolean(),
   })
   .partial();
+
+export const teamStaffCreateSchema = z.object({
+  name: requiredText(),
+  role: z.enum(TEAM_STAFF_ROLES),
+});
+
+export const teamStaffUpdateSchema = teamStaffCreateSchema.partial();
 
 export const teamListQuery = paginationSchema.extend({
   championshipId: objectIdSchema.optional(),
@@ -231,6 +238,8 @@ export const matchListQuery = paginationSchema.extend({
   to: z.coerce.date().optional(),
   /** "false" = only matches without day and time; "true" = only the scheduled ones. */
   scheduled: z.enum(["true", "false"]).optional(),
+  /** "true" = only already-played matches (finished/walkover); "false" = only the ones still ahead. Ignored when `status` narrows it further. */
+  played: z.enum(["true", "false"]).optional(),
   /** "matchday" (default): by phase and fecha; "date": by calendar day. */
   order: z.enum(["matchday", "date"]).default("matchday"),
 });
@@ -244,6 +253,8 @@ export const phaseCreateSchema = z.object({
   type: z.enum(PHASE_TYPES),
   legs: legsSchema,
   groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26).optional(),
+  /** How many teams qualify from a league phase; optional, and null clears a previously-set value. */
+  qualifyCount: z.number().int().min(1, "Mínimo 1 equipo").max(64).nullable().optional(),
 });
 
 export const phaseUpdateSchema = z
@@ -252,6 +263,7 @@ export const phaseUpdateSchema = z
     type: z.enum(PHASE_TYPES),
     legs: legsSchema,
     groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26),
+    qualifyCount: z.number().int().min(1, "Mínimo 1 equipo").max(64).nullable(),
   })
   .partial();
 

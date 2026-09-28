@@ -115,7 +115,7 @@ function Stats({ championshipId, initialPhaseId }: { championshipId: string; ini
 
 const FORM_LABEL = { W: { text: "G", name: "Ganó", color: "var(--color-success)" }, D: { text: "E", name: "Empató", color: "var(--color-text-disabled)" }, L: { text: "P", name: "Perdió", color: "var(--color-error)" } } as const;
 
-function Form({ form }: { form: StandingsRowDTO["form"] }) {
+export function Form({ form }: { form: StandingsRowDTO["form"] }) {
   return (
     <span className="row" style={{ gap: 4 }} aria-label={`Últimos resultados: ${form.map((result) => FORM_LABEL[result].name).join(", ") || "sin partidos"}`}>
       {form.map((result, index) => (
@@ -187,12 +187,14 @@ export function StandingsTable({
   qualifyCount,
 }: {
   rows: StandingsRowDTO[];
-  highlightTeamId?: string;
+  /** One team (a viewer's own) or several (e.g. both sides of an upcoming match) to mark in the table. */
+  highlightTeamId?: string | string[];
   title?: string;
   /** Fills the position badge of the top N rows (a phase's own `qualifyCount`), e.g. 8 for a top-8 cutoff. */
   qualifyCount?: number;
 }) {
   const [mode, setMode] = useStandingsMode();
+  const isHighlighted = (teamId: string) => (Array.isArray(highlightTeamId) ? highlightTeamId.includes(teamId) : teamId === highlightTeamId);
   if (rows.length === 0) {
     return <div className="card"><EmptyState icon={<ChartColumn size={28} />} title="Sin equipos" description="Registra equipos y juega partidos para ver la tabla." /></div>;
   }
@@ -215,12 +217,12 @@ export function StandingsTable({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.teamId} className={row.teamId === highlightTeamId ? "highlight" : undefined}>
+                <tr key={row.teamId} className={isHighlighted(row.teamId) ? "highlight" : undefined}>
                   <td className="sticky-col">
                     <Link href={`/teams/${row.teamId}`} className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
                       <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`}>{row.position}</span>
                       <Avatar src={row.shieldUrl} name={row.name} size={28} square />
-                      <span className={row.teamId === highlightTeamId ? "text-strong" : undefined}>{row.name}</span>
+                      <span className={isHighlighted(row.teamId) ? "text-strong" : undefined}>{row.name}</span>
                     </Link>
                   </td>
                   <td>{row.played}</td><td>{row.won}</td><td>{row.drawn}</td><td>{row.lost}</td>
@@ -239,11 +241,11 @@ export function StandingsTable({
             <span role="columnheader" title="Partidos jugados">PJ</span><span role="columnheader" title="Goles a favor : en contra">G</span><span role="columnheader" title="Puntos">PTS</span>
           </div>
           {rows.map((row) => (
-            <div key={row.teamId} role="row" className={`standings-line${row.teamId === highlightTeamId ? " highlight" : ""}`}>
+            <div key={row.teamId} role="row" className={`standings-line${isHighlighted(row.teamId) ? " highlight" : ""}`}>
               <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`} role="cell">{row.position}</span>
               <Link href={`/teams/${row.teamId}`} className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
                 <Avatar src={row.shieldUrl} name={row.name} size={28} square />
-                <span className={`truncate${row.teamId === highlightTeamId ? " text-strong" : ""}`}>{row.name}</span>
+                <span className={`truncate${isHighlighted(row.teamId) ? " text-strong" : ""}`}>{row.name}</span>
               </Link>
               <span role="cell">{row.played}</span>
               <span role="cell">{row.goalsFor}:{row.goalsAgainst}</span>

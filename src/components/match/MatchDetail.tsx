@@ -10,6 +10,7 @@ import { EventTimeline } from "@/components/match/EventTimeline";
 import { MatchClock } from "@/components/match/MatchClock";
 import { MatchQuickStatus } from "@/components/match/MatchQuickStatus";
 import { MatchLineup } from "@/components/match/MatchLineup";
+import { MatchPreview } from "@/components/match/MatchPreview";
 import { MatchRoster } from "@/components/match/MatchRoster";
 import { MatchScoreboard } from "@/components/match/MatchScoreboard";
 import { MatchSummary } from "@/components/match/MatchSummary";
@@ -173,9 +174,12 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
         </div>
       )}
 
-      {activeTab === "summary" && (
-        <MatchSummary events={eventList} teams={teams} suspensions={suspensions.data?.data ?? []} shirtByPlayer={shirtByPlayer} />
-      )}
+      {activeTab === "summary" &&
+        (current.status === "finished" || current.status === "walkover" ? (
+          <MatchSummary events={eventList} teams={teams} suspensions={suspensions.data?.data ?? []} shirtByPlayer={shirtByPlayer} />
+        ) : (
+          <MatchPreview match={current} />
+        ))}
 
       {composer && (
         <EventComposerModal

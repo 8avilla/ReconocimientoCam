@@ -1266,6 +1266,28 @@ a.list-row:hover { background: var(--color-background); }
   border-radius: var(--radius-pill); padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--color-text-primary);
 }
 
+/* ---------- "Forma" pre-match comparison (two bordered team cards + a VS badge between them) ---------- */
+.form-vs-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  width: 140px; max-width: 100%; padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+}
+.form-vs-badge {
+  position: absolute; top: 6px; width: 20px; height: 20px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary);
+  font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ---------- Match summary timeline (mirrored: home anchors left, away anchors right) ---------- */
+.event-row { display: flex; padding: 8px var(--space-lg); border-bottom: 1px solid var(--color-border); }
+.event-row:last-child { border-bottom: none; }
+.event-row.away { justify-content: flex-end; }
+.event-row-content { display: flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; }
+.event-row.away .event-row-content { flex-direction: row-reverse; text-align: right; }
+.event-row-minute { width: 30px; flex-shrink: 0; color: var(--color-text-secondary); font-size: 13px; text-align: right; }
+.event-row.away .event-row-minute { text-align: left; }
+.event-row-score { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; font-size: 12px; font-weight: 700; }
+.event-row-name { font-size: 13px; font-weight: 400; }
+
 /* ---------- Matches hub: live rows, date/jornada chips, metrics ---------- */
 .match-row-live { box-shadow: inset 3px 0 0 var(--color-error); animation: match-row-pulse 2s ease-in-out infinite; }
 @keyframes match-row-pulse {

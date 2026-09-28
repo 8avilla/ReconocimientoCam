@@ -115,7 +115,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
                               #{entry.shirtNumber ?? "–"}
                             </span>
                           </span>
-                          <div className="text-strong truncate" style={{ maxWidth: 160, fontSize: 14 }}>
+                          <div className="truncate" style={{ maxWidth: 160, fontSize: 13 }}>
                             {entry.playerId.fullName}
                           </div>
                           <div className="stack-sm" style={{ gap: 4, marginTop: 6, alignItems: "center" }}>

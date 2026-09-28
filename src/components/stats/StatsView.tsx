@@ -271,10 +271,10 @@ export function PlayerRanking({ rows, empty, value, unit, extra, showTeam = true
           <Avatar src={row.photoUrl} name={row.fullName} size={44} />
           <div className="grow" style={{ minWidth: 0 }}>
             <div className="champ-caption truncate">{[showTeam ? row.teamName : "", extra(row)].filter(Boolean).join(" · ") || "\u00a0"}</div>
-            <div className="champ-name truncate">{row.fullName}</div>
+            <div className="event-row-name truncate">{row.fullName}</div>
           </div>
           <span style={{ textAlign: "right" }}>
-            <span style={{ fontSize: 24, fontWeight: 700 }}>{value(row)}</span>
+            <span style={{ fontSize: 15, fontWeight: 700 }}>{value(row)}</span>
             <span className="text-secondary text-small"> {unit}</span>
           </span>
         </Link>

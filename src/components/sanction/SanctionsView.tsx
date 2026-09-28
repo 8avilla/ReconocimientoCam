@@ -162,7 +162,7 @@ function Sanctions({ championshipId }: { championshipId: string }) {
                           {SUSPENSION_REASON_LABEL[item.reason]}
                         </span>
                       </div>
-                      <div className="champ-name truncate" style={{ fontSize: 16, fontWeight: 700 }}>
+                      <div className="champ-name truncate">
                         <Link href={`/players/${item.playerId._id}`}>{item.playerId.fullName}</Link>
                       </div>
 

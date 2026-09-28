@@ -10,6 +10,10 @@ import { useRole } from "./RoleContext";
 
 type Mode = "default" | "login" | "register" | "forgot";
 
+/** Credentials (email/password) login is built but turned off for now, per request — only Google signs
+ * people in at the moment. Flip this back on (and re-enable the provider in src/auth.ts) when it's ready. */
+const ALLOW_CREDENTIALS_LOGIN = false;
+
 /** Google's official "G" logomark — the asset Google's own branding guidelines call for on a third-party "Sign in with Google" button. */
 function GoogleIcon() {
   return (
@@ -87,13 +91,19 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
             <button className="btn google block" onClick={signIn}>
               <GoogleIcon /> Continuar con Google
             </button>
-            <div className="auth-divider">o</div>
-            <button className="btn secondary block" onClick={() => setMode("login")}>
-              <Mail size={18} aria-hidden /> Iniciar sesión con correo
-            </button>
-            <button className="link-button" onClick={() => setMode("register")}>
-              ¿No tienes cuenta? Crear una
-            </button>
+            {/* Credentials (email/password) login is built but turned off for now — only Google signs
+                people in at the moment. Re-show these once it's ready to go live (see src/auth.ts). */}
+            {ALLOW_CREDENTIALS_LOGIN && (
+              <>
+                <div className="auth-divider">o</div>
+                <button className="btn secondary block" onClick={() => setMode("login")}>
+                  <Mail size={18} aria-hidden /> Iniciar sesión con correo
+                </button>
+                <button className="link-button" onClick={() => setMode("register")}>
+                  ¿No tienes cuenta? Crear una
+                </button>
+              </>
+            )}
           </>
         ) : (
           <CredentialsForm mode={mode} onModeChange={setMode} onDone={close} />
@@ -123,10 +133,8 @@ function CredentialsForm({ mode, onModeChange, onDone }: { mode: "login" | "regi
         onDone();
       } else if (mode === "register") {
         await http("/auth/register", { json: { name, email, password } });
-        const result = await nextAuthSignIn("credentials", { email, password, redirect: false });
-        if (result?.error) throw new Error("La cuenta se creó, pero no se pudo iniciar sesión automáticamente. Intenta iniciar sesión.");
-        toast.success("Cuenta creada");
-        onDone();
+        toast.success("Cuenta creada. Por favor, revisa tu correo para verificarla antes de iniciar sesión.");
+        onModeChange("login");
       } else {
         await http("/auth/forgot-password", { json: { email } });
         setForgotSent(true);

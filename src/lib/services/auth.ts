@@ -20,7 +20,25 @@ export async function registerUser({ name, email, password }: { name: string; em
     throw conflict("Ya existe una cuenta con ese correo", "duplicate");
   }
   const [passwordHash, roleId] = await Promise.all([bcrypt.hash(password, 10), getDefaultRoleIdForNewUser()]);
-  const user = await User.create({ email: normalizedEmail, name: name.trim(), passwordHash, roleId });
+  const token = crypto.randomBytes(32).toString("hex");
+  const user = await User.create({
+    email: normalizedEmail,
+    name: name.trim(),
+    passwordHash,
+    roleId,
+    emailVerified: false,
+    emailVerificationTokenHash: hashToken(token),
+  });
+
+  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3096";
+  const link = `${baseUrl.replace(/\/$/, "")}/api/auth/verify-email?token=${token}`;
+  
+  await sendMail({
+    to: normalizedEmail,
+    subject: "Verifica tu correo en Super Torneos",
+    html: `<p>Hola ${user.name},</p><p>Gracias por crear una cuenta. Haz clic en el siguiente enlace para verificar tu correo electrónico y poder iniciar sesión:</p><p><a href="${link}">${link}</a></p>`,
+  });
+
   await resolveOrganizerInvites(user._id, normalizedEmail);
   return user;
 }

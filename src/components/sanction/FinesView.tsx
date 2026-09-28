@@ -130,13 +130,13 @@ export function FinesView({
                   <div className="champ-caption truncate">
                     <span className="text-strong">{fine.teamId.name}</span> • {fine.concept}
                   </div>
-                  <div className="champ-name truncate" style={{ fontSize: 16, fontWeight: 700 }}>
+                  <div className="champ-name truncate">
                     {fine.playerId?.fullName ?? fine.concept}
                   </div>
                   {match && <div className="text-secondary text-small truncate">Partido: {match}</div>}
                 </div>
                 <div className="stack-sm" style={{ alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                  <strong style={{ fontSize: 16, color: open ? "var(--color-warning)" : "var(--color-text-primary)" }}>{formatMoney(fine.amount)}</strong>
+                  <strong style={{ fontSize: 14, color: open ? "var(--color-warning)" : "var(--color-text-primary)" }}>{formatMoney(fine.amount)}</strong>
                   <Badge tone={state.tone}>
                     {fine.status === "partial" ? `Debe ${formatMoney(owedAmount)}` : state.label}
                   </Badge>

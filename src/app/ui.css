@@ -227,14 +227,14 @@
   text-align: left; font-size: 12px; font-weight: 400; color: var(--color-text-secondary);
   padding: 10px var(--space-lg); border-bottom: 1px solid var(--color-border); background: var(--color-background);
 }
-.table td { padding: 10px var(--space-lg); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.table td { padding: 10px var(--space-lg); border-bottom: 1px solid var(--color-border); vertical-align: middle; font-size: 13px; }
 .table tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: var(--color-background); }
 
 /* ---------- List rows (mobile cards) ---------- */
 .list-row {
   display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border); font-size: 13px;
 }
 .list-row:last-child { border-bottom: none; }
 a.list-row:hover { background: var(--color-background); }
@@ -399,7 +399,7 @@ a.list-row:hover { background: var(--color-background); }
 .lineup-icons { display: flex; gap: 2px; flex-shrink: 0; }
 
 /* ---------- Compact standings (phones): # team PJ G PTS ---------- */
-.standings-line { display: grid; grid-template-columns: 36px 1fr 36px 56px 40px; align-items: center; gap: 4px; min-height: 52px; padding: 0 var(--space-md); border-bottom: 1px solid var(--color-border); text-align: center; }
+.standings-line { display: grid; grid-template-columns: 36px 1fr 36px 56px 40px; align-items: center; gap: 4px; min-height: 52px; padding: 0 var(--space-md); border-bottom: 1px solid var(--color-border); text-align: center; font-size: 13px; }
 .standings-line > :nth-child(2) { text-align: left; }
 .standings-line.head { min-height: 40px; background: var(--color-background); font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
 .standings-line.highlight { background: var(--color-info-bg); }
@@ -418,7 +418,7 @@ a.list-row:hover { background: var(--color-background); }
 .champ-row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
 .champ-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .champ-caption { font-size: 12px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-secondary); }
-.champ-name { font-size: 17px; font-weight: 700; }
+.champ-name { font-size: 13px; font-weight: 400; }
 .star-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--color-text-disabled); flex-shrink: 0; }
 .star-button.on { color: #f59e0b; }
 .star-button:hover { background: var(--color-background); }
@@ -439,7 +439,7 @@ a.list-row:hover { background: var(--color-background); }
 .band-small { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
 
 /* ---------- Match team name (used in Partidos and in a team's own Resultados/Próximos) ---------- */
-.match-team-name { font-size: 16px; font-weight: 400; }
+.match-team-name { font-size: 13px; font-weight: 400; }
 
 /* ---------- Simple / detailed standings ---------- */
 .segmented { display: inline-flex; background: var(--color-surface); border: 1px solid var(--color-border-input); border-radius: var(--radius-pill); padding: 2px; text-transform: none; letter-spacing: 0; }
@@ -896,8 +896,8 @@ a.list-row:hover { background: var(--color-background); }
 }
 
 .team-card-name {
-  font-weight: 700;
-  font-size: 16px;
+  font-weight: 400;
+  font-size: 13px;
   color: var(--color-text-primary);
   max-width: 100%;
   overflow: hidden;

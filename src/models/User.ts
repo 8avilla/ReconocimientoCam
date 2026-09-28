@@ -20,6 +20,8 @@ export interface IUser {
   /** Set while a password reset/setup link is outstanding; only its hash is ever stored. */
   resetPasswordTokenHash?: string;
   resetPasswordExpiresAt?: Date;
+  emailVerified: boolean;
+  emailVerificationTokenHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +36,8 @@ const UserSchema = new Schema<IUser>(
     roleId: { type: Schema.Types.ObjectId, ref: "Role" },
     resetPasswordTokenHash: { type: String },
     resetPasswordExpiresAt: { type: Date },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationTokenHash: { type: String },
   },
   { timestamps: true }
 );

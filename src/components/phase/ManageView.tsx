@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Award, ChartColumn, Gavel, Globe, Lock, MapPin, Pencil, Share2, Shield, Trophy, Users, Whistle } from "lucide-react";
+import { Award, ChartColumn, Globe, Lock, MapPin, Pencil, Share2, Trophy, Users, Whistle } from "lucide-react";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { OrganizersManager } from "@/components/manage/OrganizersManager";
@@ -122,52 +122,6 @@ export function ManageView({ championshipId }: { championshipId: string }) {
       {tab === "organizers" && <OrganizersManager championshipId={championshipId} />}
       {tab === "rules" && <RulesSummary />}
       {tab === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el campeonato"} />}
-
-      {/* Quick Tools Grid */}
-      <div style={{ marginTop: "var(--space-2xl)" }}>
-        <h2 className="band band-muted band-small">Más herramientas de administración</h2>
-        <div className="tools-grid">
-          <Link href={championshipPath(championshipId, "jugadores")} className="tool-card">
-            <div className="tool-card-icon" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
-              <Users size={20} />
-            </div>
-            <div>
-              <div className="tool-card-title">Jugadores y Biometría</div>
-              <div className="tool-card-desc">Registro, fotos y enrolamiento facial.</div>
-            </div>
-          </Link>
-
-          <Link href={championshipPath(championshipId, "sanciones")} className="tool-card">
-            <div className="tool-card-icon" style={{ background: "#fee2e2", color: "#dc2626" }}>
-              <Gavel size={20} />
-            </div>
-            <div>
-              <div className="tool-card-title">Sanciones y Multas</div>
-              <div className="tool-card-desc">Control de amarillas, rojas y suspensiones.</div>
-            </div>
-          </Link>
-
-          <Link href={championshipPath(championshipId, "equipos")} className="tool-card">
-            <div className="tool-card-icon" style={{ background: "#dcfce7", color: "#15803d" }}>
-              <Shield size={20} />
-            </div>
-            <div>
-              <div className="tool-card-title">Equipos e Inscripciones</div>
-              <div className="tool-card-desc">Gestión de clubes y cuotas de torneo.</div>
-            </div>
-          </Link>
-
-          <Link href={championshipPath(championshipId, "clasificacion")} className="tool-card">
-            <div className="tool-card-icon" style={{ background: "#fef3c7", color: "#b45309" }}>
-              <ChartColumn size={20} />
-            </div>
-            <div>
-              <div className="tool-card-title">Tablas y Resultados</div>
-              <div className="tool-card-desc">Posiciones de liga y cruces de eliminatoria.</div>
-            </div>
-          </Link>
-        </div>
-      </div>
 
       {current && (
         <ChampionshipFormModal

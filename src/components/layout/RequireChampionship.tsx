@@ -16,9 +16,9 @@ export function RequireChampionship({ children }: { children: (championship: Cha
     return (
       <EmptyState
         icon={<Trophy size={28} />}
-        title="No encontramos ese campeonato"
-        description="Puede que el enlace esté mal o que el campeonato ya no exista."
-        action={<Link href="/" className="btn primary">Ver campeonatos</Link>}
+        title="No encontramos ese torneo"
+        description="Puede que el enlace esté mal o que el torneo ya no exista."
+        action={<Link href="/" className="btn primary">Ver torneos</Link>}
       />
     );
   }
@@ -26,9 +26,9 @@ export function RequireChampionship({ children }: { children: (championship: Cha
     return (
       <EmptyState
         icon={<Trophy size={28} />}
-        title="Aún no hay campeonatos"
-        description="Crea un campeonato para empezar a registrar equipos y jugadores."
-        action={<Link href="/" className="btn primary">Crear campeonato</Link>}
+        title="Aún no hay torneos"
+        description="Crea un torneo para empezar a registrar equipos y jugadores."
+        action={<Link href="/" className="btn primary">Crear torneo</Link>}
       />
     );
   }

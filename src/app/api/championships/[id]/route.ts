@@ -16,7 +16,7 @@ type Params = { id: string };
 
 export const GET = route<Params>(async (_request, { id }) => {
   const championship = await findChampionshipByIdOrSlug(id).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   const [teams, matches] = await Promise.all([
     Team.countDocuments({ championshipId: championship._id }),
     Match.countDocuments({ championshipId: championship._id }),
@@ -28,11 +28,11 @@ export const PATCH = route<Params>(async (request, { id }) => {
   const actor = getActor(request);
   const { rules, ...fields } = await parseBody(request, championshipUpdateSchema);
   const championship = await findChampionshipByIdOrSlug(id);
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requireOrganizer(actor, championship);
 
   if (fields.slug && (await Championship.exists({ slug: fields.slug, _id: { $ne: championship._id } }))) {
-    throw conflict("Ese enlace ya lo usa otro campeonato", "duplicate");
+    throw conflict("Ese enlace ya lo usa otro torneo", "duplicate");
   }
 
   const before = championship.toObject() as IChampionship;
@@ -65,7 +65,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
       entityType: "championship",
       entityId: championship._id,
       championshipId: championship._id,
-      summary: `Campeonato actualizado: ${championship.name}`,
+      summary: `Torneo actualizado: ${championship.name}`,
       changes,
     });
   }
@@ -75,7 +75,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
 export const DELETE = route<Params>(async (request, { id }) => {
   const actor = getActor(request);
   const championship = await findChampionshipByIdOrSlug(id);
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   // Deleting is destructive enough to reserve for admins, even though editing is open to any organizer.
   requireAdmin(actor);
 
@@ -84,7 +84,7 @@ export const DELETE = route<Params>(async (request, { id }) => {
     Match.exists({ championshipId: championship._id }),
   ]);
   if (teams || matches) {
-    throw conflict("El campeonato tiene equipos o partidos; no se puede eliminar", "championship_in_use");
+    throw conflict("El torneo tiene equipos o partidos; no se puede eliminar", "championship_in_use");
   }
   // Phases cannot outlive their championship: remove them (they have no matches at this point).
   await Tie.deleteMany({ championshipId: championship._id });
@@ -96,7 +96,7 @@ export const DELETE = route<Params>(async (request, { id }) => {
     entityType: "championship",
     entityId: championship._id,
     championshipId: championship._id,
-    summary: `Campeonato eliminado: ${championship.name} ${championship.season}`,
+    summary: `Torneo eliminado: ${championship.name} ${championship.season}`,
   });
   return json({ ok: true });
 });

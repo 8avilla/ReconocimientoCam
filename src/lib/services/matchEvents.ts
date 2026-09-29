@@ -21,7 +21,7 @@ async function loadMatch(matchId: string, actor?: Actor) {
   const match = await Match.findById(matchId);
   if (!match) throw notFound("Partido no encontrado");
   const championship = await Championship.findById(match.championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   if (actor) requireOrganizer(actor, championship);
   return { match, championship };
 }

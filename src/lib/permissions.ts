@@ -20,7 +20,7 @@ export function requireOrganizer(actor: Actor, owned: Owned): void {
   if (!actor.userId) throw new ApiError(401, "Inicia sesión para hacer esto", "unauthenticated");
   const isOwner = owned.ownerUserId?.toString() === actor.userId;
   const isOrganizer = owned.organizerUserIds?.some((id) => id.toString() === actor.userId) ?? false;
-  if (!isOwner && !isOrganizer) throw new ApiError(403, "No administras este campeonato", "forbidden");
+  if (!isOwner && !isOrganizer) throw new ApiError(403, "No administras este torneo", "forbidden");
 }
 
 /** Throws 401/403 unless the actor is an admin. */
@@ -45,14 +45,14 @@ export function requirePermission(actor: Actor, permission: Permission, owned: O
 /** Async wrapper for `requirePermission`, mirroring `requireOrganizerOfChampionship`. */
 export async function requirePermissionOfChampionship(actor: Actor, permission: Permission, championshipId: string | { toString(): string }): Promise<void> {
   const championship = await Championship.findById(championshipId.toString()).select("ownerUserId organizerUserIds").lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requirePermission(actor, permission, championship);
 }
 
 /** Loads just enough of the championship to check who organizes it, and throws unless the actor does. */
 export async function requireOrganizerOfChampionship(actor: Actor, championshipId: string | { toString(): string }): Promise<void> {
   const championship = await Championship.findById(championshipId.toString()).select("ownerUserId organizerUserIds").lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requireOrganizer(actor, championship);
 }
 
@@ -69,7 +69,7 @@ export async function requireOrganizerOfPlayer(actor: Actor, playerId: string): 
     _id: { $in: championshipIds },
     $or: [{ ownerUserId: actor.userId }, { organizerUserIds: actor.userId }],
   });
-  if (!organizes) throw new ApiError(403, "No administras el campeonato de este jugador", "forbidden");
+  if (!organizes) throw new ApiError(403, "No administras el torneo de este jugador", "forbidden");
 }
 
 /**

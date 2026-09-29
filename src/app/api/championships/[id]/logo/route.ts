@@ -14,7 +14,7 @@ export const POST = route<Params>(async (request, { id }) => {
   const actor = getActor(request);
   const { image } = await parseBody(request, imageUploadSchema);
   const championship = await Championship.findById(id);
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requireOrganizer(actor, championship);
 
   const uploaded = await uploadChampionshipLogo(image);

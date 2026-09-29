@@ -21,7 +21,7 @@ type Tab = "phases" | "referees" | "venues" | "organizers" | "rules" | "share";
 
 /** Organizer's workspace for one championship: phases, referees, venues, rules and the link to share it.
  * The only place to edit the championship itself (name, dates, visibility, fees, rules...) — see the
- * "Editar campeonato" button below, which is the single entry point to that form across the app. */
+ * "Editar torneo" button below, which is the single entry point to that form across the app. */
 export function ManageView({ championshipId }: { championshipId: string }) {
   const { current, reload } = useChampionship();
   const [editOpen, setEditOpen] = useState(false);
@@ -61,7 +61,7 @@ export function ManageView({ championshipId }: { championshipId: string }) {
           <div>
             <div className="manage-hub-title">
               <Trophy size={24} style={{ color: "var(--color-primary)" }} />
-              {current?.name ?? "Campeonato"}
+              {current?.name ?? "Torneo"}
             </div>
             <div className="row-wrap" style={{ gap: 8, marginTop: 4 }}>
               <span className="text-secondary">Temporada {current?.season ?? "2026"}</span>
@@ -74,7 +74,7 @@ export function ManageView({ championshipId }: { championshipId: string }) {
           </div>
 
           <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
-            <Button size="small" icon={<Pencil size={16} />} onClick={() => setEditOpen(true)}>Editar campeonato</Button>
+            <Button size="small" icon={<Pencil size={16} />} onClick={() => setEditOpen(true)}>Editar torneo</Button>
             <Link href={championshipPath(championshipId, "clasificacion")} className="btn secondary" style={{ fontSize: 13 }}>
               <ChartColumn size={16} /> Ver Clasificación
             </Link>
@@ -121,7 +121,7 @@ export function ManageView({ championshipId }: { championshipId: string }) {
       {tab === "venues" && <VenuesManager championshipId={championshipId} />}
       {tab === "organizers" && <OrganizersManager championshipId={championshipId} />}
       {tab === "rules" && <RulesSummary />}
-      {tab === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el campeonato"} />}
+      {tab === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />}
 
       {current && (
         <ChampionshipFormModal

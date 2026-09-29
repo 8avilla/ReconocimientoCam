@@ -39,7 +39,7 @@ export function OrganizersManager({ championshipId }: { championshipId: string }
     setRemoving(idOrEmail);
     try {
       await http(`/championships/${championshipId}/organizers/${encodeURIComponent(idOrEmail)}`, { method: "DELETE" });
-      toast.success(`${label}: ya no organiza este campeonato`);
+      toast.success(`${label}: ya no organiza este torneo`);
       reload();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -53,7 +53,7 @@ export function OrganizersManager({ championshipId }: { championshipId: string }
 
   return (
     <div className="stack">
-      <p className="text-secondary">Quien organiza puede configurar fases, calendario, equipos, jugadores y sanciones de este campeonato. Invita a otra persona por su correo de Gmail; queda pendiente hasta que inicie sesión.</p>
+      <p className="text-secondary">Quien organiza puede configurar fases, calendario, equipos, jugadores y sanciones de este torneo. Invita a otra persona por su correo de Gmail; queda pendiente hasta que inicie sesión.</p>
 
       <div className="flush-list">
         <h2 className="band band-muted band-small">Organizadores</h2>

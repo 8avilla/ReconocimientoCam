@@ -23,7 +23,7 @@ export const GET = route(async (request) => {
 export const POST = route(async (request) => {
   const actor = getActor(request);
   const input = await parseBody(request, refereeCreateSchema);
-  if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Campeonato no encontrado");
+  if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Torneo no encontrado");
   await requireOrganizerOfChampionship(actor, input.championshipId);
   const referee = await Referee.create(input);
   await recordAudit(actor, { action: "create", entityType: "referee", entityId: referee._id, championshipId: referee.championshipId, summary: `Árbitro creado: ${referee.fullName}` });

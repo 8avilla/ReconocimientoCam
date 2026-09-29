@@ -174,7 +174,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
 
       {manage && phases.data && phaseList.length === 0 && (
         <div className="alert warning" role="note" style={{ marginBottom: "var(--space-lg)" }}>
-          <span className="grow">Todo partido pertenece a una fase de un campeonato. Crea primero una fase (liga, grupos o eliminatoria) para poder programar partidos.</span>
+          <span className="grow">Todo partido pertenece a una fase de un torneo. Crea primero una fase (liga, grupos o eliminatoria) para poder programar partidos.</span>
           <Link href={championshipPath(championshipId, "gestionar")} className="btn secondary small">Configurar fases</Link>
         </div>
       )}
@@ -255,7 +255,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
                 ? "No hay partidos con esos filtros."
                 : tab === "results"
                   ? "Aquí aparecerán los partidos finalizados."
-                  : "Programa el primer partido del campeonato."
+                  : "Programa el primer partido del torneo."
             }
             action={manage && !filtered && tab === "upcoming" && phaseList.length > 0 && (
               <div className="row-wrap" style={{ justifyContent: "center" }}>

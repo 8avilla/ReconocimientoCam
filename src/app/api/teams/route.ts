@@ -39,16 +39,16 @@ export const POST = route(async (request) => {
   const actor = getActor(request);
   const input = await parseBody(request, teamCreateSchema);
   const championship = await Championship.findById(input.championshipId).select("rules.registrationFeeAmount").lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   await requireOrganizerOfChampionship(actor, input.championshipId);
 
   const duplicate = await Team.exists({ championshipId: input.championshipId, name: input.name });
-  if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el campeonato", "duplicate");
+  if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el torneo", "duplicate");
 
   const { phaseId, ...fields } = input;
   // The team can join a phase right away (the organizer chooses which one, or none).
   const phase = phaseId ? await Phase.findOne({ _id: phaseId, championshipId: input.championshipId }).select("type name").lean() : null;
-  if (phaseId && !phase) throw notFound("Fase no encontrada en este campeonato");
+  if (phaseId && !phase) throw notFound("Fase no encontrada en este torneo");
   if (phase?.type === "knockout") throw badRequest("Los equipos de una eliminatoria se eligen en sus cruces");
 
   const team = await Team.create(fields);

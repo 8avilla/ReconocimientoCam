@@ -24,7 +24,7 @@ describe("computeStandings", () => {
     expect(table.find((row) => row.teamId === "c")).toMatchObject({ played: 1, drawn: 1, points: 1 });
   });
 
-  it("respeta los puntos configurados en el campeonato", () => {
+  it("respeta los puntos configurados en el torneo", () => {
     const table = computeStandings(teams, [{ homeTeamId: "a", awayTeamId: "b", homeScore: 1, awayScore: 0 }], { pointsPerWin: 2, pointsPerDraw: 1, pointsPerLoss: 0 });
     expect(table[0].points).toBe(2);
   });

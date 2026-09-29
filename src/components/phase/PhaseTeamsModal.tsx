@@ -116,7 +116,7 @@ function PhaseTeams({ phase, onClose, onSaved }: Omit<Props, "open">) {
       )}
 
       <div className="card flush" style={{ maxHeight: "50vh", overflowY: "auto" }}>
-        {list.length === 0 && <p className="text-secondary" style={{ padding: "var(--space-lg)" }}>El campeonato no tiene equipos activos.</p>}
+        {list.length === 0 && <p className="text-secondary" style={{ padding: "var(--space-lg)" }}>El torneo no tiene equipos activos.</p>}
         {list.map((team) => {
           const checked = selected.has(team._id);
           const fixed = playing.has(team._id);

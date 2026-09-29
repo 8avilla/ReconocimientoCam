@@ -323,7 +323,7 @@ export default function PlayerProfilePage() {
             </section>
 
             <section className="card stack">
-              <h3>Estadísticas en el campeonato</h3>
+              <h3>Estadísticas en el torneo</h3>
               {stats.data ? (
                 <div className="stat-grid-enhanced">
                   <StatTileEnhanced

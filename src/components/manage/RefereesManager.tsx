@@ -45,7 +45,7 @@ export function RefereesManager({ championshipId }: { championshipId: string }) 
   return (
     <>
       <div className="row-between" style={{ marginBottom: "var(--space-lg)" }}>
-        <p className="text-secondary">Los árbitros que pueden dirigir los partidos del campeonato.</p>
+        <p className="text-secondary">Los árbitros que pueden dirigir los partidos del torneo.</p>
         <Button icon={<Plus size={18} />} className="only-desktop" onClick={() => setEditing("new")}>Nuevo árbitro</Button>
       </div>
       <Fab label="Árbitros" actions={[{ label: "Nuevo árbitro", onClick: () => setEditing("new") }]} />

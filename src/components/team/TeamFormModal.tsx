@@ -133,7 +133,7 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
       {team && (
         <label className="checkbox-row">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          Equipo activo en el campeonato
+          Equipo activo en el torneo
         </label>
       )}
 

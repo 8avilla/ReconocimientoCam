@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Gavel, Plus, Search, ShieldAlert, AlertTriangle, CheckCircle2, Shield, Banknote, User } from "lucide-react";
+import { Gavel, Plus, Search, ShieldAlert, AlertTriangle, Shield, Banknote, User } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FinesView } from "@/components/sanction/FinesView";
 import { SuspensionFormModal } from "@/components/sanction/SuspensionFormModal";
@@ -95,21 +95,6 @@ function Sanctions({ championshipId }: { championshipId: string }) {
         <FinesView championshipId={championshipId} newOpen={fineFormOpen} onNewClose={() => setFineFormOpen(false)} />
       ) : (
         <>
-          <div className="card-hub-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "var(--space-md)", marginBottom: "var(--space-lg)" }}>
-            <div className="card stack-xs" style={{ borderLeft: "4px solid var(--color-warning)" }}>
-              <span className="text-secondary text-small row" style={{ gap: 6 }}>
-                <ShieldAlert size={16} color="var(--color-warning)" aria-hidden /> Suspensiones Vigentes
-              </span>
-              <strong style={{ fontSize: 24 }}>{activeCount}</strong>
-            </div>
-            <div className="card stack-xs" style={{ borderLeft: "4px solid var(--color-primary)" }}>
-              <span className="text-secondary text-small row" style={{ gap: 6 }}>
-                <CheckCircle2 size={16} color="var(--color-primary)" aria-hidden /> Sanciones Registradas
-              </span>
-              <strong style={{ fontSize: 24 }}>{data?.meta.total ?? 0}</strong>
-            </div>
-          </div>
-
           <div className="row-wrap" style={{ gap: "var(--space-md)", marginBottom: "var(--space-md)", alignItems: "center" }}>
             <div className="tabs-line grow" role="tablist" aria-label="Filtrar sanciones" style={{ marginBottom: 0 }}>
               {FILTERS.map((filter) => (

@@ -27,9 +27,9 @@ export function SetupChecklist({ championshipId, overview }: { championshipId: s
   const percent = Math.round((completed / steps.length) * 100);
 
   return (
-    <section className="card stack" aria-label="Configuración del campeonato">
+    <section className="card stack" aria-label="Configuración del torneo">
       <div className="row-between">
-        <h2>Configura tu campeonato</h2>
+        <h2>Configura tu torneo</h2>
         <span className="badge success">{percent}% listo ⚽</span>
       </div>
       <div className="progress gradient" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={steps.length} aria-label="Pasos completados">

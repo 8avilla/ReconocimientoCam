@@ -77,9 +77,9 @@ export const POST = route(async (request) => {
   const teams = await Team.find({ _id: { $in: [input.homeTeamId, input.awayTeamId] } }).lean();
   if (teams.length !== 2) throw notFound("Alguno de los equipos no existe");
   if (teams.some((team) => team.championshipId.toString() !== championshipId)) {
-    throw badRequest("Los equipos deben pertenecer al campeonato de la fecha");
+    throw badRequest("Los equipos deben pertenecer al torneo de la fecha");
   }
-  if (input.refereeId && !(await Referee.exists({ _id: input.refereeId, championshipId }))) throw badRequest("El árbitro no pertenece a este campeonato");
+  if (input.refereeId && !(await Referee.exists({ _id: input.refereeId, championshipId }))) throw badRequest("El árbitro no pertenece a este torneo");
   const fit = await assertMatchFitsPhase({ phaseId: matchday.phaseId.toString(), homeTeamId: input.homeTeamId, awayTeamId: input.awayTeamId, group: input.group });
   const match = await Match.create({ ...input, championshipId, phaseId: matchday.phaseId, group: fit.group });
   // The whole squad of both teams is called up automatically.

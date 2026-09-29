@@ -58,7 +58,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
     <>
       <PageHeader
         title="Jugadores"
-        description="Identidad, foto y estado de los jugadores del campeonato."
+        description="Identidad, foto y estado de los jugadores del torneo."
         actions={manage && <Link href="/players/new" className="btn primary"><Plus size={18} aria-hidden /> Nuevo jugador</Link>}
         mobileActions={manage ? [{ label: "Nuevo jugador", icon: <Plus size={20} />, href: "/players/new" }] : undefined}
       />
@@ -108,7 +108,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
           <EmptyState
             icon={<Users size={28} />}
             title={filtered ? "Sin resultados" : "Aún no hay jugadores"}
-            description={filtered ? "Prueba cambiando la búsqueda o los filtros." : "Registra el primer jugador de este campeonato."}
+            description={filtered ? "Prueba cambiando la búsqueda o los filtros." : "Registra el primer jugador de este torneo."}
             action={manage && !filtered && <Link href="/players/new" className="btn primary">Registrar jugador</Link>}
           />
         </div>

@@ -55,7 +55,7 @@ export function VenuesManager({ championshipId }: { championshipId: string }) {
         <Loading />
       ) : venues.length === 0 ? (
         <div className="card">
-          <EmptyState icon={<MapPin size={28} />} title="Aún no hay sitios" description="Agrega las canchas del campeonato para elegirlas rápido al programar los partidos." action={<Button onClick={() => setEditing("new")}>Agregar sitio</Button>} />
+          <EmptyState icon={<MapPin size={28} />} title="Aún no hay sitios" description="Agrega las canchas del torneo para elegirlas rápido al programar los partidos." action={<Button onClick={() => setEditing("new")}>Agregar sitio</Button>} />
         </div>
       ) : (
         <div className="flush-list">

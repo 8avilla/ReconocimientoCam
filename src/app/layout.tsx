@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 
 export const metadata: Metadata = {
   title: "Super Torneos",
-  description: "Plataforma de gestión de campeonatos, partidos y verificación de jugadores.",
+  description: "Plataforma de gestión de torneos, partidos y verificación de jugadores.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

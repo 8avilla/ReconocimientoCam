@@ -90,7 +90,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
     <>
       <PageHeader
         title="Equipos"
-        description="Gestiona los equipos del campeonato."
+        description="Gestiona los equipos del torneo."
         actions={manage && section === "teams" && <Button icon={<Plus size={18} />} onClick={() => setFormOpen(true)}>Nuevo equipo</Button>}
         mobileActions={manage && section === "teams" ? [{ label: "Nuevo equipo", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }] : undefined}
       />
@@ -139,7 +139,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
         <EmptyState
           icon={<Shield size={28} />}
           title={search ? "Sin resultados" : "Aún no hay equipos"}
-          description={search ? "Prueba con otro nombre." : "Registra el primer equipo de este campeonato."}
+          description={search ? "Prueba con otro nombre." : "Registra el primer equipo de este torneo."}
           action={manage && !search && <Button onClick={() => setFormOpen(true)}>Crear equipo</Button>}
         />
       ) : viewMode === "grid" ? (

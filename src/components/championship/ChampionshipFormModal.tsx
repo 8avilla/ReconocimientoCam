@@ -79,7 +79,7 @@ function normalizePeriodLabels(csv: string, count: number): string[] {
 
 export function ChampionshipFormModal({ open, championship, onClose, onSaved }: Props) {
   return (
-    <Modal open={open} title={championship ? "Editar campeonato" : "Nuevo campeonato"} onClose={onClose} wide>
+    <Modal open={open} title={championship ? "Editar torneo" : "Nuevo torneo"} onClose={onClose} wide>
       <ChampionshipForm key={championship?._id ?? "new"} championship={championship} onClose={onClose} onSaved={onSaved} />
     </Modal>
   );
@@ -95,7 +95,7 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
   const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(values) !== JSON.stringify(toValues(championship)) || logo !== null;
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
-  const previewPath = championshipPath(values.slug.trim().toLowerCase() || championship?._id || "id-del-campeonato");
+  const previewPath = championshipPath(values.slug.trim().toLowerCase() || championship?._id || "id-del-torneo");
   const previewUrl = `${typeof window !== "undefined" ? window.location.origin : ""}${previewPath}`;
 
   const bind = (field: keyof FormValues) => ({
@@ -182,10 +182,10 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
           const { logoUrl } = await http<{ logoUrl: string }>(`/championships/${saved._id}/logo`, { json: { image: logo } });
           saved = { ...saved, logoUrl };
         } catch (error) {
-          toast.error(`El campeonato se guardó, pero no se pudo subir el logo: ${errorMessage(error)}`);
+          toast.error(`El torneo se guardó, pero no se pudo subir el logo: ${errorMessage(error)}`);
         }
       }
-      toast.success(isEdit ? "Campeonato actualizado" : "Campeonato creado correctamente");
+      toast.success(isEdit ? "Torneo actualizado" : "Torneo creado correctamente");
       onSaved(saved);
     } catch (error) {
       if (error instanceof HttpError && Object.keys(error.fieldErrors).length > 0) setErrors(error.fieldErrors);
@@ -222,10 +222,10 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
         <div className="stack" style={{ gap: "var(--space-md)" }}>
           {/* Logo Upload Card */}
           <div className="logo-upload-card">
-            <Avatar src={logo ?? championship?.logoUrl} name={values.name || "Campeonato"} size={88} square />
+            <Avatar src={logo ?? championship?.logoUrl} name={values.name || "Torneo"} size={88} square />
             <div>
               <div className="text-strong" style={{ fontSize: 15, marginBottom: 4 }}>
-                {championship?.logoUrl || logo ? "Logo del campeonato cargado" : "Subir logo del campeonato"}
+                {championship?.logoUrl || logo ? "Logo del torneo cargado" : "Subir logo del torneo"}
               </div>
               <div className="text-secondary text-small" style={{ marginBottom: 12 }}>
                 Formatos recomendados: PNG o JPG de al menos 512x512 px.
@@ -238,9 +238,9 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
           </div>
 
           <div className="form-grid two">
-            <Input label="Nombre del campeonato" required error={errors.name} {...bind("name")} />
+            <Input label="Nombre del torneo" required error={errors.name} {...bind("name")} />
             <Input label="Temporada" required error={errors.season} {...bind("season")} />
-            <Select label="Estado del campeonato" {...bind("status")}>
+            <Select label="Estado del torneo" {...bind("status")}>
               {CHAMPIONSHIP_STATUSES.map((status) => (
                 <option key={status} value={status}>{CHAMPIONSHIP_STATUS_LABEL[status].label}</option>
               ))}
@@ -298,7 +298,7 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
           <section className="card stack-sm" style={{ background: "var(--color-background)" }}>
             <h3>Cuota de inscripción por equipo</h3>
             <p className="text-secondary text-small">
-              Monto que paga cada club al registrarse. Se genera automáticamente en la gestión financiera del campeonato. Déjalo en 0 si la inscripción es gratuita.
+              Monto que paga cada club al registrarse. Se genera automáticamente en la gestión financiera del torneo. Déjalo en 0 si la inscripción es gratuita.
             </p>
             <Input label="Cuota por equipo ($)" type="number" min={0} step={1000} inputMode="numeric" error={errors["rules.registrationFeeAmount"]} {...bind("registrationFeeAmount")} />
           </section>
@@ -346,7 +346,7 @@ function ChampionshipForm({ championship, onClose, onSaved }: Omit<Props, "open"
 
       <div className="action-bar" style={{ marginTop: "var(--space-lg)" }}>
         <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
-        <Button type="submit" loading={saving}>{championship ? "Guardar cambios" : "Crear campeonato"}</Button>
+        <Button type="submit" loading={saving}>{championship ? "Guardar cambios" : "Crear torneo"}</Button>
       </div>
       <ConfirmDialog {...confirmProps} />
     </form>

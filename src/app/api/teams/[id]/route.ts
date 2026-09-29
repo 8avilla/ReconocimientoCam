@@ -32,7 +32,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
 
   if (input.name && input.name !== team.name) {
     const duplicate = await Team.exists({ championshipId: team.championshipId, name: input.name, _id: { $ne: team._id } });
-    if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el campeonato", "duplicate");
+    if (duplicate) throw conflict("Ya existe un equipo con ese nombre en el torneo", "duplicate");
   }
 
   const before = team.toObject() as ITeam;

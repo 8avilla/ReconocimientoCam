@@ -23,7 +23,7 @@ export const GET = route(async (request) => {
 export const POST = route(async (request) => {
   const actor = getActor(request);
   const input = await parseBody(request, venueCreateSchema);
-  if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Campeonato no encontrado");
+  if (!(await Championship.exists({ _id: input.championshipId }))) throw notFound("Torneo no encontrado");
   await requireOrganizerOfChampionship(actor, input.championshipId);
   if (await Venue.exists({ championshipId: input.championshipId, name: input.name })) throw conflict("Ya existe un sitio con ese nombre", "duplicate");
   const venue = await Venue.create(input);

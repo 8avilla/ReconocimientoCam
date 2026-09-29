@@ -34,7 +34,7 @@ export async function createSuspension(actor: Actor, input: CreateSuspensionInpu
     playerId: input.playerId,
     status: { $in: ["pending", "active", "suspended"] },
   });
-  if (!registration) throw notFound("El jugador no tiene una inscripción vigente en este campeonato");
+  if (!registration) throw notFound("El jugador no tiene una inscripción vigente en este torneo");
 
   const suspension = await Suspension.create({
     ...input,

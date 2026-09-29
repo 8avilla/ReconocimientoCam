@@ -410,23 +410,23 @@ a.list-row:hover { background: var(--color-background); }
 
 .hero-tile { width: 72px; height: 72px; border-radius: var(--radius-lg); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
-/* ---------- Championship list (favorites first) ---------- */
-.champ-list, .flush-list { margin: 0 calc(-1 * var(--space-lg)); }
-.champ-list .band { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding: var(--space-sm) var(--space-lg); color: var(--color-text-secondary); }
+/* ---------- Championship list: one bordered card per row, not a connected flush list ---------- */
+.flush-list { margin: 0 calc(-1 * var(--space-lg)); }
 .band-favorite { background: #fef3c7; color: #92400e !important; }
 .band-muted { background: var(--color-border); }
-.champ-row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.champ-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.champ-row {
+  display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md);
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+}
 .champ-tile { width: 44px; height: 44px; border-radius: var(--radius-md); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .champ-caption { font-size: 12px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-secondary); }
 .champ-name { font-size: 13px; font-weight: 400; }
 .star-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--color-text-disabled); flex-shrink: 0; }
 .star-button.on { color: #f59e0b; }
 .star-button:hover { background: var(--color-background); }
-/* No overflow:hidden on desktop: it would clip the row menus, so the corners are rounded by hand. */
 @media (min-width: 768px) {
-  .champ-list, .flush-list { margin: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
-  .champ-list > section:first-child > .band { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
-  .champ-list > section:last-child > .champ-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .flush-list { margin: 0; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 }
 
 /* ---------- Match list (grouped by phase and fecha) ---------- */
@@ -508,7 +508,6 @@ a.list-row:hover { background: var(--color-background); }
 @media (min-width: 768px) { .live-bar { top: 0; } }
 
 .topbar-search { color: #fff; }
-@media (min-width: 1024px) { .topbar-search { color: var(--color-text-secondary); } }
 
 /* ---------- Fines ---------- */
 .fine-summary { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg); }
@@ -1209,6 +1208,7 @@ a.list-row:hover { background: var(--color-background); }
   margin-bottom: var(--space-2xl);
 }
 .champ-hero-pattern { position: absolute; inset: 0; background: radial-gradient(circle at 85% 0%, rgba(22, 163, 74, 0.35) 0%, transparent 55%); pointer-events: none; }
+.champ-hero-icon { position: absolute; right: -30px; bottom: -40px; color: rgba(255, 255, 255, 0.06); pointer-events: none; }
 .champ-hero-top { position: relative; display: flex; align-items: center; gap: var(--space-lg); flex-wrap: wrap; }
 .champ-hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .champ-hero-metrics { position: relative; display: flex; gap: var(--space-md); flex-wrap: wrap; margin-top: var(--space-lg); }
@@ -1226,6 +1226,14 @@ a.list-row:hover { background: var(--color-background); }
 /* Scoped under .champ-hero (extra specificity) so it always wins over whatever base variant class (.secondary, .ghost) the button also carries. */
 .champ-hero .btn.hero { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.22); }
 .champ-hero .btn.hero:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); }
+
+/* Home dashboard: próximo partido + tabla side by side, then results/goleadores/próximos in three. */
+.home-row-2 { display: grid; grid-template-columns: 1fr; gap: var(--space-2xl); }
+.home-row-3 { display: grid; grid-template-columns: 1fr; gap: var(--space-2xl); }
+@media (min-width: 900px) {
+  .home-row-2 { grid-template-columns: 1fr 1fr; }
+  .home-row-3 { grid-template-columns: repeat(3, 1fr); }
+}
 
 /* Setup checklist: gradient progress + glowing current step */
 .progress.gradient span { background: linear-gradient(90deg, var(--color-primary) 0%, #10b981 100%); }

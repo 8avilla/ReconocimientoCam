@@ -32,12 +32,12 @@ export function ChampionshipSwitcher({ open, section, onClose }: { open: boolean
         <span className="text-secondary text-small">Temporada {item.season}</span>
       </span>
       {favoriteIds.has(item._id) && <Star size={18} fill="#f59e0b" color="#f59e0b" aria-label="Lo sigues" />}
-      {current?._id === item._id && <Check size={18} aria-label="Campeonato actual" />}
+      {current?._id === item._id && <Check size={18} aria-label="Torneo actual" />}
     </button>
   );
 
   return (
-    <Modal open={open} title="Cambiar de campeonato" onClose={onClose}>
+    <Modal open={open} title="Cambiar de torneo" onClose={onClose}>
       <div className="stack">
         {favorites.length > 0 && (
           <div className="stack-sm">
@@ -47,11 +47,11 @@ export function ChampionshipSwitcher({ open, section, onClose }: { open: boolean
         )}
         {others.length > 0 && (
           <div className="stack-sm">
-            {favorites.length > 0 && <h3 className="text-caption text-secondary">Otros campeonatos</h3>}
+            {favorites.length > 0 && <h3 className="text-caption text-secondary">Otros torneos</h3>}
             {others.map(row)}
           </div>
         )}
-        <Link href="/" className="btn secondary block" onClick={onClose}>Ver todos los campeonatos</Link>
+        <Link href="/" className="btn secondary block" onClick={onClose}>Ver todos los torneos</Link>
       </div>
     </Modal>
   );

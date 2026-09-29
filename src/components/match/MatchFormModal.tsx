@@ -142,7 +142,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
     return (
       <div className="stack">
         <div className="alert warning" role="note">
-          <AlertCircle size={18} /> Todo partido pertenece a una fase. Crea (o configura) una fase de liga o grupos en el campeonato antes de agregar partidos.
+          <AlertCircle size={18} /> Todo partido pertenece a una fase. Crea (o configura) una fase de liga o grupos en el torneo antes de agregar partidos.
         </div>
         <div className="action-bar">
           <Button variant="secondary" onClick={onClose}>Cerrar</Button>

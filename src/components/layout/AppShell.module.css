@@ -7,9 +7,10 @@
   padding: var(--space-lg) var(--space-lg) 120px;
 }
 
-.topbar {
+.topbar { background: var(--color-navy); color: #fff; }
+.topbarTop {
   height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md);
-  padding: 0 var(--space-lg); background: var(--color-navy); color: #fff;
+  padding: 0 var(--space-lg);
 }
 .topbarActions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-sm); min-width: 0; flex: 1; }
 .topbarLogo { height: 32px; width: auto; border-radius: var(--radius-sm); }
@@ -20,9 +21,10 @@
   color: #fff; font-weight: 700; font-size: 13px; transition: background 0.15s ease;
 }
 .scopeChip:active { background: rgba(255, 255, 255, 0.25); }
-.scopeBlock { padding: var(--space-md) var(--space-md) 0; }
 
-.sidebar { display: none; }
+/* Desktop-only championship badge and account trigger; hidden on phones (the compact scopeChip covers that). */
+.scopeButtonTop { display: none; }
+.accountTrigger { display: none; }
 
 .bottomNav {
   position: fixed; left: 0; right: 0; bottom: 0; height: 64px; z-index: 50;
@@ -37,47 +39,40 @@
 }
 .bottomItem.active { color: var(--color-primary); font-weight: 700; }
 
+.desktopNav { display: none; }
+
 @media (min-width: 1024px) {
   .scopeChip { display: none; }
-  .scopeBlock { display: flex; flex-direction: column; gap: var(--space-sm); }
-  .scopeBack { color: var(--color-text-disabled); font-size: 12px; padding: 4px var(--space-sm); transition: color 0.15s ease; }
-  .scopeBack:hover { color: #fff; }
-  .scopeButton {
-    display: grid; grid-template-columns: auto 1fr auto; align-items: center; text-align: left; gap: var(--space-sm);
-    padding: 12px var(--space-md); border-radius: var(--radius-lg); background: var(--color-navy-light);
-    border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; transition: background 0.15s ease, border-color 0.15s ease;
-  }
-  .scopeButton:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(255, 255, 255, 0.2); }
-  .scopeName { font-weight: 700; font-size: 14px; grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .scopeSeason { font-size: 11px; color: var(--color-text-disabled); grid-column: 2; }
-  .scopeButton svg { grid-column: 3; grid-row: 1 / span 2; color: var(--color-text-disabled); }
-  .sidebarFoot { margin-top: auto; padding: var(--space-md); display: flex; flex-direction: column; gap: 4px; }
-  .sidebar {
-    display: flex; flex-direction: column; width: 248px; flex-shrink: 0; height: 100vh; position: sticky; top: 0;
-    background: var(--color-navy); color: #fff; border-right: 1px solid var(--color-navy-light);
-  }
-  .brand { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); padding: var(--space-xl); border-bottom: 1px solid var(--color-navy-light); }
-  .brandLogo { width: 100%; height: auto; border-radius: var(--radius-md); }
-  .brandSubtitle { font-size: 11px; color: var(--color-text-disabled); }
-  .nav { display: flex; flex-direction: column; gap: 4px; padding: var(--space-lg) var(--space-md); }
-  .navItem {
-    display: flex; align-items: center; gap: var(--space-md); min-height: 44px; padding: 0 var(--space-lg);
-    border-radius: var(--radius-md); color: var(--color-text-disabled); font-weight: 400;
-    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
-  }
-  .navItem:hover { background: var(--color-navy-light); color: #fff; transform: translateX(4px); }
-  .navItem.active {
-    background: rgba(22, 163, 74, 0.16);
-    color: var(--color-primary);
-    font-weight: 700;
-    border-left: 4px solid var(--color-primary);
-    padding-left: calc(var(--space-lg) - 4px);
-  }
 
-  .topbar { background: var(--color-surface); color: var(--color-text-primary); border-bottom: 1px solid var(--color-border); height: 64px; padding: 0 var(--space-3xl); justify-content: flex-end; }
-  .topbarLogo { display: none; }
-  .championshipSelect { max-width: 280px; }
+  .topbarTop { height: 72px; padding: 0 var(--space-xl); }
+  .topbarLogo { height: 40px; }
+
+  .scopeButtonTop {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: var(--radius-lg);
+    background: var(--color-navy-light); border: 1px solid rgba(255, 255, 255, 0.08); transition: background 0.15s ease;
+  }
+  .scopeButtonTop:hover { background: rgba(30, 41, 59, 0.8); }
+  .scopeName { font-weight: 700; font-size: 14px; color: #fff; white-space: nowrap; }
+  .scopeButtonTop svg:last-child { color: rgba(255, 255, 255, 0.6); }
+
+  .accountTrigger {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: var(--radius-pill);
+    color: #fff; transition: background 0.15s ease;
+  }
+  .accountTrigger:hover { background: rgba(255, 255, 255, 0.08); }
+  .accountTriggerName { font-weight: 700; font-size: 14px; max-width: 160px; }
+
+  .desktopNav {
+    display: flex; align-items: center; gap: var(--space-lg); padding: 0 var(--space-xl); height: 52px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .desktopNavItem {
+    display: inline-flex; align-items: center; gap: 8px; height: 100%; font-size: 14px; font-weight: 400;
+    color: rgba(255, 255, 255, 0.65); border-bottom: 2px solid transparent; transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .desktopNavItem:hover { color: #fff; }
+  .desktopNavItem.active { color: var(--color-primary); font-weight: 700; border-bottom-color: var(--color-primary); }
+
   .content { padding: var(--space-3xl); }
   .bottomNav { display: none; }
 }
-

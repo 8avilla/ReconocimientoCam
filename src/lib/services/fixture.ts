@@ -35,7 +35,7 @@ export async function generateFixture(actor: Actor, phaseId: string, options: Fi
   if (!phase) throw notFound("Fase no encontrada");
   const championshipId = phase.championshipId;
   const championship = await Championship.findById(championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   await requireOrganizerOfChampionship(actor, championshipId);
 
   if (phase.type === "knockout") throw badRequest("Las eliminatorias se programan por ronda desde sus llaves");

@@ -43,7 +43,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
     throw conflict("Este partido pertenece a un cruce de eliminatoria; no se puede mover de fecha", "match_in_tie");
   }
   const { matchdayId, group: requestedGroup, ...fields } = input;
-  if (fields.refereeId && !(await Referee.exists({ _id: fields.refereeId, championshipId: match.championshipId }))) throw badRequest("El árbitro no pertenece a este campeonato");
+  if (fields.refereeId && !(await Referee.exists({ _id: fields.refereeId, championshipId: match.championshipId }))) throw badRequest("El árbitro no pertenece a este torneo");
   match.set(fields);
   if (fields.refereeId === null) match.set("refereeId", undefined); // referee removed
   if (fields.scheduledAt === null) match.set("scheduledAt", undefined); // back to "unscheduled"
@@ -54,7 +54,7 @@ export const PATCH = route<Params>(async (request, { id }) => {
     const fit = await assertMatchFitsPhase({
       phaseId: matchday.phaseId.toString(), homeTeamId: match.homeTeamId.toString(), awayTeamId: match.awayTeamId.toString(), group: nextGroup,
     });
-    if (matchday.championshipId.toString() !== match.championshipId.toString()) throw badRequest("La fecha debe ser del mismo campeonato del partido");
+    if (matchday.championshipId.toString() !== match.championshipId.toString()) throw badRequest("La fecha debe ser del mismo torneo del partido");
     match.set({ matchdayId: matchday._id, phaseId: matchday.phaseId, group: fit.group });
   }
 

@@ -52,7 +52,7 @@ function SettingsForm({ data, onSaved }: { data: SystemSettingsDTO; onSaved: () 
           <ScanFace size={20} style={{ color: "var(--color-primary)" }} />
         </div>
         <p className="text-secondary text-small">
-          Umbral de coincidencia de la cámara al registrar asistencia en cancha. Se aplica igual a todos los campeonatos — no es una regla por campeonato.
+          Umbral de coincidencia de la cámara al registrar asistencia en cancha. Se aplica igual a todos los torneos — no es una regla por torneo.
         </p>
         {formError && <div className="alert error" role="alert">{formError}</div>}
         <div className="form-grid two">

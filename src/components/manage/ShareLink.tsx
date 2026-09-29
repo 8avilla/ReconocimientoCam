@@ -7,7 +7,7 @@ import { Button, useToast } from "@/components/ui";
 import { championshipPath, type Section } from "@/lib/paths";
 
 const SHARED: { label: string; section?: Section }[] = [
-  { label: "Resumen del campeonato" },
+  { label: "Resumen del torneo" },
   { label: "Partidos", section: "partidos" },
   { label: "Clasificación y estadísticas", section: "clasificacion" },
   { label: "Equipos", section: "equipos" },
@@ -44,10 +44,10 @@ export function ShareLink({ championshipId, name }: { championshipId: string; na
 
   return (
     <div className="stack">
-      <section className="card stack" aria-label="Enlace del campeonato">
-        <h3>Enlace para seguir el campeonato</h3>
+      <section className="card stack" aria-label="Enlace del torneo">
+        <h3>Enlace para seguir el torneo</h3>
         <p className="text-secondary text-small">Compártelo por WhatsApp o redes: quien lo abra ve los partidos, resultados y tablas, y puede seguirlo con la estrella. No necesita cuenta.</p>
-        <input className="input" readOnly value={link} aria-label="Enlace del campeonato" onFocus={(e) => e.currentTarget.select()} />
+        <input className="input" readOnly value={link} aria-label="Enlace del torneo" onFocus={(e) => e.currentTarget.select()} />
         <div className="row-wrap">
           <Button icon={<Copy size={18} />} onClick={() => void copy(link)} disabled={!link}>Copiar enlace</Button>
           {canShare && (

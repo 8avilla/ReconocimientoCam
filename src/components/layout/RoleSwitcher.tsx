@@ -71,7 +71,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
               </div>
             </div>
             <p className="text-secondary text-small">
-              {user.isAdmin ? "Eres administrador: gestionas la app y todos los campeonatos." : `Tu rol aquí: ${ROLE_LABEL[role]}.`}
+              {user.isAdmin ? "Eres administrador: gestionas la app y todos los torneos." : `Tu rol aquí: ${ROLE_LABEL[role]}.`}
             </p>
             <button
               className="btn secondary block"
@@ -86,7 +86,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
         ) : mode === "default" ? (
           <>
             <p className="text-secondary text-small">
-              Inicia sesión para organizar campeonatos: crear el tuyo, o entrar a uno al que te invitaron. Para solo seguir un campeonato no hace falta cuenta.
+              Inicia sesión para organizar torneos: crear el tuyo, o entrar a uno al que te invitaron. Para solo seguir un torneo no hace falta cuenta.
             </p>
             <button className="btn google block" onClick={signIn}>
               <GoogleIcon /> Continuar con Google

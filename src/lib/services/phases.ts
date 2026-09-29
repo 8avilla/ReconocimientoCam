@@ -71,7 +71,7 @@ export interface PhaseInput {
 }
 
 export async function createPhase(actor: Actor, championshipId: string, input: PhaseInput) {
-  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Campeonato no encontrado");
+  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Torneo no encontrado");
   await requireOrganizerOfChampionship(actor, championshipId);
   if (await Phase.exists({ championshipId, name: input.name })) throw conflict("Ya existe una fase con ese nombre", "duplicate");
   if (input.type === "groups" && !input.groupCount) throw badRequest("Indica cuántos grupos tendrá la fase");
@@ -192,7 +192,7 @@ export async function setPhaseTeams(actor: Actor, id: string, input: PhaseTeamsI
     throw conflict(`No se puede quitar a ${names}: ya tiene partidos en esta fase. Elimina esos partidos primero`, "team_has_matches");
   }
   const valid = await Team.countDocuments({ _id: { $in: teamIds }, championshipId: phase.championshipId });
-  if (valid !== teamIds.length) throw badRequest("Algún equipo no pertenece a este campeonato");
+  if (valid !== teamIds.length) throw badRequest("Algún equipo no pertenece a este torneo");
 
   const inTies = await Tie.find({ phaseId: phase._id }).select("homeTeamId awayTeamId").lean();
   const chosen = new Set(teamIds);

@@ -28,15 +28,15 @@ export const GET = route(async (request) => {
 export const POST = route(async (request) => {
   const actor = getActor(request);
   // Anyone signed in can start a championship; they become its owner (an admin can too, without owning it).
-  if (!actor.userId) throw new ApiError(401, "Inicia sesión con Google para crear un campeonato", "unauthenticated");
+  if (!actor.userId) throw new ApiError(401, "Inicia sesión con Google para crear un torneo", "unauthenticated");
   const input = await parseBody(request, championshipCreateSchema);
   const rules = { ...DEFAULT_RULES, ...input.rules };
 
   const duplicate = await Championship.exists({ name: input.name, season: input.season });
-  if (duplicate) throw conflict("Ya existe un campeonato con ese nombre y temporada", "duplicate");
+  if (duplicate) throw conflict("Ya existe un torneo con ese nombre y temporada", "duplicate");
 
   if (input.slug && (await Championship.exists({ slug: input.slug }))) {
-    throw conflict("Ese enlace ya lo usa otro campeonato", "duplicate");
+    throw conflict("Ese enlace ya lo usa otro torneo", "duplicate");
   }
 
   const championship = await Championship.create({ ...input, rules, ownerUserId: actor.userId });
@@ -45,7 +45,7 @@ export const POST = route(async (request) => {
     entityType: "championship",
     entityId: championship._id,
     championshipId: championship._id,
-    summary: `Campeonato creado: ${championship.name} ${championship.season}`,
+    summary: `Torneo creado: ${championship.name} ${championship.season}`,
   });
   return json(championship, 201);
 });

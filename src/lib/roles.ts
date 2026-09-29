@@ -11,9 +11,9 @@ export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<Role, string> = { visitor: "Visitante", organizer: "Organizador", admin: "Administrador" };
 export const ROLE_DESCRIPTION: Record<Role, string> = {
-  visitor: "Sigue campeonatos: consulta partidos, resultados, tablas y estadísticas, y marca favoritos. Solo lectura.",
-  organizer: "Todo lo del visitante, más organizar el campeonato: fases, calendario, equipos, plantillas, asistencia, eventos y sanciones.",
-  admin: "Gestiona la app y todo lo demás: además de lo del organizador, elimina campeonatos y consulta el registro de actividad.",
+  visitor: "Sigue torneos: consulta partidos, resultados, tablas y estadísticas, y marca favoritos. Solo lectura.",
+  organizer: "Todo lo del visitante, más organizar el torneo: fases, calendario, equipos, plantillas, asistencia, eventos y sanciones.",
+  admin: "Gestiona la app y todo lo demás: además de lo del organizador, elimina torneos y consulta el registro de actividad.",
 };
 
 /** Every permission that exists — the single source of truth, so it doubles as a runtime list (the roles
@@ -39,9 +39,9 @@ export type Permission = (typeof ALL_PERMISSIONS)[number];
  * user" form's default selection — can reference the name without importing a Mongoose model.
  */
 export const SYSTEM_ROLE_NAME = "Sistema";
-export const CHAMPIONSHIP_ADMIN_ROLE_NAME = "Administrador de campeonato";
+export const CHAMPIONSHIP_ADMIN_ROLE_NAME = "Administrador de torneo";
 
-/** The permissions a championship organizer has — also what the seeded "Administrador de campeonato" role grants (see `src/lib/services/roles.ts`). */
+/** The permissions a championship organizer has — also what the seeded "Administrador de torneo" role grants (see `src/lib/services/roles.ts`). */
 export const ORGANIZER_PERMISSIONS: readonly Permission[] = ["championship.manage", "match.manage", "match.operate", "team.manage", "roster.manage", "player.manage", "sanction.manage"];
 const PERMISSIONS: Record<Role, readonly Permission[]> = {
   visitor: [],

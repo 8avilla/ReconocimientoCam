@@ -52,7 +52,7 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
   return (
     <>
       <div className="row-between" style={{ marginBottom: "var(--space-lg)" }}>
-        <p className="text-secondary">Cómo se juega el campeonato: liga, grupos o eliminatoria, en el orden en que se juegan.</p>
+        <p className="text-secondary">Cómo se juega el torneo: liga, grupos o eliminatoria, en el orden en que se juegan.</p>
         <Button icon={<Plus size={18} />} className="only-desktop" onClick={() => setDialog({ kind: "form", phase: null })}>Nueva fase</Button>
       </div>
       <Fab label="Fases" actions={[{ label: "Nueva fase", icon: <Plus size={20} />, onClick: () => setDialog({ kind: "form", phase: null }) }]} />
@@ -61,13 +61,13 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
         <div className="card">
           <EmptyState
             icon={<Layers size={28} />}
-            title="Este campeonato aún no tiene fases"
+            title="Este torneo aún no tiene fases"
             description="Crea las fases en el orden en que se juegan, por ejemplo: una fase de grupos y después una liga final. Tú eliges qué equipos participan en cada una."
             action={<Button onClick={() => setDialog({ kind: "form", phase: null })}>Crear la primera fase</Button>}
           />
         </div>
       ) : (
-        <div className="stack" aria-label="Fases del campeonato">
+        <div className="stack" aria-label="Fases del torneo">
           {list.map((phase) => {
             const knockout = phase.type === "knockout";
             const needsTeams = phase.teamCount < 2;

@@ -54,7 +54,7 @@ export async function createRegistrationFine(actor: Actor, input: RegistrationFi
   if (await Fine.exists({ teamId: input.teamId, type: "registration" })) return null;
   let fine;
   try {
-    fine = await Fine.create({ ...input, type: "registration", concept: "Inscripción al campeonato", createdBy: actor.name });
+    fine = await Fine.create({ ...input, type: "registration", concept: "Inscripción al torneo", createdBy: actor.name });
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === 11000) return null;
     throw error;
@@ -260,7 +260,7 @@ export async function reopenFine(actor: Actor, id: string) {
 export async function createManualFine(actor: Actor, input: { championshipId: string; teamId: string; playerId?: string; amount: number; concept: string }) {
   await requireOrganizerOfChampionship(actor, input.championshipId);
   const team = await Team.findOne({ _id: input.teamId, championshipId: input.championshipId }).select("_id").lean();
-  if (!team) throw notFound("El equipo no pertenece a este campeonato");
+  if (!team) throw notFound("El equipo no pertenece a este torneo");
   const fine = await Fine.create({ ...input, type: "manual", createdBy: actor.name });
   await recordAudit(actor, {
     action: "create",

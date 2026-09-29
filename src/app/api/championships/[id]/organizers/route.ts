@@ -15,7 +15,7 @@ type Params = { id: string };
 export const GET = route<Params>(async (request, { id }) => {
   const actor = getActor(request);
   const championship = await Championship.findById(id).select("ownerUserId organizerUserIds organizerInviteEmails").lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requireOrganizer(actor, championship);
 
   const organizerUserIds = championship.organizerUserIds ?? [];
@@ -38,15 +38,15 @@ export const POST = route<Params>(async (request, { id }) => {
   const actor = getActor(request);
   const { email } = await parseBody(request, organizerInviteSchema);
   const championship = await Championship.findById(id);
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   requireOrganizer(actor, championship);
 
   const user = await User.findOne({ email }).select("_id").lean();
   if (user && championship.ownerUserId?.toString() === user._id.toString()) {
-    throw conflict("Esa persona ya es la dueña de este campeonato", "already_owner");
+    throw conflict("Esa persona ya es la dueña de este torneo", "already_owner");
   }
   if (user && (championship.organizerUserIds ?? []).some((organizerId) => organizerId.toString() === user._id.toString())) {
-    throw conflict("Esa persona ya organiza este campeonato", "already_organizer");
+    throw conflict("Esa persona ya organiza este torneo", "already_organizer");
   }
   if (!user && (championship.organizerInviteEmails ?? []).includes(email)) {
     throw conflict("Ya está invitada; falta que inicie sesión con ese correo", "already_invited");

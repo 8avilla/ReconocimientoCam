@@ -109,8 +109,8 @@ export function FinesView({
                 : status !== "open"
                 ? `No hay ${type === "registration" ? "cuotas" : "multas"} con ese estado.`
                 : type === "registration"
-                ? "Nadie debe nada por ahora. La cuota de inscripción se cobra a cada equipo nuevo si defines su valor en las reglas del campeonato."
-                : "Nadie debe nada por ahora. Las multas por tarjeta se cobran al registrar las tarjetas si defines su valor en las reglas del campeonato."
+                ? "Nadie debe nada por ahora. La cuota de inscripción se cobra a cada equipo nuevo si defines su valor en las reglas del torneo."
+                : "Nadie debe nada por ahora. Las multas por tarjeta se cobran al registrar las tarjetas si defines su valor en las reglas del torneo."
             }
           />
         </div>

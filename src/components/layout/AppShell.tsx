@@ -8,8 +8,10 @@ import {
   CalendarDays, ChartColumn, ChevronDown, Gavel, Home, Lock, LogIn, MoreHorizontal, Settings, Shield, SlidersHorizontal, Trophy, Users,
   type LucideIcon,
 } from "lucide-react";
-import { Avatar, EmptyState, Modal } from "@/components/ui";
+import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
+import { Avatar, Badge, EmptyState, Modal } from "@/components/ui";
 import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/paths";
+import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
 import { useChampionship } from "./ChampionshipContext";
 import { ChampionshipSwitcher } from "./ChampionshipSwitcher";
@@ -63,59 +65,56 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const items: NavItem[] = scopeId
     ? championshipItems(scopeId).filter((item) => canAccess(role, item.href))
-    : [{ href: "/", label: "Campeonatos", icon: Trophy, primary: true }, ...(canAccess(role, "/admin") ? [{ href: "/admin", label: "Administración", icon: Settings, primary: true }] : [])];
+    : [{ href: "/", label: "Torneos", icon: Trophy, primary: true }, ...(canAccess(role, "/admin") ? [{ href: "/admin", label: "Administración", icon: Settings, primary: true }] : [])];
   const bottom = items.filter((item) => item.primary);
   const more = items.filter((item) => !item.primary);
   const allowed = canAccess(role, pathname);
+  const status = current ? CHAMPIONSHIP_STATUS_LABEL[current.status] : null;
+  // On desktop the whole nav sits in the top bar; "Administración" joins the row instead of a separate spot.
+  const desktopItems: NavItem[] = scoped && canAccess(role, "/admin") ? [...items, { href: "/admin", label: "Administración", icon: Settings }] : items;
 
   return (
     <div className={styles.container}>
-      <aside className={styles.sidebar}>
-        <div className={styles.brand}>
-          <Image src="/brand-wordmark.png" alt="Super Torneos" width={208} height={69} priority className={styles.brandLogo} />
-        </div>
-        {scoped && (
-          <div className="scopeBlock">
-            <Link href="/" className={styles.scopeBack}>← Todos los campeonatos</Link>
-            <button className={styles.scopeButton} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de campeonato">
-              <Trophy size={18} style={{ color: "var(--color-primary)", gridColumn: 1, gridRow: "1 / span 2" }} />
-              <span className={styles.scopeName}>{current?.name ?? "Campeonato"}</span>
-              <span className={styles.scopeSeason}>{current ? `Temporada ${current.season}` : ""}</span>
-              <ChevronDown size={16} aria-hidden />
-            </button>
-          </div>
-        )}
-        <nav className={styles.nav} aria-label={scoped ? "Campeonato" : "Principal"}>
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} className={`${styles.navItem} ${isActive(pathname, item) ? styles.active : ""}`}>
-              <item.icon size={20} aria-hidden />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className={styles.sidebarFoot}>
-          {scoped && canAccess(role, "/admin") && (
-            <Link href="/admin" className={styles.navItem}><Settings size={20} aria-hidden /> Administración</Link>
-          )}
-          <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => setAccountOpen(true)} />
-        </div>
-      </aside>
-
       <div className={styles.viewport}>
         <header className={styles.topbar}>
-          <Link href="/" aria-label="Todos los campeonatos" className={styles.topbarLogoLink}>
-            <Image src="/brand-wordmark.png" alt="Super Torneos" width={96} height={32} priority className={styles.topbarLogo} />
-          </Link>
-          <div className={styles.topbarActions}>
-            <GlobalSearch championshipId={scopeId ?? undefined} />
+          <div className={styles.topbarTop}>
+            <Link href="/" aria-label="Todos los torneos" className={styles.topbarLogoLink}>
+              <Image src="/brand-wordmark.png" alt="Super Torneos" width={140} height={46} priority className={styles.topbarLogo} />
+            </Link>
+
             {scoped && (
-              <button className={styles.scopeChip} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de campeonato">
+              <button className={styles.scopeChip} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de torneo">
                 <Trophy size={14} style={{ color: "#facc15" }} />
-                <span className="truncate">{current?.name ?? "Campeonato"}</span>
+                <span className="truncate">{current?.name ?? "Torneo"}</span>
                 <ChevronDown size={14} aria-hidden />
               </button>
             )}
+            {scoped && (
+              <button className={styles.scopeButtonTop} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de torneo">
+                <ChampionshipTile logoUrl={current?.logoUrl} size={32} />
+                <span className={styles.scopeName}>{current?.name ?? "Torneo"}</span>
+                {status && <Badge tone={status.tone}>{status.label}</Badge>}
+                {current && <Badge icon={<Trophy size={12} />}>{`Temporada ${current.season}`}</Badge>}
+                <ChevronDown size={16} aria-hidden />
+              </button>
+            )}
+
+            <div className={styles.topbarActions}>
+              <GlobalSearch championshipId={scopeId ?? undefined} />
+              <AccountMenuTrigger user={user} isSignedIn={isSignedIn} onClick={() => setAccountOpen(true)} />
+            </div>
           </div>
+
+          {scoped && (
+            <nav className={styles.desktopNav} aria-label="Torneo">
+              {desktopItems.map((item) => (
+                <Link key={item.href} href={item.href} className={`${styles.desktopNavItem} ${isActive(pathname, item) ? styles.active : ""}`}>
+                  <item.icon size={18} aria-hidden />
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          )}
         </header>
         <main className={styles.content}>
           {allowed ? children : (
@@ -124,8 +123,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               title={isSignedIn ? "Esta sección no está disponible para ti" : "Inicia sesión para ver esto"}
               description={
                 isSignedIn
-                  ? "No administras este campeonato, así que esta pantalla no es para ti."
-                  : "Esta pantalla es para quien organiza el campeonato. Inicia sesión con Google si te invitaron a organizarlo."
+                  ? "No administras este torneo, así que esta pantalla no es para ti."
+                  : "Esta pantalla es para quien organiza el torneo. Inicia sesión con Google si te invitaron a organizarlo."
               }
               action={
                 isSignedIn ? (
@@ -138,7 +137,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </main>
 
-        <nav className={styles.bottomNav} aria-label={scoped ? "Campeonato" : "Principal"}>
+        <nav className={styles.bottomNav} aria-label={scoped ? "Torneo" : "Principal"}>
           {bottom.map((item) => (
             <Link key={item.href} href={item.href} className={`${styles.bottomItem} ${isActive(pathname, item) ? styles.active : ""}`}>
               <item.icon size={22} aria-hidden /> {item.label}
@@ -174,11 +173,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="stack-sm">
               {scoped && (
                 <button className="btn secondary block" onClick={() => { setMoreOpen(false); setSwitchOpen(true); }}>
-                  <Trophy size={20} aria-hidden /> Cambiar de campeonato
+                  <Trophy size={20} aria-hidden /> Cambiar de torneo
                 </button>
               )}
               {scoped && (
-                <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los campeonatos</Link>
+                <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los torneos</Link>
               )}
               {scoped && canAccess(role, "/admin") && (
                 <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
@@ -215,6 +214,26 @@ function AccountButton({ user, isSignedIn, onClick }: { user: { name: string; im
       ) : (
         <>
           <LogIn size={20} aria-hidden /> Iniciar sesión
+        </>
+      )}
+    </button>
+  );
+}
+
+/** Desktop top-bar trigger: avatar, name and a chevron — opens the same account modal as the mobile "Más" sheet. */
+function AccountMenuTrigger({ user, isSignedIn, onClick }: { user: { name: string; image?: string | null } | null; isSignedIn: boolean; onClick: () => void }) {
+  return (
+    <button className={styles.accountTrigger} onClick={onClick} aria-label={isSignedIn ? "Mi cuenta" : "Iniciar sesión"}>
+      {isSignedIn && user ? (
+        <>
+          <Avatar src={user.image ?? undefined} name={user.name} size={28} />
+          <span className={`${styles.accountTriggerName} truncate`}>{user.name}</span>
+          <ChevronDown size={16} aria-hidden />
+        </>
+      ) : (
+        <>
+          <LogIn size={18} aria-hidden />
+          <span className={styles.accountTriggerName}>Iniciar sesión</span>
         </>
       )}
     </button>

@@ -19,7 +19,7 @@ interface PlayerTally {
 
 /** Player statistics from the non-voided events of the finished matches. */
 export async function getPlayerStats(championshipId: string) {
-  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Campeonato no encontrado");
+  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Torneo no encontrado");
 
   const matchIds = (await Match.find({ championshipId, status: "finished" }).select("_id").lean()).map((match) => match._id);
   const [events, teams] = await Promise.all([

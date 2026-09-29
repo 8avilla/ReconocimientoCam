@@ -42,7 +42,7 @@ async function loadContext(matchId: string, playerId: string, withEmbedding = fa
     PlayerCheckIn.findOne({ matchId: match._id, playerId }).lean(),
     MatchCallUp.findOne({ matchId: match._id, playerId }).lean(),
   ]);
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   if (!player) throw notFound("Jugador no encontrado");
   if (!checkIn || !callUp) throw notFound("El jugador no está convocado en este partido");
 
@@ -158,7 +158,7 @@ export async function approveManually(actor: Actor, matchId: string, playerId: s
   const context = await loadContext(matchId, playerId, false, actor);
   assertCanVerify(context);
   if (!context.championship.rules.allowManualReview) {
-    throw new ApiError(403, "Este campeonato no permite la revisión manual", "manual_review_disabled");
+    throw new ApiError(403, "Este torneo no permite la revisión manual", "manual_review_disabled");
   }
 
   const verification = await IdentityVerification.create({

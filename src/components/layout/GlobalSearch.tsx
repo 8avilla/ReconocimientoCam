@@ -39,14 +39,14 @@ function ChampionshipSearchModal({ onClose }: { onClose: () => void }) {
   const matches = query ? championships.filter((item) => `${item.name} ${item.season}`.toLowerCase().includes(query)) : [];
 
   return (
-    <Modal open title="Buscar campeonato" onClose={onClose}>
+    <Modal open title="Buscar torneo" onClose={onClose}>
       <div className="stack">
         <div className="search">
           <Search size={18} aria-hidden />
-          <input className="input" type="search" autoFocus placeholder="Nombre o temporada..." aria-label="Buscar campeonato" value={term} onChange={(e) => setTerm(e.target.value)} />
+          <input className="input" type="search" autoFocus placeholder="Nombre o temporada..." aria-label="Buscar torneo" value={term} onChange={(e) => setTerm(e.target.value)} />
         </div>
         {!query ? (
-          <p className="text-secondary text-small">Escribe el nombre o la temporada de un campeonato.</p>
+          <p className="text-secondary text-small">Escribe el nombre o la temporada de un torneo.</p>
         ) : matches.length === 0 ? (
           <p className="text-secondary">Sin resultados para «{term}».</p>
         ) : (
@@ -85,11 +85,11 @@ function SearchModal({ championshipId, onClose }: { championshipId: string; onCl
       <div className="stack">
         <div className="search">
           <Search size={18} aria-hidden />
-          <input className="input" type="search" autoFocus placeholder="Equipo, jugador, documento..." aria-label="Buscar en el campeonato" value={term} onChange={(e) => setTerm(e.target.value)} />
+          <input className="input" type="search" autoFocus placeholder="Equipo, jugador, documento..." aria-label="Buscar en el torneo" value={term} onChange={(e) => setTerm(e.target.value)} />
         </div>
 
         {query.length < 2 ? (
-          <p className="text-secondary text-small">Escribe al menos 2 letras. Se busca en el campeonato activo.</p>
+          <p className="text-secondary text-small">Escribe al menos 2 letras. Se busca en el torneo activo.</p>
         ) : results.error ? (
           <p className="text-secondary">No se pudo buscar. Inténtalo de nuevo.</p>
         ) : !data ? (

@@ -6,7 +6,7 @@ import { CHAMPIONSHIP_FORMAT_LABEL, CHAMPIONSHIP_STATUS_LABEL, formatDate, forma
 
 const NO_FINE = "Sin multa";
 
-/** The championship's data and rules at a glance. Use "Editar campeonato" above (in ManageView's hub
+/** The championship's data and rules at a glance. Use "Editar torneo" above (in ManageView's hub
  * header) to change them — that's the single edit entry point across the app, so it isn't repeated here. */
 export function RulesSummary() {
   const { current } = useChampionship();
@@ -16,7 +16,7 @@ export function RulesSummary() {
 
   const groups: { title: string; rows: [string, string][] }[] = [
     {
-      title: "Campeonato",
+      title: "Torneo",
       rows: [
         ["Nombre", `${current.name} · ${current.season}`],
         ["Formato", CHAMPIONSHIP_FORMAT_LABEL[current.format]],

@@ -4,8 +4,8 @@ import type { Permission } from "@/lib/roles";
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
 
 export const PERMISSION_LABEL: Record<Permission, string> = {
-  "championship.manage": "Gestionar campeonato (fases, calendario, reglas)",
-  "championship.delete": "Eliminar campeonatos",
+  "championship.manage": "Gestionar torneo (fases, calendario, reglas)",
+  "championship.delete": "Eliminar torneos",
   "match.manage": "Gestionar partidos (crear, programar, editar)",
   "match.operate": "Operar partidos en vivo (marcador, eventos)",
   "team.manage": "Gestionar equipos",

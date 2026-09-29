@@ -135,7 +135,7 @@ export async function scheduleMatchday(actor: Actor, matchdayId: string, entries
 
   const refereeIds = entries.flatMap((entry) => (entry.refereeId ? [entry.refereeId] : []));
   if (refereeIds.length > 0 && (await Referee.countDocuments({ _id: { $in: refereeIds }, championshipId: matchday.championshipId })) !== new Set(refereeIds).size) {
-    throw badRequest("Algún árbitro no pertenece a este campeonato");
+    throw badRequest("Algún árbitro no pertenece a este torneo");
   }
   await Match.bulkWrite(
     entries.map((entry) => {

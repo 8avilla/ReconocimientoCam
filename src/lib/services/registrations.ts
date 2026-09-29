@@ -28,7 +28,7 @@ export interface CreateRegistrationInput {
 
 async function assertRosterHasRoom(teamId: Types.ObjectId, championshipId: Types.ObjectId, excludeId?: Types.ObjectId) {
   const championship = await Championship.findById(championshipId).lean();
-  if (!championship) throw notFound("Campeonato no encontrado");
+  if (!championship) throw notFound("Torneo no encontrado");
   const liveCount = await TeamRegistration.countDocuments({
     teamId,
     status: { $in: LIVE_REGISTRATION_STATUSES },
@@ -59,7 +59,7 @@ export async function createRegistration(actor: Actor, input: CreateRegistration
       status: { $in: LIVE_REGISTRATION_STATUSES },
     }).lean();
     if (existing) {
-      throw conflict("El jugador ya pertenece a un equipo en este campeonato", "player_already_registered");
+      throw conflict("El jugador ya pertenece a un equipo en este torneo", "player_already_registered");
     }
     if (input.shirtNumber !== undefined) {
       const numberTaken = await TeamRegistration.exists({
@@ -127,7 +127,7 @@ export async function updateRegistration(actor: Actor, id: string, input: Update
         playerId: registration.playerId,
         status: { $in: LIVE_REGISTRATION_STATUSES },
       });
-      if (other) throw conflict("El jugador ya pertenece a un equipo en este campeonato", "player_already_registered");
+      if (other) throw conflict("El jugador ya pertenece a un equipo en este torneo", "player_already_registered");
       await assertRosterHasRoom(registration.teamId, registration.championshipId, registration._id);
     }
   }

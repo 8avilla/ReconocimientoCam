@@ -8,7 +8,7 @@ import { LIVE_REGISTRATION_STATUSES, TeamRegistration } from "@/models/TeamRegis
 
 /** Counters the home screen uses to point the organizer to what is missing or pending. */
 export async function getOverview(championshipId: string) {
-  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Campeonato no encontrado");
+  if (!(await Championship.exists({ _id: championshipId }))) throw notFound("Torneo no encontrado");
 
   const [phases, teams, matches, unscheduledMatches, matchPhaseIds, registrations] = await Promise.all([
     Phase.find({ championshipId }).select("type teamIds").lean(),

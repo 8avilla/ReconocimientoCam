@@ -441,7 +441,7 @@ export type FineStatusDTO = "pending" | "partial" | "paid" | "waived" | "cancell
 export interface FineDTO {
   _id: string;
   teamId: Pick<TeamDTO, "_id" | "name" | "shieldUrl">;
-  playerId?: Pick<PlayerDTO, "_id" | "fullName" | "photoUrl"> | null;
+  playerId?: Pick<PlayerDTO, "_id" | "fullName" | "photoUrl" | "documentId"> | null;
   matchId?: { _id: string; homeTeamId: { name: string }; awayTeamId: { name: string } } | null;
   type: "yellow_card" | "red_card" | "manual" | "registration";
   concept: string;
@@ -455,7 +455,12 @@ export interface FineDTO {
 }
 
 export interface FinesDTO extends Paginated<FineDTO> {
-  summary: { owed: number; collected: number; byTeam: { teamId: string; name: string; shieldUrl: string; owed: number }[] };
+  summary: {
+    owed: number;
+    collected: number;
+    byTeam: { teamId: string; name: string; shieldUrl: string; owed: number; count: number }[];
+    counts: { open: number; paid: number; waived: number; all: number };
+  };
 }
 
 export interface IdentifiedPlayerDTO {

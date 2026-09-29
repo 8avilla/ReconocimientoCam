@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Award, ChartColumn, Globe, Lock, MapPin, Pencil, Share2, Trophy, Users, Whistle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Award, ChartColumn, ChevronRight, Globe, Lock, MapPin, Pencil, Share2, Trophy, Users, Whistle } from "lucide-react";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { OrganizersManager } from "@/components/manage/OrganizersManager";
@@ -13,21 +14,25 @@ import { VenuesManager } from "@/components/manage/VenuesManager";
 import { PhasesManager } from "@/components/phase/PhasesManager";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { useFetch } from "@/lib/client/useFetch";
-import { useStoredState } from "@/lib/client/useStoredState";
 import { championshipPath } from "@/lib/paths";
 import type { PhaseDTO, RefereeDTO, VenueDTO } from "@/types/api";
 
 type Tab = "phases" | "referees" | "venues" | "organizers" | "rules" | "share";
+const TABS: Tab[] = ["phases", "referees", "venues", "organizers", "rules", "share"];
 
 /** Organizer's workspace for one championship: phases, referees, venues, rules and the link to share it.
  * The only place to edit the championship itself (name, dates, visibility, fees, rules...) — see the
- * "Editar torneo" button below, which is the single entry point to that form across the app. */
+ * "Editar torneo" button below, which is the single entry point to that form across the app.
+ * A vertical "Configuración" list, not tabs: each item is its own destination (`?s=phases`, shareable and
+ * back-button friendly), reached from — and returned to — the same hub screen. */
 export function ManageView({ championshipId }: { championshipId: string }) {
   const { current, reload } = useChampionship();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [editOpen, setEditOpen] = useState(false);
-  const [tab, setTab] = useStoredState<Tab>(`super-torneos:manage:tab:${championshipId}`, "phases", (value) =>
-    ["phases", "referees", "venues", "organizers", "rules", "share"].includes(value)
-  );
+  const requested = searchParams.get("s");
+  const tab: Tab | null = TABS.find((item) => item === requested) ?? null;
+  const openSection = (id: Tab) => router.push(championshipPath(championshipId, "gestionar", `?s=${id}`));
 
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const referees = useFetch<{ data: RefereeDTO[] }>(`/referees?championshipId=${championshipId}`);
@@ -42,14 +47,29 @@ export function ManageView({ championshipId }: { championshipId: string }) {
   const finishedMatches = phaseList.reduce((acc, p) => acc + (p.matches?.finished ?? 0), 0);
   const progressPercent = totalMatches > 0 ? Math.round((finishedMatches / totalMatches) * 100) : 0;
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: "phases", label: "Fases", icon: <Trophy size={16} />, count: phaseList.length },
-    { id: "referees", label: "Árbitros", icon: <Whistle size={16} />, count: refereeList.length },
-    { id: "venues", label: "Sitios", icon: <MapPin size={16} />, count: venueList.length },
-    { id: "organizers", label: "Organizadores", icon: <Users size={16} />, count: organizersCount },
-    { id: "rules", label: "Reglas", icon: <Award size={16} /> },
-    { id: "share", label: "Compartir", icon: <Share2 size={16} /> },
+  const items: { id: Tab; label: string; description: string; icon: React.ReactNode; count?: number }[] = [
+    { id: "phases", label: "Fases", description: "Configura las etapas del torneo", icon: <Trophy size={20} />, count: phaseList.length },
+    { id: "referees", label: "Árbitros", description: "Personas que dirigen los partidos", icon: <Whistle size={20} />, count: refereeList.length },
+    { id: "venues", label: "Sitios", description: "Canchas y lugares de los partidos", icon: <MapPin size={20} />, count: venueList.length },
+    { id: "organizers", label: "Organizadores", description: "Personas que administran el torneo", icon: <Users size={20} />, count: organizersCount },
+    { id: "rules", label: "Reglas", description: "Puntos, plantillas y sanciones", icon: <Award size={20} /> },
+    { id: "share", label: "Compartir", description: "Enlace público del torneo", icon: <Share2 size={20} /> },
   ];
+  const active = items.find((item) => item.id === tab);
+
+  if (active) {
+    return (
+      <>
+        <PageHeader breadcrumb={[{ label: "Gestionar", href: championshipPath(championshipId, "gestionar") }, { label: active.label }]} title={active.label} />
+        {active.id === "phases" && <PhasesManager championshipId={championshipId} />}
+        {active.id === "referees" && <RefereesManager championshipId={championshipId} />}
+        {active.id === "venues" && <VenuesManager championshipId={championshipId} />}
+        {active.id === "organizers" && <OrganizersManager championshipId={championshipId} />}
+        {active.id === "rules" && <RulesSummary />}
+        {active.id === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />}
+      </>
+    );
+  }
 
   return (
     <>
@@ -96,32 +116,20 @@ export function ManageView({ championshipId }: { championshipId: string }) {
         )}
       </section>
 
-      {/* Enhanced Tab Navigation with Badges & Icons */}
-      <div className="tabs-line" role="tablist" aria-label="Qué gestionar">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            role="tab"
-            aria-selected={tab === item.id}
-            className={`tab-line${tab === item.id ? " active" : ""}`}
-            onClick={() => setTab(item.id)}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-            {item.count != null && (
-              <span className="filter-chip-badge" style={{ marginLeft: 2 }}>{item.count}</span>
-            )}
+      <h2 className="band band-muted band-small">Configuración</h2>
+      <div className="manage-config-list">
+        {items.map((item) => (
+          <button key={item.id} className="manage-config-row" onClick={() => openSection(item.id)}>
+            <span className="manage-config-icon">{item.icon}</span>
+            <span className="grow" style={{ minWidth: 0 }}>
+              <span className="text-strong">{item.label}</span>
+              <span className="text-secondary text-small" style={{ display: "block" }}>{item.description}</span>
+            </span>
+            {item.count != null && <span className="filter-chip-badge">{item.count}</span>}
+            <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
           </button>
         ))}
       </div>
-
-      {tab === "phases" && <PhasesManager championshipId={championshipId} />}
-      {tab === "referees" && <RefereesManager championshipId={championshipId} />}
-      {tab === "venues" && <VenuesManager championshipId={championshipId} />}
-      {tab === "organizers" && <OrganizersManager championshipId={championshipId} />}
-      {tab === "rules" && <RulesSummary />}
-      {tab === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />}
 
       {current && (
         <ChampionshipFormModal

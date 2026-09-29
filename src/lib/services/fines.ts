@@ -1,12 +1,13 @@
 import { Types } from "mongoose";
 import sharp from "sharp";
 import type { Actor } from "@/lib/actor";
-import { badRequest, conflict, notFound } from "@/lib/api";
+import { badRequest, conflict, escapeRegex, notFound } from "@/lib/api";
 import { recordAudit } from "@/lib/audit";
 import { deleteImage, uploadImage } from "@/lib/azureBlob";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { fineBalance, fineStatus } from "@/lib/rules/fines";
 import { Fine, type FineStatus, type FineType, type IFine, type PaymentMethod } from "@/models/Fine";
+import { Player } from "@/models/Player";
 import { Team } from "@/models/Team";
 
 interface CardFineInput {
@@ -130,6 +131,8 @@ export interface FineListFilter {
   status?: "open" | "paid" | "waived" | "cancelled";
   /** Defaults to every type except "registration" — team registration fees have their own view (in Equipos), so they stay out of the general Multas list unless asked for explicitly. */
   type?: FineType;
+  /** Matches the player's name/document, the team's name, or the concept. */
+  q?: string;
   skip: number;
   limit: number;
 }
@@ -138,40 +141,70 @@ export async function listFines(input: FineListFilter) {
   const championshipId = new Types.ObjectId(input.championshipId);
   const statusFilter: { status?: FineStatus | { $in: FineStatus[] } } = input.status === "open" ? { status: { $in: ["pending", "partial"] } } : input.status ? { status: input.status } : {};
   const typeFilter: { type: FineType | { $ne: FineType } } = input.type ? { type: input.type } : { type: { $ne: "registration" } };
-  const filter = { championshipId, ...(input.teamId ? { teamId: new Types.ObjectId(input.teamId) } : {}), ...statusFilter, ...typeFilter };
+  const searchFilter = await (async () => {
+    const q = input.q?.trim();
+    if (!q) return {};
+    const pattern = { $regex: escapeRegex(q), $options: "i" };
+    const [teamIds, playerIds] = await Promise.all([
+      Team.find({ championshipId, name: pattern }).select("_id").lean(),
+      Player.find({ $or: [{ fullName: pattern }, { documentId: pattern }] }).select("_id").lean(),
+    ]);
+    return {
+      $or: [
+        { concept: pattern },
+        { teamId: { $in: teamIds.map((team) => team._id) } },
+        { playerId: { $in: playerIds.map((player) => player._id) } },
+      ],
+    };
+  })();
+  const filter = { championshipId, ...(input.teamId ? { teamId: new Types.ObjectId(input.teamId) } : {}), ...statusFilter, ...typeFilter, ...searchFilter };
 
-  const [data, total, open] = await Promise.all([
+  const [data, total, open, counts] = await Promise.all([
     Fine.find(filter)
       .sort({ createdAt: -1 })
       .skip(input.skip)
       .limit(input.limit)
-      .populate({ path: "playerId", select: "fullName photoUrl" })
+      .populate({ path: "playerId", select: "fullName photoUrl documentId" })
       .populate({ path: "teamId", select: "name shieldUrl" })
       .populate({ path: "matchId", select: "homeTeamId awayTeamId", populate: [{ path: "homeTeamId", select: "name" }, { path: "awayTeamId", select: "name" }] })
       .lean(),
     Fine.countDocuments(filter),
     // Money picture of the whole championship (ignoring team/status filters, but keeping the type split).
-    Fine.aggregate<{ _id: Types.ObjectId; owed: number; collected: number }>([
+    Fine.aggregate<{ _id: Types.ObjectId; owed: number; collected: number; openCount: number }>([
       { $match: { championshipId, status: { $ne: "cancelled" }, ...typeFilter } },
       {
         $group: {
           _id: "$teamId",
           owed: { $sum: { $cond: [{ $in: ["$status", ["pending", "partial"]] }, { $subtract: ["$amount", "$paidAmount"] }, 0] } },
           collected: { $sum: "$paidAmount" },
+          openCount: { $sum: { $cond: [{ $in: ["$status", ["pending", "partial"]] }, 1, 0] } },
         },
       },
+    ]),
+    // Tab counts: how many fines fall in each status, regardless of which status tab is currently selected.
+    Fine.aggregate<{ _id: FineStatus; total: number }>([
+      { $match: { championshipId, ...typeFilter, ...(input.teamId ? { teamId: new Types.ObjectId(input.teamId) } : {}), ...searchFilter } },
+      { $group: { _id: "$status", total: { $sum: 1 } } },
     ]),
   ]);
 
   const teams = await Team.find({ _id: { $in: open.map((row) => row._id) } }).select("name shieldUrl").lean();
   const teamById = new Map(teams.map((team) => [team._id.toString(), team]));
+  const countByStatus = new Map(counts.map((row) => [row._id, row.total]));
+  const openCount = (countByStatus.get("pending") ?? 0) + (countByStatus.get("partial") ?? 0);
   const summary = {
     owed: open.reduce((sum, row) => sum + row.owed, 0),
     collected: open.reduce((sum, row) => sum + row.collected, 0),
     byTeam: open
       .filter((row) => row.owed > 0)
-      .map((row) => ({ teamId: row._id.toString(), name: teamById.get(row._id.toString())?.name ?? "", shieldUrl: teamById.get(row._id.toString())?.shieldUrl ?? "", owed: row.owed }))
+      .map((row) => ({ teamId: row._id.toString(), name: teamById.get(row._id.toString())?.name ?? "", shieldUrl: teamById.get(row._id.toString())?.shieldUrl ?? "", owed: row.owed, count: row.openCount }))
       .sort((a, b) => b.owed - a.owed),
+    counts: {
+      open: openCount,
+      paid: countByStatus.get("paid") ?? 0,
+      waived: countByStatus.get("waived") ?? 0,
+      all: [...countByStatus.values()].reduce((sum, value) => sum + value, 0),
+    },
   };
   return { data, total, summary };
 }

@@ -32,7 +32,7 @@ function Sanctions({ championshipId }: { championshipId: string }) {
   const [status, setStatus] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
   // Suspensions or fines (money); fines are only for those who manage sanctions.
-  const [storedSection, setSection] = useStoredState<"suspensions" | "fines">("super-torneos:sanctions:section", "suspensions", (value) => value === "suspensions" || value === "fines");
+  const [storedSection, setSection] = useStoredState<"suspensions" | "fines">("super-torneos:sanctions:section", "fines", (value) => value === "suspensions" || value === "fines");
   const section = manage ? storedSection : "suspensions";
   const [formOpen, setFormOpen] = useState(false);
   const [fineFormOpen, setFineFormOpen] = useState(false);
@@ -80,13 +80,13 @@ function Sanctions({ championshipId }: { championshipId: string }) {
 
       {manage && (
         <div className="segmented" role="group" aria-label="Tipo de sanción" style={{ marginBottom: "var(--space-lg)" }}>
-          <button aria-pressed={section === "suspensions"} className={section === "suspensions" ? "active" : ""} onClick={() => setSection("suspensions")}>
-            <ShieldAlert size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
-            Suspensiones ({activeCount})
-          </button>
           <button aria-pressed={section === "fines"} className={section === "fines" ? "active" : ""} onClick={() => setSection("fines")}>
             <Banknote size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
             Multas & Tasas
+          </button>
+          <button aria-pressed={section === "suspensions"} className={section === "suspensions" ? "active" : ""} onClick={() => setSection("suspensions")}>
+            <ShieldAlert size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
+            Suspensiones ({activeCount})
           </button>
         </div>
       )}

@@ -430,6 +430,7 @@ export const fineListQuery = paginationSchema.extend({
   status: z.enum(["open", "paid", "waived", "cancelled"]).optional(),
   /** Defaults to every type except "registration" (see `listFines`). */
   type: z.enum(FINE_TYPES).optional(),
+  q: z.string().trim().min(1).max(100).optional(),
 });
 
 export const fineCreateSchema = z.object({

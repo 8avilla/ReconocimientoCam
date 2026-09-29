@@ -14,7 +14,6 @@ import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/pat
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
 import { useChampionship } from "./ChampionshipContext";
-import { ChampionshipSwitcher } from "./ChampionshipSwitcher";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
 import { AccountModal } from "./RoleSwitcher";
@@ -53,7 +52,6 @@ const isActive = (pathname: string, item: NavItem) => {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [switchOpen, setSwitchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { role, user, isSignedIn } = useRole();
   const { current } = useChampionship();
@@ -83,20 +81,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
 
             {scoped && (
-              <button className={styles.scopeChip} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de torneo">
+              <div className={styles.scopeChip}>
                 <Trophy size={14} style={{ color: "#facc15" }} />
                 <span className="truncate">{current?.name ?? "Torneo"}</span>
-                <ChevronDown size={14} aria-hidden />
-              </button>
+              </div>
             )}
             {scoped && (
-              <button className={styles.scopeButtonTop} onClick={() => setSwitchOpen(true)} aria-label="Cambiar de torneo">
+              <div className={styles.scopeButtonTop}>
                 <ChampionshipTile logoUrl={current?.logoUrl} size={32} />
                 <span className={styles.scopeName}>{current?.name ?? "Torneo"}</span>
                 {status && <Badge tone={status.tone}>{status.label}</Badge>}
                 {current && <Badge icon={<Trophy size={12} />}>{`Temporada ${current.season}`}</Badge>}
-                <ChevronDown size={16} aria-hidden />
-              </button>
+              </div>
             )}
 
             <div className={styles.topbarActions}>
@@ -172,11 +168,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="stack-sm">
               {scoped && (
-                <button className="btn secondary block" onClick={() => { setMoreOpen(false); setSwitchOpen(true); }}>
-                  <Trophy size={20} aria-hidden /> Cambiar de torneo
-                </button>
-              )}
-              {scoped && (
                 <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los torneos</Link>
               )}
               {scoped && canAccess(role, "/admin") && (
@@ -197,8 +188,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
       <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
-
-      <ChampionshipSwitcher open={switchOpen} section={routed?.section ?? null} onClose={() => setSwitchOpen(false)} />
     </div>
   );
 }

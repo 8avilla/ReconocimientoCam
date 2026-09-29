@@ -30,16 +30,8 @@ const MATCHES_TABS: { id: MatchesTab; label: string }[] = [
 function MatchesList({ championshipId, initialScheduled }: { championshipId: string; initialScheduled?: "true" | "false" }) {
   // Filters are remembered per championship, so coming back to the list keeps what the organizer was looking at.
   const key = (name: string) => `super-torneos:matches:${championshipId}:${name}`;
-  // A "?programacion=" deep link (e.g. from the "Programar" quick action) only makes sense among upcoming
-  // matches: it overrides the tab and the "scheduled" filter for this one visit, without becoming the
-  // remembered default for future visits (each is consumed the moment the organizer changes it themselves).
-  const [storedTab, setStoredTab] = useStoredState<MatchesTab>(key("tab"), "upcoming", (value) => MATCHES_TABS.some((item) => item.id === value));
-  const [tabOverrideActive, setTabOverrideActive] = useState(initialScheduled !== undefined);
-  const tab = tabOverrideActive && initialScheduled !== undefined ? "upcoming" : storedTab;
-  const setTab = (value: MatchesTab) => {
-    setTabOverrideActive(false);
-    setStoredTab(value);
-  };
+  // "Próximos partidos" is always the tab you land on; switching to "Resultados" only lasts the visit.
+  const [tab, setTab] = useState<MatchesTab>("upcoming");
   const tabStatuses: readonly MatchStatus[] = tab === "results" ? PLAYED_MATCH_STATUSES : UNPLAYED_MATCH_STATUSES;
 
   const [storedStatus, setStatus] = useStoredState<string>(key("status"), "");

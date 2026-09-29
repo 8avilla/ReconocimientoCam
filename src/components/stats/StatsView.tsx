@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChartColumn } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
@@ -14,7 +14,7 @@ import type { PhaseDTO, PhaseStandingsDTO, PlayerStatDTO, PlayerStatsDTO, Standi
 
 type Tab = "standings" | "scorers" | "assists" | "yellow" | "red";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "standings", label: "Clasificación" },
+  { id: "standings", label: "Posiciones" },
   { id: "scorers", label: "Goleadores" },
   { id: "assists", label: "Asistencias" },
   { id: "yellow", label: "Amarillas" },
@@ -26,7 +26,8 @@ export function StatsView({ initialPhaseId }: { initialPhaseId?: string }) {
 }
 
 function Stats({ championshipId, initialPhaseId }: { championshipId: string; initialPhaseId?: string }) {
-  const [tab, setTab] = useStoredState<Tab>("super-torneos:stats:tab", "standings", (value) => TABS.some((item) => item.id === value));
+  // "Posiciones" is always the tab you land on; switching tabs only lasts the visit.
+  const [tab, setTab] = useState<Tab>("standings");
   const [phaseChoice, setPhaseChoice] = useStoredState<string>(`super-torneos:stats:phase:${championshipId}`, "", undefined, initialPhaseId);
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const phaseList = phases.data?.data ?? [];

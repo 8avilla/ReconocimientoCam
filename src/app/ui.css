@@ -510,9 +510,10 @@ a.list-row:hover { background: var(--color-background); }
 .topbar-search { color: #fff; }
 
 /* ---------- Fines ---------- */
-.fine-summary { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg); }
-.fine-row { width: 100%; text-align: left; align-items: flex-start; background: var(--color-surface); }
-.fine-row:hover { background: var(--color-background); }
+.fine-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md); }
+.fine-summary-card { display: flex; align-items: center; gap: var(--space-md); text-align: left; width: 100%; }
+.fine-summary-card:hover { background: var(--color-background); }
+.fine-summary-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .fine-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); }
 .fine-figures > div { display: flex; flex-direction: column; }
 .fine-figures strong { font-size: 18px; }
@@ -1035,6 +1036,19 @@ a.list-row:hover { background: var(--color-background); }
   background: linear-gradient(90deg, var(--color-primary) 0%, #22c55e 100%);
   border-radius: var(--radius-pill);
   transition: width 0.3s ease;
+}
+
+/* Gestionar's "Configuración": a vertical list of destinations, not horizontal tabs. */
+.manage-config-list { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-surface); }
+.manage-config-row {
+  display: flex; align-items: center; gap: var(--space-md); width: 100%; padding: var(--space-md) var(--space-lg);
+  text-align: left; border-bottom: 1px solid var(--color-border); transition: background 0.15s ease;
+}
+.manage-config-row:last-child { border-bottom: none; }
+.manage-config-row:hover { background: var(--color-background); }
+.manage-config-icon {
+  width: 40px; height: 40px; border-radius: var(--radius-md); flex-shrink: 0;
+  background: var(--color-primary-light); color: var(--color-primary); display: inline-flex; align-items: center; justify-content: center;
 }
 
 /* Tools Grid */

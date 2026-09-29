@@ -1,35 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Award, ChartColumn, ChevronRight, Globe, Lock, MapPin, Pencil, Share2, Trophy, Users, Whistle } from "lucide-react";
-import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
+import { Award, ChevronRight, DollarSign, Globe, Link2, Lock, MapPin, Settings, Share2, Trophy, Users, Whistle } from "lucide-react";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
+import { FinancesManager } from "@/components/manage/FinancesManager";
+import { GeneralInfoManager } from "@/components/manage/GeneralInfoManager";
+import { LinkVisibilityManager } from "@/components/manage/LinkVisibilityManager";
 import { OrganizersManager } from "@/components/manage/OrganizersManager";
 import { RefereesManager } from "@/components/manage/RefereesManager";
-import { RulesSummary } from "@/components/manage/RulesSummary";
+import { RulesManager } from "@/components/manage/RulesManager";
 import { ShareLink } from "@/components/manage/ShareLink";
 import { VenuesManager } from "@/components/manage/VenuesManager";
 import { PhasesManager } from "@/components/phase/PhasesManager";
-import { Badge, Button, PageHeader } from "@/components/ui";
+import { Badge, PageHeader } from "@/components/ui";
 import { useFetch } from "@/lib/client/useFetch";
 import { championshipPath } from "@/lib/paths";
 import type { PhaseDTO, RefereeDTO, VenueDTO } from "@/types/api";
 
-type Tab = "phases" | "referees" | "venues" | "organizers" | "rules" | "share";
-const TABS: Tab[] = ["phases", "referees", "venues", "organizers", "rules", "share"];
+type Tab = "general" | "link" | "phases" | "referees" | "venues" | "organizers" | "finances" | "rules" | "share";
+const TABS: Tab[] = ["general", "link", "phases", "referees", "venues", "organizers", "finances", "rules", "share"];
 
-/** Organizer's workspace for one championship: phases, referees, venues, rules and the link to share it.
- * The only place to edit the championship itself (name, dates, visibility, fees, rules...) — see the
- * "Editar torneo" button below, which is the single entry point to that form across the app.
- * A vertical "Configuración" list, not tabs: each item is its own destination (`?s=phases`, shareable and
- * back-button friendly), reached from — and returned to — the same hub screen. */
+/** Organizer's workspace for one championship: everything that used to be split between these tabs and
+ * the separate "Editar torneo" modal now lives in one "Configuración" list — a vertical list of
+ * destinations, not tabs: each item is its own screen (`?s=general`, shareable and back-button
+ * friendly), reached from — and returned to — the same hub screen. */
 export function ManageView({ championshipId }: { championshipId: string }) {
-  const { current, reload } = useChampionship();
+  const { current } = useChampionship();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [editOpen, setEditOpen] = useState(false);
   const requested = searchParams.get("s");
   const tab: Tab | null = TABS.find((item) => item === requested) ?? null;
   const openSection = (id: Tab) => router.push(championshipPath(championshipId, "gestionar", `?s=${id}`));
@@ -48,10 +46,13 @@ export function ManageView({ championshipId }: { championshipId: string }) {
   const progressPercent = totalMatches > 0 ? Math.round((finishedMatches / totalMatches) * 100) : 0;
 
   const items: { id: Tab; label: string; description: string; icon: React.ReactNode; count?: number }[] = [
+    { id: "general", label: "Información general", description: "Nombre, logo, temporada y fechas", icon: <Settings size={20} /> },
+    { id: "link", label: "Enlace y visibilidad", description: "Dirección pública y quién puede verlo", icon: <Link2 size={20} /> },
     { id: "phases", label: "Fases", description: "Configura las etapas del torneo", icon: <Trophy size={20} />, count: phaseList.length },
     { id: "referees", label: "Árbitros", description: "Personas que dirigen los partidos", icon: <Whistle size={20} />, count: refereeList.length },
     { id: "venues", label: "Sitios", description: "Canchas y lugares de los partidos", icon: <MapPin size={20} />, count: venueList.length },
     { id: "organizers", label: "Organizadores", description: "Personas que administran el torneo", icon: <Users size={20} />, count: organizersCount },
+    { id: "finances", label: "Finanzas y multas", description: "Cuota de inscripción y multas por tarjeta", icon: <DollarSign size={20} /> },
     { id: "rules", label: "Reglas", description: "Puntos, plantillas y sanciones", icon: <Award size={20} /> },
     { id: "share", label: "Compartir", description: "Enlace público del torneo", icon: <Share2 size={20} /> },
   ];
@@ -60,12 +61,15 @@ export function ManageView({ championshipId }: { championshipId: string }) {
   if (active) {
     return (
       <>
-        <PageHeader breadcrumb={[{ label: "Gestionar", href: championshipPath(championshipId, "gestionar") }, { label: active.label }]} title={active.label} />
+        <PageHeader breadcrumb={[{ label: "Configuración", href: championshipPath(championshipId, "gestionar") }, { label: active.label }]} title={active.label} />
+        {active.id === "general" && <GeneralInfoManager championshipId={championshipId} />}
+        {active.id === "link" && <LinkVisibilityManager championshipId={championshipId} />}
         {active.id === "phases" && <PhasesManager championshipId={championshipId} />}
         {active.id === "referees" && <RefereesManager championshipId={championshipId} />}
         {active.id === "venues" && <VenuesManager championshipId={championshipId} />}
         {active.id === "organizers" && <OrganizersManager championshipId={championshipId} />}
-        {active.id === "rules" && <RulesSummary />}
+        {active.id === "finances" && <FinancesManager championshipId={championshipId} />}
+        {active.id === "rules" && <RulesManager championshipId={championshipId} />}
         {active.id === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />}
       </>
     );
@@ -73,7 +77,7 @@ export function ManageView({ championshipId }: { championshipId: string }) {
 
   return (
     <>
-      <PageHeader title="Gestionar" description={current ? `${current.name} · Temporada ${current.season}` : undefined} />
+      <PageHeader title="Configuración del torneo" description={current ? `${current.name} · Temporada ${current.season}` : undefined} />
 
       {/* Tournament Control Hub Header Card */}
       <section className="manage-hub-card" aria-label="Centro de control del torneo">
@@ -92,14 +96,6 @@ export function ManageView({ championshipId }: { championshipId: string }) {
               )}
             </div>
           </div>
-
-          <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
-            <Button size="small" icon={<Pencil size={16} />} onClick={() => setEditOpen(true)}>Editar torneo</Button>
-            <Link href={championshipPath(championshipId, "clasificacion")} className="btn secondary" style={{ fontSize: 13 }}>
-              <ChartColumn size={16} /> Ver Clasificación
-            </Link>
-          </div>
-
         </div>
 
         {/* Global Progress Bar */}
@@ -130,19 +126,6 @@ export function ManageView({ championshipId }: { championshipId: string }) {
           </button>
         ))}
       </div>
-
-      {current && (
-        <ChampionshipFormModal
-          open={editOpen}
-          championship={current}
-          onClose={() => setEditOpen(false)}
-          onSaved={() => {
-            setEditOpen(false);
-            reload();
-          }}
-        />
-      )}
     </>
   );
 }
-

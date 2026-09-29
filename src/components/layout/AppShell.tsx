@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, ChartColumn, ChevronDown, Gavel, Home, Lock, LogIn, MoreHorizontal, Settings, Shield, SlidersHorizontal, Trophy, Users,
+  CalendarDays, ChartColumn, ChevronDown, ChevronRight, Gavel, Home, Lock, LogIn, MoreHorizontal, Settings, Shield, SlidersHorizontal, Trophy, Users,
   type LucideIcon,
 } from "lucide-react";
 import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
@@ -27,6 +27,8 @@ interface NavItem {
   alsoActiveFor?: string[];
   /** Shown in the phone bottom bar (the rest go behind "Más"). */
   primary?: boolean;
+  /** Shown under the label in the "Más" sheet's card rows (the bottom nav and desktop tabs stay icon+label only). */
+  description?: string;
 }
 
 /** Sections of one championship, in the order they appear. */
@@ -36,9 +38,9 @@ function championshipItems(id: string): NavItem[] {
     { href: championshipPath(id, "partidos"), label: "Partidos", icon: CalendarDays, alsoActiveFor: ["/matches/"], primary: true },
     { href: championshipPath(id, "clasificacion"), label: "Clasificación", icon: ChartColumn, primary: true },
     { href: championshipPath(id, "equipos"), label: "Equipos", icon: Shield, alsoActiveFor: ["/teams/"], primary: true },
-    { href: championshipPath(id, "jugadores"), label: "Jugadores", icon: Users, alsoActiveFor: ["/players/"] },
-    { href: championshipPath(id, "sanciones"), label: "Sanciones", icon: Gavel },
-    { href: championshipPath(id, "gestionar"), label: "Gestionar", icon: SlidersHorizontal, alsoActiveFor: ["/phases/"] },
+    { href: championshipPath(id, "jugadores"), label: "Jugadores", icon: Users, alsoActiveFor: ["/players/"], description: "Gestiona los jugadores del torneo" },
+    { href: championshipPath(id, "sanciones"), label: "Sanciones", icon: Gavel, description: "Multas y suspensiones" },
+    { href: championshipPath(id, "gestionar"), label: "Configuración", icon: SlidersHorizontal, alsoActiveFor: ["/phases/"], description: "Ajusta las reglas, fases, sitios y más" },
   ];
 }
 
@@ -146,41 +148,72 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <Modal open={moreOpen} title="Más opciones" onClose={() => setMoreOpen(false)}>
-        <div className="stack" style={{ gap: "var(--space-md)" }}>
+        <div className="stack" style={{ gap: "var(--space-lg)" }}>
           {more.length > 0 && (
             <div>
-              <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
-                Operación del Torneo
-              </div>
-              <div className="stack-sm">
+              <h2 className="band band-muted band-small">Operación del Torneo</h2>
+              <div className="manage-config-list">
                 {more.map((item) => (
-                  <Link key={item.href} href={item.href} className="btn secondary block" onClick={() => setMoreOpen(false)}>
-                    <item.icon size={20} aria-hidden /> {item.label}
+                  <Link key={item.href} href={item.href} className="manage-config-row" onClick={() => setMoreOpen(false)}>
+                    <span className="manage-config-icon"><item.icon size={20} aria-hidden /></span>
+                    <span className="grow" style={{ minWidth: 0 }}>
+                      <span className="text-strong">{item.label}</span>
+                      {item.description && <span className="text-secondary text-small" style={{ display: "block" }}>{item.description}</span>}
+                    </span>
+                    <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
                   </Link>
                 ))}
               </div>
             </div>
           )}
 
-          <div>
-            <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
-              Navegación del Sistema
+          {scoped && (
+            <div>
+              <h2 className="band band-muted band-small">Navegación del Sistema</h2>
+              <div className="manage-config-list">
+                <Link href="/" className="manage-config-row" onClick={() => setMoreOpen(false)}>
+                  <span className="manage-config-icon"><Trophy size={20} aria-hidden /></span>
+                  <span className="grow" style={{ minWidth: 0 }}>
+                    <span className="text-strong">Ver todos los torneos</span>
+                    <span className="text-secondary text-small" style={{ display: "block" }}>Explora otros torneos</span>
+                  </span>
+                  <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
+                </Link>
+                {canAccess(role, "/admin") && (
+                  <Link href="/admin" className="manage-config-row" onClick={() => setMoreOpen(false)}>
+                    <span className="manage-config-icon"><Settings size={20} aria-hidden /></span>
+                    <span className="grow" style={{ minWidth: 0 }}>
+                      <span className="text-strong">Administración</span>
+                      <span className="text-secondary text-small" style={{ display: "block" }}>Configuración avanzada del sistema</span>
+                    </span>
+                    <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
+                  </Link>
+                )}
+              </div>
             </div>
-            <div className="stack-sm">
-              {scoped && (
-                <Link href="/" className="btn secondary block" onClick={() => setMoreOpen(false)}>Ver todos los torneos</Link>
-              )}
-              {scoped && canAccess(role, "/admin") && (
-                <Link href="/admin" className="btn secondary block" onClick={() => setMoreOpen(false)}><Settings size={20} aria-hidden /> Administración</Link>
-              )}
-            </div>
-          </div>
+          )}
 
           <div>
-            <div className="text-secondary text-small" style={{ fontWeight: 700, textTransform: "uppercase", marginBottom: 6, letterSpacing: 0.5 }}>
-              Mi Cuenta
+            <h2 className="band band-muted band-small">Mi Cuenta</h2>
+            <div className="manage-config-list">
+              <button className="manage-config-row" onClick={() => { setMoreOpen(false); setAccountOpen(true); }}>
+                {isSignedIn && user ? (
+                  <>
+                    <Avatar src={user.image ?? undefined} name={user.name} size={40} />
+                    <span className="grow" style={{ minWidth: 0 }}>
+                      <span className="text-strong truncate" style={{ display: "block" }}>{user.name}</span>
+                      <span className="text-secondary text-small truncate" style={{ display: "block" }}>{user.email}</span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="manage-config-icon"><LogIn size={20} aria-hidden /></span>
+                    <span className="grow text-strong">Iniciar sesión</span>
+                  </>
+                )}
+                <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
+              </button>
             </div>
-            <AccountButton user={user} isSignedIn={isSignedIn} onClick={() => { setMoreOpen(false); setAccountOpen(true); }} />
           </div>
         </div>
       </Modal>
@@ -189,23 +222,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
       <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
-  );
-}
-
-function AccountButton({ user, isSignedIn, onClick }: { user: { name: string; image?: string | null } | null; isSignedIn: boolean; onClick: () => void }) {
-  return (
-    <button className="btn secondary block account-button" onClick={onClick}>
-      {isSignedIn && user ? (
-        <>
-          <Avatar src={user.image ?? undefined} name={user.name} size={24} />
-          <span className="truncate">{user.name}</span>
-        </>
-      ) : (
-        <>
-          <LogIn size={20} aria-hidden /> Iniciar sesión
-        </>
-      )}
-    </button>
   );
 }
 

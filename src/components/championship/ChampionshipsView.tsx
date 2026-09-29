@@ -24,7 +24,7 @@ export function ChampionshipsView() {
   const { user, isSignedIn, canManageChampionship } = useRole();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
-  // Creates a new championship only — editing an existing one now happens from its own "Gestionar" panel.
+  // Creates a new championship only — editing an existing one now happens from its own "Configuración" panel.
   const [formOpen, setFormOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [deleting, setDeleting] = useState<ChampionshipDTO | null>(null);
@@ -85,7 +85,7 @@ export function ChampionshipsView() {
             label={`Más acciones de ${championship.name}`}
             actions={[
               ...(manageThis ? [
-                { label: "Gestionar", icon: <Layers size={18} />, href: championshipPath(championship.slug || championship._id, "gestionar") },
+                { label: "Configuración", icon: <Layers size={18} />, href: championshipPath(championship.slug || championship._id, "gestionar") },
               ] : []),
               ...(user?.isAdmin ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
             ]}
@@ -168,7 +168,6 @@ export function ChampionshipsView() {
 
       <ChampionshipFormModal
         open={formOpen}
-        championship={null}
         onClose={() => setFormOpen(false)}
         onSaved={(saved) => {
           setFormOpen(false);

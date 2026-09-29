@@ -59,7 +59,7 @@ export function KnockoutManager({ phaseId }: { phaseId: string }) {
       <PageHeader
         title={data.phase.name}
         description="Eliminatoria: tú defines las rondas, los cruces y quién avanza."
-        breadcrumb={[{ label: "Gestionar", href: championshipPath(data.phase.championshipId, "gestionar") }, { label: data.phase.name }]}
+        breadcrumb={[{ label: "Configuración", href: championshipPath(data.phase.championshipId, "gestionar") }, { label: data.phase.name }]}
         actions={manage && <Button icon={<Plus size={18} />} onClick={() => setDialog({ kind: "round", round: null })}>Nueva ronda</Button>}
         mobileActions={manage ? [{ label: "Nueva ronda", icon: <Plus size={20} />, onClick: () => setDialog({ kind: "round", round: null }) }] : undefined}
       />

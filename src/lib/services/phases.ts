@@ -7,9 +7,13 @@ import { drawGroups, type GroupAssignment } from "@/lib/rules/fixture";
 import { computeStandings } from "@/lib/rules/standings";
 import { Championship, DEFAULT_RULES } from "@/models/Championship";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
+import { IdentityVerification } from "@/models/IdentityVerification";
 import { Match } from "@/models/Match";
+import { MatchCallUp } from "@/models/MatchCallUp";
 import { Matchday } from "@/models/Matchday";
+import { MatchEvent } from "@/models/MatchEvent";
 import { IPhase, Phase } from "@/models/Phase";
+import { PlayerCheckIn } from "@/models/PlayerCheckIn";
 import { Team } from "@/models/Team";
 import { Tie } from "@/models/Tie";
 
@@ -131,14 +135,40 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
   return phase;
 }
 
+/**
+ * Deletes the phase and everything played inside it (matches, their events, call-ups, attendance and
+ * face verifications) even if it already has matches and teams — the organizer is warned in the UI
+ * before confirming, since this cannot be undone. The teams themselves are not touched: they only stop
+ * being linked to this phase (the link lived on the phase document, which is gone). Fines and
+ * suspensions already issued from those matches are kept as financial/disciplinary history; they just
+ * lose their match reference.
+ */
 export async function deletePhase(actor: Actor, id: string) {
   const phase = await loadPhase(id);
   await assertOrganizerOfPhase(actor, phase);
-  await assertNoMatches(phase._id, "elimínala");
+
+  const matchIds = (await Match.find({ phaseId: phase._id }).select("_id").lean()).map((match) => match._id);
+  const matchCount = matchIds.length;
+  if (matchCount > 0) {
+    await Promise.all([
+      MatchEvent.deleteMany({ matchId: { $in: matchIds } }),
+      MatchCallUp.deleteMany({ matchId: { $in: matchIds } }),
+      PlayerCheckIn.deleteMany({ matchId: { $in: matchIds } }),
+      IdentityVerification.deleteMany({ matchId: { $in: matchIds } }),
+    ]);
+    await Match.deleteMany({ phaseId: phase._id });
+  }
   await Tie.deleteMany({ phaseId: phase._id });
   await Matchday.deleteMany({ phaseId: phase._id });
+  const teamCount = phase.teamIds.length;
   await phase.deleteOne();
-  await recordAudit(actor, { action: "delete", entityType: "phase", entityId: phase._id, championshipId: phase.championshipId, summary: `Fase eliminada: ${phase.name}` });
+  await recordAudit(actor, {
+    action: "delete",
+    entityType: "phase",
+    entityId: phase._id,
+    championshipId: phase.championshipId,
+    summary: `Fase eliminada: ${phase.name} (${matchCount} partido(s), ${teamCount} equipo(s) desvinculados)`,
+  });
 }
 
 export interface PhaseTeamsInput {

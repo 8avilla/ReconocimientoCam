@@ -150,8 +150,12 @@ export function PhasesManager({ championshipId }: { championshipId: string }) {
       <ConfirmDialog
         open={dialog?.kind === "delete"}
         title="Eliminar fase"
-        message={`¿Eliminar "${dialog?.phase?.name}"? Solo es posible si aún no tiene partidos.`}
-        confirmLabel="Eliminar"
+        message={
+          dialog?.phase && (dialog.phase.matches.total > 0 || dialog.phase.teamCount > 0)
+            ? `"${dialog.phase.name}" tiene ${dialog.phase.matches.total} partido(s) y ${dialog.phase.teamCount} equipo(s) vinculados. Al eliminarla se borrarán también esos partidos con sus eventos, convocatorias y asistencia. Los equipos no se eliminan, solo quedan sin esta fase. Esta acción no se puede deshacer.`
+            : `¿Eliminar "${dialog?.phase?.name}"? Esta acción no se puede deshacer.`
+        }
+        confirmLabel="Eliminar de todas formas"
         loading={deleting}
         onConfirm={confirmDelete}
         onClose={close}

@@ -10,6 +10,7 @@ import type {
   Position,
   RegistrationStatus,
   TeamStaffRole,
+  TiebreakCriterion,
 } from "@/lib/constants";
 import type { Permission } from "@/lib/roles";
 
@@ -350,6 +351,13 @@ export interface FixturePreviewDTO {
   created: number;
 }
 
+export interface PhaseHighlightsDTO {
+  top1?: number;
+  top2?: number;
+  bottom1?: number;
+  bottom2?: number;
+}
+
 export interface PhaseDTO {
   _id: string;
   championshipId: string;
@@ -358,7 +366,10 @@ export interface PhaseDTO {
   type: PhaseType;
   legs: 1 | 2;
   groupCount?: number;
+  /** Kept only so a phase set up before "highlights" existed keeps its old single accent until saved anew. */
   qualifyCount?: number;
+  highlights?: PhaseHighlightsDTO;
+  tiebreakers?: TiebreakCriterion[];
   teamIds: string[];
   groups: { name: string; teamIds: string[] }[];
   rounds: { _id: string; name: string; order: number; legs: 1 | 2 }[];
@@ -422,7 +433,7 @@ export interface BracketDTO {
 }
 
 export interface PhaseStandingsDTO {
-  phase: { _id: string; name: string; type: PhaseType; qualifyCount?: number };
+  phase: { _id: string; name: string; type: PhaseType; highlights?: PhaseHighlightsDTO };
   tables: { group: string | null; rows: StandingsRowDTO[] }[];
 }
 

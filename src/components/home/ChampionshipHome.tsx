@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Goal, MapPin } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
-import { AttentionList } from "@/components/home/AttentionList";
 import { MyTeams } from "@/components/home/MyTeams";
 import { SetupChecklist } from "@/components/home/SetupChecklist";
 import { MatchList } from "@/components/match/MatchList";
@@ -61,7 +60,6 @@ function Dashboard({ championship }: { championship: ChampionshipDTO }) {
 
       <div className="stack" style={{ gap: "var(--space-2xl)" }}>
         {overview.data && can("championship.manage") && <SetupChecklist championshipId={championshipId} overview={overview.data} />}
-        {overview.data && can("championship.manage") && <AttentionList championshipId={championshipId} overview={overview.data} />}
 
         <div className="home-row-2">
           <section aria-label="Próximo partido">

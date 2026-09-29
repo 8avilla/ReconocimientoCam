@@ -77,7 +77,7 @@ export function TeamStandingsTab({
               rows={maxRows ? table.rows.slice(0, maxRows) : table.rows}
               highlightTeamId={teamId}
               title={table.group ? `${phase.name} · ${table.group}` : phase.name}
-              qualifyCount={phase.type === "league" ? phase.qualifyCount : undefined}
+              highlights={phase.highlights ?? (phase.qualifyCount ? { top1: phase.qualifyCount } : undefined)}
             />
           </section>
         ))

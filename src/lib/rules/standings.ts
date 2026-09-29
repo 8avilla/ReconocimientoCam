@@ -1,3 +1,5 @@
+import type { TiebreakCriterion } from "@/lib/constants";
+
 export interface StandingsTeam {
   id: string;
   name: string;
@@ -41,11 +43,51 @@ export interface StandingsRow {
 
 const FORM_LENGTH = 5;
 
+/** Historical default, kept for any phase that hasn't picked its own order (see `Phase.tiebreakers`). */
+const DEFAULT_TIEBREAKERS: TiebreakCriterion[] = ["goal_difference", "goals_for"];
+
+type Row = Omit<StandingsRow, "position">;
+
+/** Points earned by `teamId` against `opponentId` alone, and the goal difference in those matches only —
+ * a pairwise reading of "enfrentamiento directo", not the full round-robin mini-table some federations use
+ * for 3-way ties. Good enough for the common two-team-tied case this app mostly sees. */
+function headToHeadScore(teamId: string, opponentId: string, matches: readonly FinishedMatch[], rules: PointsRules): number {
+  let points = 0;
+  let goalDiff = 0;
+  for (const match of matches) {
+    const isTeamHome = match.homeTeamId === teamId && match.awayTeamId === opponentId;
+    const isTeamAway = match.awayTeamId === teamId && match.homeTeamId === opponentId;
+    if (!isTeamHome && !isTeamAway) continue;
+    const scored = isTeamHome ? match.homeScore : match.awayScore;
+    const conceded = isTeamHome ? match.awayScore : match.homeScore;
+    goalDiff += scored - conceded;
+    if (match.winnerTeamId) points += match.winnerTeamId === teamId ? rules.pointsPerWin : rules.pointsPerLoss;
+    else points += scored > conceded ? rules.pointsPerWin : scored < conceded ? rules.pointsPerLoss : rules.pointsPerDraw;
+  }
+  return points * 1000 + goalDiff; // points decide first; goal difference only breaks a head-to-head points tie.
+}
+
+function compareByCriterion(criterion: TiebreakCriterion, a: Row, b: Row, matches: readonly FinishedMatch[], rules: PointsRules): number {
+  switch (criterion) {
+    case "goal_difference": return b.goalDifference - a.goalDifference;
+    case "goals_for": return b.goalsFor - a.goalsFor;
+    case "fewest_goals_against": return a.goalsAgainst - b.goalsAgainst;
+    case "most_wins": return b.won - a.won;
+    case "head_to_head": return headToHeadScore(b.teamId, a.teamId, matches, rules) - headToHeadScore(a.teamId, b.teamId, matches, rules);
+  }
+}
+
 /**
- * League table. Order: points, goal difference, goals for, then team name.
- * Head-to-head is not applied as a tiebreaker.
+ * League table. Order: points, then the given tiebreak criteria in that order, then team name.
+ * `tiebreakers` defaults to the historical order (goal difference, then goals for) when omitted, so
+ * existing phases that never set their own keep behaving exactly as before.
  */
-export function computeStandings(teams: readonly StandingsTeam[], matches: readonly FinishedMatch[], rules: PointsRules): StandingsRow[] {
+export function computeStandings(
+  teams: readonly StandingsTeam[],
+  matches: readonly FinishedMatch[],
+  rules: PointsRules,
+  tiebreakers: readonly TiebreakCriterion[] = DEFAULT_TIEBREAKERS
+): StandingsRow[] {
   const rows = new Map<string, Omit<StandingsRow, "position" | "goalDifference">>(
     teams.map((team) => [
       team.id,
@@ -86,6 +128,13 @@ export function computeStandings(teams: readonly StandingsTeam[], matches: reado
 
   return [...rows.values()]
     .map((row) => ({ ...row, goalDifference: row.goalsFor - row.goalsAgainst }))
-    .sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name, "es"))
+    .sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      for (const criterion of tiebreakers) {
+        const result = compareByCriterion(criterion, a, b, matches, rules);
+        if (result !== 0) return result;
+      }
+      return a.name.localeCompare(b.name, "es");
+    })
     .map((row, index) => ({ position: index + 1, ...row }));
 }

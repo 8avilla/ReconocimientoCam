@@ -12,14 +12,13 @@ interface Step {
   action: string;
 }
 
-/** Guided setup: create phases, pick teams, generate the calendar, set days and times. Hidden once everything is done. */
+/** Guided setup: create phases, pick teams, generate the calendar. Hidden once everything is done. */
 export function SetupChecklist({ championshipId, overview }: { championshipId: string; overview: OverviewDTO }) {
   const { setup } = overview;
   const steps: Step[] = [
     { id: "phases", title: "Crear las fases", hint: "Liga, grupos o eliminatoria: tú decides cómo se juega.", done: setup.phases > 0, href: championshipPath(championshipId, "gestionar"), action: "Crear fases" },
     { id: "teams", title: "Elegir los equipos de cada fase", hint: "Marca qué equipos juegan en cada fase.", done: setup.phases > 0 && setup.phasesWithTeams === setup.tablePhases, href: championshipPath(championshipId, "gestionar"), action: "Elegir equipos" },
-    { id: "calendar", title: "Generar el calendario", hint: "Crea los partidos de cada fase; los organizas en fechas.", done: setup.tablePhases > 0 && setup.phasesWithCalendar === setup.tablePhases, href: championshipPath(championshipId, "gestionar"), action: "Generar calendario" },
-    { id: "schedule", title: "Programar días y horas", hint: "Asigna cuándo y dónde se juega cada partido; puedes cambiarlo cuando quieras.", done: setup.matches > 0 && overview.unscheduledMatches === 0, href: championshipPath(championshipId, "partidos", "?programacion=sin"), action: "Programar" },
+    { id: "calendar", title: "Generar el calendario", hint: "Crea los partidos de cada fase; los organizas en fechas.", done: setup.matches > 0, href: championshipPath(championshipId, "gestionar"), action: "Generar calendario" },
   ];
   const completed = steps.filter((step) => step.done).length;
   if (completed === steps.length) return null;

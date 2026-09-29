@@ -2,7 +2,7 @@ import type { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { badRequest, conflict, notFound } from "@/lib/api";
 import { diffChanges, recordAudit } from "@/lib/audit";
-import type { PhaseType } from "@/lib/constants";
+import type { PhaseType, TiebreakCriterion } from "@/lib/constants";
 import { drawGroups, type GroupAssignment } from "@/lib/rules/fixture";
 import { computeStandings } from "@/lib/rules/standings";
 import { Championship, DEFAULT_RULES } from "@/models/Championship";
@@ -12,7 +12,7 @@ import { Match } from "@/models/Match";
 import { MatchCallUp } from "@/models/MatchCallUp";
 import { Matchday } from "@/models/Matchday";
 import { MatchEvent } from "@/models/MatchEvent";
-import { IPhase, Phase } from "@/models/Phase";
+import { IPhase, IPhaseHighlights, Phase } from "@/models/Phase";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
 import { Team } from "@/models/Team";
 import { Tie } from "@/models/Tie";
@@ -67,7 +67,8 @@ export interface PhaseInput {
   type: PhaseType;
   legs: 1 | 2;
   groupCount?: number;
-  qualifyCount?: number | null;
+  tiebreakers?: TiebreakCriterion[];
+  highlights?: IPhaseHighlights;
 }
 
 export async function createPhase(actor: Actor, championshipId: string, input: PhaseInput) {
@@ -84,7 +85,8 @@ export async function createPhase(actor: Actor, championshipId: string, input: P
     type: input.type,
     legs: input.legs,
     groupCount: input.type === "groups" ? input.groupCount : undefined,
-    qualifyCount: input.type === "league" ? input.qualifyCount ?? undefined : undefined,
+    tiebreakers: input.type !== "knockout" ? input.tiebreakers : undefined,
+    highlights: input.type !== "knockout" ? input.highlights : undefined,
   });
   await recordAudit(actor, {
     action: "create",
@@ -118,8 +120,9 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
     ...(input.type ? { type: input.type } : {}),
     ...(input.legs ? { legs: input.legs } : {}),
     groupCount: type === "groups" ? input.groupCount ?? phase.groupCount : undefined,
-    // Purely informational (never blocks the phase from having a calendar), so it's not part of `structural` above.
-    qualifyCount: type === "league" ? (input.qualifyCount === undefined ? phase.qualifyCount : input.qualifyCount ?? undefined) : undefined,
+    // Purely informational (never blocks the phase from having a calendar), so neither is part of `structural` above.
+    tiebreakers: type !== "knockout" ? (input.tiebreakers === undefined ? phase.tiebreakers : input.tiebreakers) : undefined,
+    highlights: type !== "knockout" ? (input.highlights === undefined ? phase.highlights : input.highlights) : undefined,
   });
   // A different format invalidates the previous group distribution.
   if (structural) {
@@ -128,7 +131,7 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
   }
   await phase.save();
 
-  const changes = diffChanges(before, phase.toObject() as IPhase, ["name", "type", "legs", "groupCount", "qualifyCount"]);
+  const changes = diffChanges(before, phase.toObject() as IPhase, ["name", "type", "legs", "groupCount", "tiebreakers", "highlights"]);
   if (Object.keys(changes).length > 0) {
     await recordAudit(actor, { action: "update", entityType: "phase", entityId: phase._id, championshipId: phase.championshipId, summary: `Fase actualizada: ${phase.name}`, changes });
   }
@@ -286,13 +289,17 @@ export async function getPhaseStandings(id: string) {
     computeStandings(
       teamIds.map((teamId) => ({ id: teamId.toString(), name: team.get(teamId.toString())?.name ?? "" })),
       scope.map(toMatch),
-      rules
+      rules,
+      phase.tiebreakers
     ).map((row) => ({ ...row, shieldUrl: team.get(row.teamId)?.shieldUrl ?? "" }));
 
+  // A phase set up before "highlights" existed keeps showing its old single accent (as the top1/blue
+  // band) until someone opens "Resaltar posiciones" and saves a fresh configuration.
+  const highlights = phase.highlights ?? (phase.qualifyCount ? { top1: phase.qualifyCount } : undefined);
   if (phase.type === "groups") {
-    return { phase: { _id: phase._id, name: phase.name, type: phase.type, qualifyCount: phase.qualifyCount }, tables: phase.groups.map((group) => ({ group: group.name, rows: table(group.teamIds, matches.filter((match) => match.group === group.name)) })) };
+    return { phase: { _id: phase._id, name: phase.name, type: phase.type, highlights }, tables: phase.groups.map((group) => ({ group: group.name, rows: table(group.teamIds, matches.filter((match) => match.group === group.name)) })) };
   }
-  return { phase: { _id: phase._id, name: phase.name, type: phase.type, qualifyCount: phase.qualifyCount }, tables: [{ group: null, rows: table(phase.teamIds, matches) }] };
+  return { phase: { _id: phase._id, name: phase.name, type: phase.type, highlights }, tables: [{ group: null, rows: table(phase.teamIds, matches) }] };
 }
 
 /**

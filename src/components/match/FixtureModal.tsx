@@ -31,7 +31,7 @@ export function FixtureModal({ open, ...props }: Props) {
   );
 }
 
-function FixtureWizard({ championshipId, phases, initialPhaseId, target, onClose, onCreated }: Omit<Props, "open">) {
+export function FixtureWizard({ championshipId, phases, initialPhaseId, target, onClose, onCreated }: Omit<Props, "open">) {
   const toast = useToast();
   // Knockout phases are created round by round from their bracket.
   const eligible = phases.filter((item) => item.type !== "knockout");

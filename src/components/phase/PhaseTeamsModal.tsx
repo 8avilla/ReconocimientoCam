@@ -24,7 +24,7 @@ export function PhaseTeamsModal({ open, ...props }: Props) {
 
 const groupNames = (count: number) => Array.from({ length: count }, (_, index) => `Grupo ${String.fromCharCode(65 + index)}`);
 
-function PhaseTeams({ phase, onClose, onSaved }: Omit<Props, "open">) {
+export function PhaseTeams({ phase, onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
   const teams = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${phase.championshipId}&active=true&limit=100`);
   // Teams that already play in the phase cannot be removed or moved to another group, but others can be added.

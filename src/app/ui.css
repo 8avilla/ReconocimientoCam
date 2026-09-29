@@ -380,6 +380,8 @@ a.list-row:hover { background: var(--color-background); }
 .band { padding: var(--space-md) var(--space-lg); background: var(--color-border); font-size: 15px; }
 .match-row { gap: var(--space-md); }
 .match-date { width: 52px; flex-shrink: 0; font-size: 12px; color: var(--color-text-secondary); font-weight: 400; }
+.match-venue { min-width: 0; max-width: 100%; }
+.match-venue .truncate { min-width: 0; }
 .match-score { display: flex; flex-direction: column; gap: 6px; font-weight: 700; text-align: right; min-width: 20px; }
 .match-score span { height: 24px; display: flex; align-items: center; justify-content: flex-end; }
 .result-chip { width: 26px; height: 26px; border-radius: var(--radius-sm); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -404,9 +406,15 @@ a.list-row:hover { background: var(--color-background); }
 .standings-line.head { min-height: 40px; background: var(--color-background); font-size: 12px; font-weight: 400; color: var(--color-text-secondary); }
 .standings-line.highlight { background: var(--color-info-bg); }
 .standings-line:last-child { border-bottom: none; }
-/* Position number: plain by default; `.qualify` marks it as inside the qualification cutoff with a filled badge. */
+/* Position number: plain by default; a phase's "Resaltar posiciones" bands fill it with one of these four
+ * colors (blue/green from the top, orange/red from the bottom — see `highlightBand` in StatsView.tsx).
+ * `.qualify` is the old single-band style, kept only for anything not yet migrated to `highlight-*`. */
 .standings-pos { width: 26px; height: 26px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 400; color: var(--color-text-secondary); border-radius: var(--radius-sm); }
 .standings-pos.qualify { background: var(--color-navy); color: #fff; font-weight: 700; }
+.standings-pos.highlight-top1 { background: var(--color-info); color: #fff; font-weight: 700; }
+.standings-pos.highlight-top2 { background: var(--color-primary); color: #fff; font-weight: 700; }
+.standings-pos.highlight-bottom1 { background: var(--color-warning); color: #fff; font-weight: 700; }
+.standings-pos.highlight-bottom2 { background: var(--color-error); color: #fff; font-weight: 700; }
 
 .hero-tile { width: 72px; height: 72px; border-radius: var(--radius-lg); background: var(--color-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
@@ -439,7 +447,8 @@ a.list-row:hover { background: var(--color-background); }
 .band-small { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-secondary); }
 
 /* ---------- Match team name (used in Partidos and in a team's own Resultados/Próximos) ---------- */
-.match-team-name { font-size: 13px; font-weight: 400; }
+/* flex:1 + min-width:0 so a long name actually shrinks and truncates instead of overflowing the row. */
+.match-team-name { font-size: 13px; font-weight: 400; flex: 1; min-width: 0; }
 
 /* ---------- Simple / detailed standings ---------- */
 .segmented { display: inline-flex; background: var(--color-surface); border: 1px solid var(--color-border-input); border-radius: var(--radius-pill); padding: 2px; text-transform: none; letter-spacing: 0; }
@@ -1309,6 +1318,8 @@ a.list-row:hover { background: var(--color-background); }
 .event-row.away .event-row-minute { text-align: left; }
 .event-row-score { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1px 6px; font-size: 12px; font-weight: 700; }
 .event-row-name { font-size: 13px; font-weight: 400; }
+/* Long player names must shrink and ellipsize instead of widening the row past the viewport. */
+.event-row-content > .truncate { flex: 1 1 auto; min-width: 0; }
 
 /* ---------- Matches hub: live rows, date/jornada chips, metrics ---------- */
 .match-row-live { box-shadow: inset 3px 0 0 var(--color-error); animation: match-row-pulse 2s ease-in-out infinite; }

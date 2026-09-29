@@ -64,7 +64,10 @@ export function MatchList({ matches, teamId }: { matches: MatchDTO[]; teamId?: s
                 <div className="match-date">
                   {shortDate(match.scheduledAt)}
                   {match.status === "scheduled" && match.venue && (
-                    <div className="text-secondary text-small row" style={{ gap: 2, whiteSpace: "nowrap" }}><MapPin size={11} aria-hidden /> {match.venue}</div>
+                    <div className="text-secondary text-small row match-venue" style={{ gap: 2 }}>
+                      <MapPin size={11} aria-hidden style={{ flexShrink: 0 }} />
+                      <span className="truncate">{match.venue}</span>
+                    </div>
                   )}
                 </div>
                 <div className="grow stack-sm" style={{ gap: 6, minWidth: 0 }}>

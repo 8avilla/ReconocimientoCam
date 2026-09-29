@@ -27,7 +27,7 @@ export function MatchdaysModal({ open, ...props }: Props) {
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("es", { day: "numeric", month: "short" });
 
-function Matchdays({ phase, onClose, onChanged }: Omit<Props, "open">) {
+export function Matchdays({ phase, onClose, onChanged }: Omit<Props, "open">) {
   const toast = useToast();
   const list = useFetch<{ data: MatchdayDTO[] }>(`/phases/${phase._id}/matchdays`);
   const [editing, setEditing] = useState<string | null>(null);

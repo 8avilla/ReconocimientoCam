@@ -6,7 +6,7 @@ import {
 } from "@/models/Championship";
 import { FINE_TYPES } from "@/models/Fine";
 import { POSITIONS, REGISTRATION_STATUSES } from "@/models/TeamRegistration";
-import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES, TEAM_STAFF_ROLES } from "@/lib/constants";
+import { MATCH_EVENT_TYPES, MATCH_STATUSES, PHASE_TYPES, SUSPENSION_STATUSES, TEAM_STAFF_ROLES, TIEBREAK_CRITERIA } from "@/lib/constants";
 import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from "@/models/AuditLog";
 import { ALL_PERMISSIONS } from "@/lib/roles";
 import {
@@ -248,13 +248,24 @@ export const matchListQuery = paginationSchema.extend({
 
 const legsSchema = z.union([z.literal(1), z.literal(2)]);
 
+const tiebreakersSchema = z.array(z.enum(TIEBREAK_CRITERIA)).max(TIEBREAK_CRITERIA.length);
+
+/** 0 (or omitted) means that band is off. */
+const highlightBand = z.number().int().min(0).max(64).optional();
+const highlightsSchema = z.object({
+  top1: highlightBand,
+  top2: highlightBand,
+  bottom1: highlightBand,
+  bottom2: highlightBand,
+});
+
 export const phaseCreateSchema = z.object({
   name: requiredText(60),
   type: z.enum(PHASE_TYPES),
   legs: legsSchema,
   groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26).optional(),
-  /** How many teams qualify from a league phase; optional, and null clears a previously-set value. */
-  qualifyCount: z.number().int().min(1, "Mínimo 1 equipo").max(64).nullable().optional(),
+  tiebreakers: tiebreakersSchema.optional(),
+  highlights: highlightsSchema.optional(),
 });
 
 export const phaseUpdateSchema = z
@@ -263,7 +274,8 @@ export const phaseUpdateSchema = z
     type: z.enum(PHASE_TYPES),
     legs: legsSchema,
     groupCount: z.number().int().min(2, "Mínimo 2 grupos").max(26),
-    qualifyCount: z.number().int().min(1, "Mínimo 1 equipo").max(64).nullable(),
+    tiebreakers: tiebreakersSchema,
+    highlights: highlightsSchema,
   })
   .partial();
 

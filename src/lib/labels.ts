@@ -1,4 +1,4 @@
-import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus, TeamStaffRole } from "@/lib/constants";
+import type { ChampionshipFormat, ChampionshipStatus, MatchEventType, MatchPeriod, MatchStatus, PhaseType, RegistrationStatus, SuspensionReason, SuspensionStatus, TeamStaffRole, TiebreakCriterion } from "@/lib/constants";
 import type { Permission } from "@/lib/roles";
 
 export type Tone = "success" | "warning" | "error" | "info" | "neutral";
@@ -90,6 +90,14 @@ export const PHASE_TYPE_LABEL: Record<PhaseType, string> = {
   league: "Todos contra todos",
   groups: "Grupos",
   knockout: "Eliminatoria",
+};
+
+export const TIEBREAK_CRITERION_LABEL: Record<TiebreakCriterion, { label: string; description: string }> = {
+  head_to_head: { label: "Enfrentamiento directo", description: "Resultado entre los equipos empatados" },
+  goal_difference: { label: "Diferencia de gol", description: "Goles a favor menos en contra" },
+  goals_for: { label: "Goles a favor", description: "Total de goles anotados" },
+  fewest_goals_against: { label: "Menos goles en contra", description: "El que menos goles ha recibido" },
+  most_wins: { label: "Partidos ganados", description: "El que más partidos ha ganado" },
 };
 
 export const LEGS_LABEL: Record<1 | 2, string> = {

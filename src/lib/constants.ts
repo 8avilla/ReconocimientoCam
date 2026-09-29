@@ -15,6 +15,9 @@ export const MATCH_EVENT_TYPES = [
 export const SUSPENSION_REASONS = ["red_card", "yellow_accumulation", "manual"] as const;
 export const SUSPENSION_STATUSES = ["active", "served", "lifted"] as const;
 export const PHASE_TYPES = ["league", "groups", "knockout"] as const;
+/** Applied in this order after points, whichever order the organizer picks; whatever is left unresolved
+ * falls back to team name. See `computeStandings` for how each one is compared. */
+export const TIEBREAK_CRITERIA = ["head_to_head", "goal_difference", "goals_for", "fewest_goals_against", "most_wins"] as const;
 export const REGISTRATION_STATUSES = ["pending", "active", "suspended", "inactive"] as const;
 /** Sport-agnostic on purpose: no goalkeeper/pitcher/setter-specific roles, so this fits any team sport. */
 export const TEAM_STAFF_ROLES = [
@@ -31,4 +34,5 @@ export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 export type SuspensionReason = (typeof SUSPENSION_REASONS)[number];
 export type SuspensionStatus = (typeof SUSPENSION_STATUSES)[number];
 export type PhaseType = (typeof PHASE_TYPES)[number];
+export type TiebreakCriterion = (typeof TIEBREAK_CRITERIA)[number];
 export type TeamStaffRole = (typeof TEAM_STAFF_ROLES)[number];

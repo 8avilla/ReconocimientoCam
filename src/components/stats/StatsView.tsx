@@ -10,7 +10,28 @@ import { useFetch } from "@/lib/client/useFetch";
 import { currentPhase } from "@/lib/rules/currentPhase";
 import { useIsMobile } from "@/lib/client/useMediaQuery";
 import { useStoredState } from "@/lib/client/useStoredState";
-import type { PhaseDTO, PhaseStandingsDTO, PlayerStatDTO, PlayerStatsDTO, StandingsRowDTO } from "@/types/api";
+import type { PhaseDTO, PhaseHighlightsDTO, PhaseStandingsDTO, PlayerStatDTO, PlayerStatsDTO, StandingsRowDTO } from "@/types/api";
+
+/** Which of the four accent bands (if any) a standings position falls into — the smaller/more specific
+ * band on a side wins when top1/top2 (or bottom1/bottom2) overlap; a top match wins over a bottom one. */
+function highlightBand(position: number, total: number, highlights?: PhaseHighlightsDTO): string {
+  if (!highlights) return "";
+  const fromBottom = total - position + 1;
+  const top = [
+    { count: highlights.top1, className: " highlight-top1" },
+    { count: highlights.top2, className: " highlight-top2" },
+  ]
+    .filter((band): band is { count: number; className: string } => Boolean(band.count) && position <= band.count!)
+    .sort((a, b) => a.count - b.count)[0];
+  if (top) return top.className;
+  const bottom = [
+    { count: highlights.bottom1, className: " highlight-bottom1" },
+    { count: highlights.bottom2, className: " highlight-bottom2" },
+  ]
+    .filter((band): band is { count: number; className: string } => Boolean(band.count) && fromBottom <= band.count!)
+    .sort((a, b) => a.count - b.count)[0];
+  return bottom?.className ?? "";
+}
 
 type Tab = "standings" | "scorers" | "assists" | "yellow" | "red";
 const TABS: { id: Tab; label: string }[] = [
@@ -76,7 +97,7 @@ function Stats({ championshipId, initialPhaseId }: { championshipId: string; ini
                   <StandingsTable
                     rows={table.rows}
                     title={table.group ? `${phase.name} · ${table.group}` : phase.name}
-                    qualifyCount={phase.type === "league" ? phaseStandings.data?.phase.qualifyCount : undefined}
+                    highlights={phaseStandings.data?.phase.highlights}
                   />
                 </section>
               ))}
@@ -185,17 +206,19 @@ export function StandingsTable({
   rows,
   highlightTeamId,
   title,
-  qualifyCount,
+  highlights,
 }: {
   rows: StandingsRowDTO[];
   /** One team (a viewer's own) or several (e.g. both sides of an upcoming match) to mark in the table. */
   highlightTeamId?: string | string[];
   title?: string;
-  /** Fills the position badge of the top N rows (a phase's own `qualifyCount`), e.g. 8 for a top-8 cutoff. */
-  qualifyCount?: number;
+  /** Accents the position badge of the top/bottom N rows (a phase's own `highlights`), e.g. blue for the
+   * top 2 (direct qualifiers) and green for the next 4 (playoff spot). */
+  highlights?: PhaseHighlightsDTO;
 }) {
   const [mode, setMode] = useStandingsMode();
   const isHighlighted = (teamId: string) => (Array.isArray(highlightTeamId) ? highlightTeamId.includes(teamId) : teamId === highlightTeamId);
+  const bandClass = (position: number) => highlightBand(position, rows.length, highlights);
   if (rows.length === 0) {
     return <div className="card"><EmptyState icon={<ChartColumn size={28} />} title="Sin equipos" description="Registra equipos y juega partidos para ver la tabla." /></div>;
   }
@@ -221,7 +244,7 @@ export function StandingsTable({
                 <tr key={row.teamId} className={isHighlighted(row.teamId) ? "highlight" : undefined}>
                   <td className="sticky-col">
                     <Link href={`/teams/${row.teamId}`} className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
-                      <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`}>{row.position}</span>
+                      <span className={`standings-pos${bandClass(row.position)}`}>{row.position}</span>
                       <Avatar src={row.shieldUrl} name={row.name} size={28} square />
                       <span className={isHighlighted(row.teamId) ? "text-strong" : undefined}>{row.name}</span>
                     </Link>
@@ -243,7 +266,7 @@ export function StandingsTable({
           </div>
           {rows.map((row) => (
             <div key={row.teamId} role="row" className={`standings-line${isHighlighted(row.teamId) ? " highlight" : ""}`}>
-              <span className={`standings-pos${qualifyCount && row.position <= qualifyCount ? " qualify" : ""}`} role="cell">{row.position}</span>
+              <span className={`standings-pos${bandClass(row.position)}`} role="cell">{row.position}</span>
               <Link href={`/teams/${row.teamId}`} className="row" role="cell" style={{ gap: 8, minWidth: 0 }}>
                 <Avatar src={row.shieldUrl} name={row.name} size={28} square />
                 <span className={`truncate${isHighlighted(row.teamId) ? " text-strong" : ""}`}>{row.name}</span>

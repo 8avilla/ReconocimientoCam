@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Pencil, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
+import { ChevronRight, LayoutGrid, List, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
-import { PlayerFormModal } from "@/components/player/PlayerFormModal";
-import { ActionMenu, Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
@@ -27,7 +26,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const [teamId, setTeamId] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [pages, setPages] = useState(1);
-  const [editingPlayer, setEditingPlayer] = useState<PlayerDTO | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const openPlayer = useOpenPlayer();
 
   useEffect(() => {
@@ -116,50 +115,43 @@ function PlayersList({ championshipId }: { championshipId: string }) {
         </div>
       ) : (
         <>
+          <div className="view-toggle-bar">
+            <button className={`view-toggle-btn${viewMode === "list" ? " active" : ""}`} onClick={() => setViewMode("list")} title="Vista de lista">
+              <List size={16} /> Lista
+            </button>
+            <button className={`view-toggle-btn${viewMode === "grid" ? " active" : ""}`} onClick={() => setViewMode("grid")} title="Vista de tarjetas">
+              <LayoutGrid size={16} /> Tarjetas
+            </button>
+          </div>
           <div className="flush-list">
             <h2 className="band band-muted band-small">
               Jugadores ({displayedPlayers.length} {filterMode !== "all" ? `de ${players.length}` : ""})
             </h2>
-            <div className="table-wrap only-desktop">
-              <table className="table">
-                <thead>
-                  <tr><th>Jugador</th><th>Equipo</th><th>Posición</th><th>Estado</th><th>Rostro</th>{manage && <th></th>}</tr>
-                </thead>
-                <tbody>
-                  {displayedPlayers.map((player) => (
-                    <tr key={player._id}>
-                      <td>
-                        <button type="button" className="row" style={{ textAlign: "left" }} onClick={() => openPlayer(player._id, reload)}>
-                          <Avatar src={player.photoUrl} name={player.fullName} size={40} />
-                          <div>
-                            <div className="text-strong">{player.fullName}</div>
-                            <div className="text-secondary text-small">{player.documentId || "Sin documento"}</div>
-                          </div>
-                        </button>
-                      </td>
-                      <td>{player.registration?.team?.name ?? "—"}{player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber}` : "sin número"}`}</td>
-                      <td>{player.registration?.position ?? "—"}</td>
-                      <td>{player.registration && <RegistrationBadge status={player.registration.status} />}</td>
-                      <td><FaceBadge hasFace={player.hasFace} /></td>
-                      {manage && (
-                        <td>
-                          <ActionMenu
-                            label={`Más acciones de ${player.fullName}`}
-                            actions={[{ label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditingPlayer(player) }]}
-                          />
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="only-mobile">
+            {viewMode === "grid" ? (
+              <div className="roster-card-grid">
+                {displayedPlayers.map((player) => (
+                  <div key={player._id} className="roster-card">
+                    <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => openPlayer(player._id, reload)}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                        <PlayerPhoto player={player} size={64} style={{ marginBottom: 8 }} />
+                        <div className="truncate" style={{ maxWidth: 160, fontSize: 13 }}>{player.fullName}</div>
+                        <div className="text-secondary text-small truncate" style={{ maxWidth: 160 }}>{player.registration?.team?.name ?? "Sin equipo"}</div>
+                        <div className="stack-sm" style={{ gap: 4, marginTop: 6, alignItems: "center" }}>
+                          {player.registration && player.registration.status !== "active" && <RegistrationBadge status={player.registration.status} />}
+                          <FaceBadge hasFace={player.hasFace} />
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+            <>
+            <div>
               {displayedPlayers.map((player) => (
                 <div key={player._id} className="list-row">
                   <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => openPlayer(player._id, reload)}>
-                    <Avatar src={player.photoUrl} name={player.fullName} size={44} />
+                    <PlayerPhoto player={player} size={44} />
                     <div className="grow" style={{ minWidth: 0 }}>
                       <div className="champ-caption truncate">
                         {player.registration?.team?.name ?? "Sin equipo"}
@@ -173,15 +165,11 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                     </span>
                     <ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" />
                   </button>
-                  {manage && (
-                    <ActionMenu
-                      label={`Más acciones de ${player.fullName}`}
-                      actions={[{ label: "Editar", icon: <Pencil size={16} />, onClick: () => setEditingPlayer(player) }]}
-                    />
-                  )}
                 </div>
               ))}
             </div>
+            </>
+            )}
           </div>
           {hasMore && (
             <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-lg)" }}>
@@ -190,21 +178,18 @@ function PlayersList({ championshipId }: { championshipId: string }) {
           )}
         </>
       )}
-
-
-      {editingPlayer && (
-        <PlayerFormModal
-          open
-          player={editingPlayer}
-          registration={editingPlayer.registration}
-          onClose={() => setEditingPlayer(null)}
-          onSaved={() => {
-            setEditingPlayer(null);
-            reload();
-          }}
-        />
-      )}
     </>
   );
 }
 
+
+/** Player photo with the shirt number badge, same as in the team roster. */
+function PlayerPhoto({ player, size, style }: { player: PlayerDTO; size: number; style?: React.CSSProperties }) {
+  const shirtNumber = player.registration?.shirtNumber;
+  return (
+    <span className="shirt-photo" style={style}>
+      <Avatar src={player.photoUrl} name={player.fullName} size={size} />
+      {shirtNumber != null && <span className="shirt-number">{shirtNumber}</span>}
+    </span>
+  );
+}

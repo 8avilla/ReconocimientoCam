@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, List, UserCog, Users } from "lucide-react";
+import { LayoutGrid, List, Users } from "lucide-react";
 import { FaceBadge } from "@/components/player/PlayerBadges";
 import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
-import { ActionMenu, Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
+import { Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
 import { REGISTRATION_STATUS_LABEL } from "@/lib/labels";
 import type { RosterEntryDTO } from "@/types/api";
@@ -16,8 +16,8 @@ interface Props {
   loading: boolean;
   error?: Error;
   onRetry: () => void;
-  /** Absent when the viewer cannot edit the player themselves (opens the full "Editar jugador" popup). */
-  onExpressEdit?: (entry: RosterEntryDTO) => void;
+  /** Whether the viewer may register new players (shows the "Agregar jugador" shortcut when the squad is empty). */
+  canAddPlayer?: boolean;
   /** Whether the viewer may open player profiles (visitors cannot). */
   linkPlayers?: boolean;
   /** Called after the player sheet changed something, so the roster can refresh. */
@@ -25,7 +25,7 @@ interface Props {
 }
 
 /** Squad grouped by position: photo with the shirt number, name, face registration and registration status. */
-export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpressEdit, linkPlayers = true, onChanged }: Props) {
+export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAddPlayer, linkPlayers = true, onChanged }: Props) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const openPlayer = useOpenPlayer();
 
@@ -38,7 +38,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
           icon={<Users size={28} />}
           title="Este equipo aún no tiene jugadores"
           description="Registra jugadores para armar la plantilla."
-          action={onExpressEdit && <Link href={`/players/new?teamId=${teamId}`} className="btn primary">Agregar jugador</Link>}
+          action={canAddPlayer && <Link href={`/players/new?teamId=${teamId}`} className="btn primary">Agregar jugador</Link>}
         />
       </div>
     );
@@ -95,12 +95,6 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
                           </div>
                         </div>
                       </PlayerLink>
-                      {onExpressEdit && (
-                        <ActionMenu
-                          label={`Más acciones de ${entry.playerId.fullName}`}
-                          actions={[{ label: "Editar", icon: <UserCog size={16} />, onClick: () => onExpressEdit(entry) }]}
-                        />
-                      )}
                     </li>
                   );
                 })}
@@ -128,14 +122,6 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
                           </div>
                         </div>
                       </PlayerLink>
-                      {onExpressEdit && (
-                        <div style={{ position: "absolute", top: 6, right: 6 }}>
-                          <ActionMenu
-                            label={`Más acciones de ${entry.playerId.fullName}`}
-                            actions={[{ label: "Editar", icon: <UserCog size={16} />, onClick: () => onExpressEdit(entry) }]}
-                          />
-                        </div>
-                      )}
                     </div>
                   );
                 })}

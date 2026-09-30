@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Pencil, Star, Trash2, UserPlus } from "lucide-react";
-import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { TeamMatchesTab } from "@/components/team/TeamMatchesTab";
 import { TeamRosterTab } from "@/components/team/TeamRosterTab";
 import { TeamStaffBlock } from "@/components/team/TeamStaffBlock";
@@ -49,7 +48,6 @@ export default function TeamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [expressEditEntry, setExpressEditEntry] = useState<RosterEntryDTO | null>(null);
 
   if (team.error) return <ErrorState message={team.error.message} onRetry={team.reload} />;
   if (!team.data) return <Loading />;
@@ -162,7 +160,7 @@ export default function TeamDetailPage() {
               loading={roster.loading}
               error={roster.error}
               onRetry={roster.reload}
-              onExpressEdit={can("player.manage") ? setExpressEditEntry : undefined}
+              canAddPlayer={can("player.manage")}
               linkPlayers={canAccess(role, "/players/x")}
               onChanged={roster.reload}
             />
@@ -180,18 +178,6 @@ export default function TeamDetailPage() {
           reloadAll();
         }}
       />
-      {expressEditEntry && (
-        <PlayerFormModal
-          open
-          player={expressEditEntry.playerId}
-          registration={expressEditEntry}
-          onClose={() => setExpressEditEntry(null)}
-          onSaved={() => {
-            setExpressEditEntry(null);
-            reloadAll();
-          }}
-        />
-      )}
       <ConfirmDialog
         open={deleteOpen}
         title="Eliminar equipo"

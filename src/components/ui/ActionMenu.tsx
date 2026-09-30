@@ -3,6 +3,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { MoreVertical } from "lucide-react";
+import { useBackButtonClose } from "@/lib/client/useBackButtonClose";
 
 export interface MenuAction {
   label: string;
@@ -30,6 +31,8 @@ export function ActionMenu({ actions, label = "Más acciones" }: { actions: Menu
     setOpen(false);
     if (returnFocus) triggerRef.current?.focus();
   };
+
+  useBackButtonClose(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Timer, X } from "lucide-react";
 import { Button, Input, Modal } from "@/components/ui";
+import { useBackButtonClose } from "@/lib/client/useBackButtonClose";
 
 const NUDGE_SECONDS = 60;
 
@@ -24,6 +25,7 @@ export function MatchClock({ periodLabels }: { periodLabels: string[] }) {
   const [running, setRunning] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  useBackButtonClose(panelOpen, () => setPanelOpen(false));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // If the championship's period count changes while this is open, don't point past the new last one.

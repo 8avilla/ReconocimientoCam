@@ -33,7 +33,8 @@ interface Props {
  */
 export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   const toast = useToast();
-  const { can } = useRole();
+  const { can, role } = useRole();
+  const isVisitor = role === "visitor";
   const manage = can("player.manage");
   const player = useFetch<PlayerDetailDTO>(playerId ? `/players/${playerId}` : null);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(playerId ? `/suspensions?playerId=${playerId}&status=active&limit=10` : null);
@@ -116,7 +117,7 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
             <div className="row" style={{ gap: "var(--space-md)" }}>
               <span className="player-quick-avatar">
                 <Avatar src={data.photoUrl || data.facePhotoUrl} name={data.fullName} size={64} />
-                {data.hasFace && <span className="player-quick-avatar-dot" aria-hidden><Camera size={12} /></span>}
+                {data.hasFace && !isVisitor && <span className="player-quick-avatar-dot" aria-hidden><Camera size={12} /></span>}
               </span>
               <div className="grow" style={{ minWidth: 0 }}>
                 <h3 style={{ margin: 0 }} className="truncate">{data.fullName}</h3>
@@ -125,12 +126,16 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
             </div>
 
             <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
-              {data.hasFace ? (
-                <Badge tone="success" icon={<ShieldCheck size={12} aria-hidden />}>Rostro registrado</Badge>
-              ) : (
-                <Badge tone="warning" icon={<ScanFace size={12} aria-hidden />}>Sin rostro</Badge>
+              {!isVisitor && (
+                <>
+                  {data.hasFace ? (
+                    <Badge tone="success" icon={<ShieldCheck size={12} aria-hidden />}>Rostro registrado</Badge>
+                  ) : (
+                    <Badge tone="warning" icon={<ScanFace size={12} aria-hidden />}>Sin rostro</Badge>
+                  )}
+                  {missingData && <Badge tone="warning" icon={<UserRound size={12} aria-hidden />}>Datos incompletos</Badge>}
+                </>
               )}
-              {missingData && <Badge tone="warning" icon={<UserRound size={12} aria-hidden />}>Datos incompletos</Badge>}
               {registration && registration.status !== "active" && <RegistrationBadge status={registration.status} />}
             </div>
 
@@ -213,23 +218,16 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
             {(!manage || tab === "actividad") && (
               <>
                 <section className="stack-sm">
-                  <h4 style={{ margin: 0 }}>Estadísticas en el torneo</h4>
+                  <h4 style={{ margin: 0, fontSize: 14 }}>Estadísticas en el torneo</h4>
                   {stats.data ? (
-                    <div className="stat-grid-enhanced">
-                      <StatTile color="blue" icon={<SquareStack size={20} />} label="Partidos" value={stats.data.matchesPlayed} />
-                      <StatTile
-                        color="green"
-                        icon={<Goal size={20} />}
-                        label="Goles"
-                        value={stats.data.goals}
-                        sub={stats.data.matchesPlayed > 0 ? `${(stats.data.goals / stats.data.matchesPlayed).toFixed(2)} por p.` : undefined}
-                      />
-                      <StatTile
-                        color="amber"
-                        icon={<AlertCircle size={20} />}
+                    <div className="row" style={{ gap: "var(--space-sm)" }}>
+                      <StatChip icon={<SquareStack size={16} />} label="Partidos" value={stats.data.matchesPlayed} />
+                      <StatChip icon={<Goal size={16} />} label="Goles" value={stats.data.goals} />
+                      <StatChip
+                        icon={<AlertCircle size={16} />}
                         label="Tarjetas"
                         value={stats.data.yellowCards + stats.data.redCards}
-                        sub={`${stats.data.yellowCards} amarillas / ${stats.data.redCards} rojas`}
+                        title={`${stats.data.yellowCards} amarillas / ${stats.data.redCards} rojas`}
                       />
                     </div>
                   ) : (
@@ -317,13 +315,12 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   );
 }
 
-function StatTile({ icon, label, value, color, sub }: { icon: ReactNode; label: string; value: number; color: "blue" | "green" | "amber" | "red"; sub?: string }) {
+function StatChip({ icon, label, value, title }: { icon: ReactNode; label: string; value: number; title?: string }) {
   return (
-    <div className="stat-tile-enhanced">
-      <div className={`stat-tile-icon-box ${color}`}>{icon}</div>
-      <div className="val">{value}</div>
-      <div className="lbl">{label}</div>
-      {sub && <div className="sub">{sub}</div>}
+    <div className="row grow" title={title} style={{ gap: 8, padding: "6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", minWidth: 0 }}>
+      <span className="text-secondary" style={{ display: "inline-flex" }}>{icon}</span>
+      <span className="text-strong" style={{ fontSize: 16 }}>{value}</span>
+      <span className="text-secondary text-small truncate">{label}</span>
     </div>
   );
 }

@@ -122,6 +122,13 @@ export function formatDate(value?: string | null): string {
   return new Date(value).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 }
 
+/** Age from the birth year alone (current year minus birth year), by design: months and days don't count. */
+export function ageFromBirthYear(value?: string | null): number | null {
+  if (!value) return null;
+  const year = new Date(value).getUTCFullYear();
+  return Number.isNaN(year) ? null : new Date().getFullYear() - year;
+}
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)

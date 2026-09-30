@@ -222,9 +222,9 @@ export async function setPlayerCarnetPhoto(actor: Actor, playerId: string, photo
 
 /**
  * Sets the carnet/profile photo directly from a raw image (already cropped/focused on the face by
- * the caller) instead of pointing at an existing gallery entry. Unlike `setPlayerCarnetPhoto`, this
- * never touches the general `photos[]` gallery — the crop is only ever the carnet photo, it isn't
- * meant to also clutter the gallery, same as the one `enrollPlayerFace` sets for a player with none yet.
+ * the caller) instead of pointing at an existing gallery entry. The new photo is also saved in the
+ * general `photos[]` gallery (sharing the same blob) so it isn't lost when replaced; if the gallery
+ * is already full it is only set as the profile photo.
  */
 export async function setPlayerCarnetImage(actor: Actor, playerId: string, image: string) {
   await requireOrganizerOfPlayer(actor, playerId);
@@ -234,6 +234,9 @@ export async function setPlayerCarnetImage(actor: Actor, playerId: string, image
   const previousBlob = player.photoBlobName;
   const uploaded = await uploadImage(await prepareCarnetImage(image), "players/photos");
   player.set({ photoUrl: uploaded.url, photoBlobName: uploaded.blobName });
+  if (player.photos.length < MAX_GALLERY_PHOTOS) {
+    photosOf(player).push({ url: uploaded.url, blobName: uploaded.blobName, uploadedAt: new Date() } as IPlayerPhoto);
+  }
   await player.save();
 
   // The old carnet blob is only deleted if the gallery isn't also pointing to it (it's independent otherwise).

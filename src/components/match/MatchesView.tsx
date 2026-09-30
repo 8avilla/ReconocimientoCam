@@ -23,8 +23,8 @@ export function MatchesView({ initialScheduled }: { initialScheduled?: "true" | 
 
 type MatchesTab = "results" | "upcoming";
 const MATCHES_TABS: { id: MatchesTab; label: string }[] = [
-  { id: "results", label: "Resultados de partidos" },
-  { id: "upcoming", label: "Próximos partidos" },
+  { id: "results", label: "Resultados" },
+  { id: "upcoming", label: "Próximos" },
 ];
 
 function MatchesList({ championshipId, initialScheduled }: { championshipId: string; initialScheduled?: "true" | "false" }) {

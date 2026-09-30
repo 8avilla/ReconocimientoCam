@@ -6,6 +6,7 @@ import { ArrowRight, Camera, CheckCircle2, Copy, Download, MoreHorizontal, Penci
 import { useRole } from "@/components/layout/RoleContext";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
+import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
 import { RegistrationBadge } from "@/components/player/PlayerBadges";
@@ -13,7 +14,7 @@ import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, useTo
 import { downloadCarnetImage } from "@/lib/client/carnetExport";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
-import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
+import { ageFromBirthYear, formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
 import type { Paginated, PlayerCardDTO, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
 
@@ -39,10 +40,14 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   const suspensions = useFetch<Paginated<SuspensionDTO>>(playerId ? `/suspensions?playerId=${playerId}&status=active&limit=10` : null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"general" | "actividad">("general");
+
+  useEffect(() => setTab("general"), [playerId]);
 
   const data = player.data?._id === playerId ? player.data : null;
   const registration = data?.registrations.find((item) => item.status !== "inactive") ?? null;
   const missingData = data ? !data.documentId || !data.birthDate : false;
+  const age = ageFromBirthYear(data?.birthDate);
   const canOpenProfile = canAccess(role, "/players/x");
 
   const changed = () => {
@@ -120,6 +125,18 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
             ))}
 
             {manage && (
+              <div className="tabs-line" role="tablist" aria-label="Secciones de la ficha">
+                {([["general", "General"], ["actividad", "Actividades"]] as const).map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={tab === id} className={`tab-line${tab === id ? " active" : ""}`} onClick={() => setTab(id)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {manage && tab === "general" && (
+              <>
+            {manage && (
               <div className="player-quick-actions">
                 <button type="button" className="player-quick-action primary" onClick={() => setDialog("photo")}>
                   <Camera size={22} aria-hidden /> Imagen del perfil
@@ -141,6 +158,7 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
               <dl className="stack-sm" style={{ margin: 0 }}>
                 <InfoRow label="Documento" value={data.documentId} pending={manage} />
                 <InfoRow label="Fecha de nacimiento" value={data.birthDate ? formatDate(data.birthDate) : undefined} pending={manage} />
+                <InfoRow label="Edad" value={age != null ? `${age} años` : undefined} />
                 <InfoRow
                   label="Identificador"
                   value={data.publicId}
@@ -155,6 +173,10 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
                 <InfoRow label="Posición" value={registration?.position ?? undefined} />
               </dl>
             </section>
+              </>
+            )}
+
+            {(!manage || tab === "actividad") && <PlayerMatchHistory playerId={data._id} />}
 
             {canOpenProfile && (
               <Link href={`/players/${data._id}`} className="btn secondary" onClick={onClose}>

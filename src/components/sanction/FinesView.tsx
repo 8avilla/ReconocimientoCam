@@ -129,9 +129,9 @@ export function FinesView({
         )}
       </div>
 
-      <div className="tabs-line" role="tablist" aria-label="Estado de las multas" style={{ marginBottom: "var(--space-md)" }}>
+      <div className="filter-chips" role="tablist" aria-label="Estado de las multas">
         {FILTERS.map((filter) => (
-          <button key={filter.id} role="tab" aria-selected={status === filter.id} className={`tab-line${status === filter.id ? " active" : ""}`} onClick={() => changeStatus(filter.id)}>
+          <button key={filter.id} role="tab" aria-selected={status === filter.id} className={`filter-chip${status === filter.id ? " active" : ""}`} onClick={() => changeStatus(filter.id)}>
             {filter.label} ({countFor(filter.id)})
           </button>
         ))}

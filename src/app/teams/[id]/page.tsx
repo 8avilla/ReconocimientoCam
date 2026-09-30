@@ -24,8 +24,8 @@ import type { RosterEntryDTO, TeamDTO } from "@/types/api";
 type TeamTab = "results" | "fixtures" | "stats" | "roster";
 const TABS: { id: TeamTab; label: string }[] = [
   { id: "roster", label: "Plantilla" },
-  { id: "results", label: "Resultados de partidos" },
-  { id: "fixtures", label: "Próximos Partidos" },
+  { id: "results", label: "Resultados" },
+  { id: "fixtures", label: "Próximos" },
   { id: "stats", label: "Estadísticas" },
 ];
 
@@ -146,9 +146,9 @@ export default function TeamDetailPage() {
       {tab === "stats" && <TeamStatsTab teamId={id} championshipId={current.championshipId} />}
       {tab === "roster" && (
         <>
-          <div className="tabs-line" role="tablist" aria-label="Tipo de plantilla">
+          <div className="filter-chips" role="tablist" aria-label="Tipo de plantilla">
             {ROSTER_SUB_TABS.map((item) => (
-              <button key={item.id} role="tab" aria-selected={rosterTab === item.id} className={`tab-line${rosterTab === item.id ? " active" : ""}`} onClick={() => setRosterTab(item.id)}>
+              <button key={item.id} role="tab" aria-selected={rosterTab === item.id} className={`filter-chip${rosterTab === item.id ? " active" : ""}`} onClick={() => setRosterTab(item.id)}>
                 {item.label}
               </button>
             ))}

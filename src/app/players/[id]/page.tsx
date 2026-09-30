@@ -17,15 +17,14 @@ import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
-import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
+import { ageFromBirthYear, formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerStatsSummaryDTO, SuspensionDTO } from "@/types/api";
 
 
 type Dialog = "edit" | "photo" | "face" | "removeFace" | "delete" | null;
-type Tab = "perfil" | "rostro" | "actividad";
+type Tab = "general" | "actividad";
 const TABS: { id: Tab; label: string }[] = [
-  { id: "perfil", label: "Perfil" },
-  { id: "rostro", label: "Imágenes" },
+  { id: "general", label: "General" },
   { id: "actividad", label: "Actividad" },
 ];
 
@@ -38,7 +37,7 @@ export default function PlayerProfilePage() {
   const { can } = useRole();
   const canSeeCarnet = can("player.manage");
   const card = useFetch<PlayerCardDTO>(canSeeCarnet ? `/players/${id}/card` : null);
-  const [tab, setTab] = useStoredState<Tab>("super-torneos:player:tab", "perfil", (value) => TABS.some((item) => item.id === value));
+  const [tab, setTab] = useStoredState<Tab>("super-torneos:player:tab", "general", (value) => TABS.some((item) => item.id === value));
   const liveChampionshipId = player.data?.registrations.find((registration) => registration.status !== "inactive")?.championshipId?._id;
   useSyncChampionship(liveChampionshipId);
   const stats = useFetch<PlayerStatsSummaryDTO>(`/players/${id}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}`);
@@ -145,84 +144,37 @@ export default function PlayerProfilePage() {
         ))}
       </div>
 
-      {tab === "perfil" && (
-        <div className="form-grid player-carnet" style={{ alignItems: "start" }}>
-          {/* Player Hero Summary Card */}
-          <section className="player-hero-card" aria-label="Resumen del jugador">
-            <div className="player-hero-cover">
-              <div className="player-hero-cover-accent" />
-            </div>
-
-            <div className="player-hero-body">
-              {/* Avatar with touch photo trigger */}
-              <div className="player-avatar-touchable">
-                <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={130} square />
-                {can("player.manage") && (
-                  <button
-                    className="player-avatar-camera-btn"
-                    title="Cambiar imagen del perfil"
-                    aria-label="Cambiar imagen del perfil"
-                    onClick={() => setDialog("photo")}
-                  >
-                    <Camera size={18} />
-                  </button>
-                )}
-              </div>
-
+      {tab === "general" && (
+        <div className="stack">
+          <section className="card row" style={{ gap: "var(--space-lg)", alignItems: "center" }} aria-label="Resumen del jugador">
+            <div className="player-avatar-touchable">
+              <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={88} square />
               {can("player.manage") && (
-                <div className="row-wrap" style={{ justifyContent: "center", marginTop: "var(--space-sm)" }}>
-                  <Button variant="ghost" size="small" icon={<Camera size={14} />} onClick={() => setDialog("photo")}>
-                    Cambiar imagen
-                  </Button>
-                </div>
+                <button className="player-avatar-camera-btn" title="Cambiar imagen del perfil" aria-label="Cambiar imagen del perfil" onClick={() => setDialog("photo")}>
+                  <Camera size={18} />
+                </button>
               )}
-
-              <div className="row-wrap" style={{ justifyContent: "center", gap: "var(--space-xs)", marginTop: "var(--space-md)" }}>
-                {liveRegistration && <RegistrationBadge status={liveRegistration.status} />}
-                {liveRegistration?.shirtNumber != null && (
-                  <span className="number-badge-hero">#{liveRegistration.shirtNumber}</span>
-                )}
-              </div>
-
-              <h2 style={{ marginTop: "var(--space-xs)", fontSize: 22 }}>{current.fullName}</h2>
-
+            </div>
+            <div className="stack-xs grow" style={{ minWidth: 0 }}>
+              <h2 className="truncate" style={{ fontSize: 20, margin: 0 }}>{current.fullName}</h2>
               {liveRegistration?.teamId && (
-                <div className="row" style={{ justifyContent: "center", marginTop: 4 }}>
+                <div className="row" style={{ gap: 6 }}>
                   <Avatar src={liveRegistration.teamId.shieldUrl} name={liveRegistration.teamId.name} size={20} square />
-                  <span className="text-secondary" style={{ fontWeight: 700 }}>{liveRegistration.teamId.name}</span>
-                  {liveRegistration.position && (
-                    <span className="text-secondary">· {liveRegistration.position}</span>
-                  )}
+                  <span className="text-secondary truncate" style={{ fontWeight: 700 }}>
+                    {liveRegistration.teamId.name}{liveRegistration.position ? ` · ${liveRegistration.position}` : ""}
+                  </span>
                 </div>
               )}
-
-              {/* Biometric Status Callout inside summary */}
-              {current.hasFace ? (
-                <div className="face-alert-callout success">
-                  <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
-                  <div>
-                    <strong>Rostro biométrico registrado</strong>
-                    <div className="text-small" style={{ opacity: 0.85 }}>Listo para verificación automática en cancha</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="face-alert-callout">
-                  <ScanFace size={20} style={{ flexShrink: 0 }} />
-                  <div className="grow">
-                    <strong>Sin registro de rostro</strong>
-                    <div className="text-small">Requerido para la toma de asistencia</div>
-                  </div>
-                  {can("player.manage") && (
-                    <Button size="small" icon={<Camera size={14} />} onClick={() => setDialog("face")}>
-                      Enrolar
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
+                {liveRegistration && <RegistrationBadge status={liveRegistration.status} />}
+                {liveRegistration?.shirtNumber != null && <span className="number-badge-hero">#{liveRegistration.shirtNumber}</span>}
+                <FaceBadge hasFace={current.hasFace} />
+              </div>
             </div>
           </section>
 
-          <div className="stack" style={{ gap: "var(--space-2xl)" }}>
+          <div className="form-grid two" style={{ alignItems: "start" }}>
+          <div className="stack">
             <section className="card stack">
               <div className="row-between">
                 <h3>Datos personales</h3>
@@ -240,6 +192,7 @@ export default function PlayerProfilePage() {
               <dl className="stack-sm">
                 <Row label="Documento" value={current.documentId || "—"} pending={!current.documentId && can("player.manage")} />
                 <Row label="Fecha de nacimiento" value={formatDate(current.birthDate)} pending={!current.birthDate && can("player.manage")} />
+                <Row label="Edad" value={ageFromBirthYear(current.birthDate) != null ? `${ageFromBirthYear(current.birthDate)} años` : "—"} />
                 <Row label="Identificador" value={current.publicId} action={<button className="icon-button" aria-label="Copiar identificador" onClick={copyIdentifier}><Copy size={14} /></button>} />
               </dl>
               {missingData && can("player.manage") && (
@@ -276,58 +229,37 @@ export default function PlayerProfilePage() {
                 <Loading />
               )}
             </section>
-          </div>
-        </div>
-      )}
 
-      {tab === "rostro" && (
-        <div className="stack" style={{ gap: "var(--space-2xl)" }}>
-          <section className="card stack">
-            <div className="row-between">
-              <h3>Imagen del perfil</h3>
-              {!current.photoUrl && <Badge tone="warning">Falta</Badge>}
-            </div>
-            <div className="row" style={{ gap: "var(--space-md)", alignItems: "flex-start" }}>
-              <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={112} square />
-              <div className="stack-sm grow">
-                <p className="text-secondary" style={{ margin: 0 }}>
-                  Es la imagen que se ve en listas, alineaciones y en el carnet. Es una sola para todo.
+          </div>
+          <div className="stack">
+            <section className="card stack">
+              <div className="row-between">
+                <h3>Verificación facial</h3>
+                <FaceBadge hasFace={current.hasFace} />
+              </div>
+              <div className="row">
+                {current.hasFace && <Avatar src={current.facePhotoUrl || current.photoUrl} name={current.fullName} size={56} />}
+                <p className="text-secondary grow">
+                  {current.hasFace
+                    ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}. Solo se usa para verificar su identidad en los partidos; no cambia la imagen del perfil.`
+                    : "Registra la identidad facial del jugador para poder verificar su identidad en los partidos. Es independiente de la imagen del perfil."}
                 </p>
-                {can("player.manage") && (
-                  <Button variant="secondary" icon={<Camera size={18} />} onClick={() => setDialog("photo")} style={{ alignSelf: "flex-start" }}>
-                    {current.photoUrl ? "Cambiar imagen" : "Agregar imagen"}
+              </div>
+              {can("player.manage") && <div className="row-wrap">
+                <Button icon={<Camera size={18} />} onClick={() => setDialog("face")}>
+                  {current.hasFace ? "Actualizar identidad facial" : "Registrar identidad facial"}
+                </Button>
+                {current.hasFace && (
+                  <Button variant="secondary" icon={<ShieldOff size={18} />} onClick={() => setDialog("removeFace")}>
+                    Eliminar datos biométricos
                   </Button>
                 )}
-              </div>
-            </div>
-          </section>
+              </div>}
+            </section>
+          </div>
+        </div>
 
-          <section className="card stack">
-            <div className="row-between">
-              <h3>Verificación facial</h3>
-              <FaceBadge hasFace={current.hasFace} />
-            </div>
-            <div className="row">
-              {current.hasFace && <Avatar src={current.facePhotoUrl || current.photoUrl} name={current.fullName} size={56} />}
-              <p className="text-secondary grow">
-                {current.hasFace
-                  ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}. Solo se usa para verificar su identidad en los partidos; no cambia la imagen del perfil.`
-                  : "Registra la identidad facial del jugador para poder verificar su identidad en los partidos. Es independiente de la imagen del perfil."}
-              </p>
-            </div>
-            {can("player.manage") && <div className="row-wrap">
-              <Button icon={<Camera size={18} />} onClick={() => setDialog("face")}>
-                {current.hasFace ? "Actualizar identidad facial" : "Registrar identidad facial"}
-              </Button>
-              {current.hasFace && (
-                <Button variant="secondary" icon={<ShieldOff size={18} />} onClick={() => setDialog("removeFace")}>
-                  Eliminar datos biométricos
-                </Button>
-              )}
-            </div>}
-          </section>
-
-          <PlayerPhotoGallery playerId={id} photos={current.photos ?? []} currentPhotoUrl={current.photoUrl} canManage={can("player.manage")} onChanged={reloadAll} />
+        <PlayerPhotoGallery playerId={id} photos={current.photos ?? []} currentPhotoUrl={current.photoUrl} canManage={can("player.manage")} onChanged={reloadAll} />
         </div>
       )}
 

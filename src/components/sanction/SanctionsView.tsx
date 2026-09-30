@@ -98,9 +98,9 @@ function Sanctions({ championshipId }: { championshipId: string }) {
       ) : (
         <>
           <div className="row-wrap" style={{ gap: "var(--space-md)", marginBottom: "var(--space-md)", alignItems: "center" }}>
-            <div className="tabs-line grow" role="tablist" aria-label="Filtrar sanciones" style={{ marginBottom: 0 }}>
+            <div className="filter-chips grow" role="tablist" aria-label="Filtrar sanciones" style={{ marginBottom: 0 }}>
               {FILTERS.map((filter) => (
-                <button key={filter.id} role="tab" aria-selected={status === filter.id} className={`tab-line${status === filter.id ? " active" : ""}`} onClick={() => setStatus(filter.id)}>
+                <button key={filter.id} role="tab" aria-selected={status === filter.id} className={`filter-chip${status === filter.id ? " active" : ""}`} onClick={() => setStatus(filter.id)}>
                   {filter.label}
                 </button>
               ))}

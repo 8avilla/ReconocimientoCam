@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,7 @@ import { Avatar, Badge, EmptyState, Modal } from "@/components/ui";
 import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/paths";
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
+import { trackView } from "@/lib/client/usage";
 import { useChampionship } from "./ChampionshipContext";
 import { PlayerSheetProvider } from "@/components/player/PlayerSheetContext";
 import { GlobalSearch } from "./GlobalSearch";
@@ -32,15 +33,16 @@ interface NavItem {
   description?: string;
 }
 
-/** Sections of one championship, in the order they appear. */
-function championshipItems(id: string): NavItem[] {
+/** Sections of one championship, in the order they appear. Whoever organizes it gets Jugadores in the phone bar
+ * (where they work) in place of Clasificación, which stays one tap away under "Más". */
+function championshipItems(id: string, organizing: boolean): NavItem[] {
   return [
     { href: championshipPath(id), label: "Resumen", icon: Home, primary: true },
     { href: championshipPath(id, "partidos"), label: "Partidos", icon: CalendarDays, alsoActiveFor: ["/matches/"], primary: true },
-    { href: championshipPath(id, "clasificacion"), label: "Clasificación", icon: ChartColumn, primary: true },
+    { href: championshipPath(id, "clasificacion"), label: "Clasificación", icon: ChartColumn, primary: !organizing, description: "Tabla de posiciones y estadísticas" },
     { href: championshipPath(id, "equipos"), label: "Equipos", icon: Shield, alsoActiveFor: ["/teams/"], primary: true },
-    { href: championshipPath(id, "jugadores"), label: "Jugadores", icon: Users, alsoActiveFor: ["/players/"], description: "Gestiona los jugadores del torneo" },
-    { href: championshipPath(id, "sanciones"), label: "Sanciones", icon: Gavel, description: "Multas y suspensiones" },
+    { href: championshipPath(id, "jugadores"), label: "Jugadores", icon: Users, alsoActiveFor: ["/players/"], primary: organizing, description: "Gestiona los jugadores del torneo" },
+    { href: championshipPath(id, "sanciones"), label: "Sanciones", icon: Gavel, description: "Multas, cuotas y suspensiones" },
     { href: championshipPath(id, "gestionar"), label: "Configuración", icon: SlidersHorizontal, alsoActiveFor: ["/phases/"], description: "Ajusta las reglas, fases, sitios y más" },
   ];
 }
@@ -59,6 +61,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const { role, user, isSignedIn, canManageChampionship } = useRole();
   const { current, championships, favoriteIds } = useChampionship();
+  useEffect(() => trackView(pathname), [pathname]);
 
   // The switcher offers the championships the user organizes or follows (plus the one open now); "Ver todos" has the rest.
   const switcherItems = championships.filter((item) => item._id === current?._id || favoriteIds.has(item._id) || (isSignedIn && canManageChampionship(item)));
@@ -68,8 +71,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const scopeId = routed?.id ?? (isEntityPath(pathname) ? current?._id ?? null : null);
   const scoped = Boolean(scopeId);
 
+  const organizing = scoped && isSignedIn && current ? canManageChampionship(current) : false;
   const items: NavItem[] = scopeId
-    ? championshipItems(scopeId).filter((item) => canAccess(role, item.href))
+    ? championshipItems(scopeId, organizing).filter((item) => canAccess(role, item.href))
     : [{ href: "/", label: "Torneos", icon: Trophy, primary: true }, ...(canAccess(role, "/admin") ? [{ href: "/admin", label: "Administración", icon: Settings, primary: true }] : [])];
   const bottom = items.filter((item) => item.primary);
   const more = items.filter((item) => !item.primary);

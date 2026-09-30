@@ -21,17 +21,34 @@ interface Props {
   match: MatchDTO | null;
   onClose: () => void;
   onSaved: () => void;
+  /** When given (creating only), the form offers "Crear y agregar otro": the match is saved, this runs, and the form stays open keeping the phase, group and fecha. */
+  onCreatedAnother?: () => void;
+}
+
+interface Carry {
+  phaseId: string;
+  group: string;
+  matchdayId: string;
 }
 
 export function MatchFormModal({ open, ...props }: Props) {
+  // Each "create another" remounts the form (empty) with the phase, group and fecha of the previous one.
+  const [round, setRound] = useState(0);
+  const [carry, setCarry] = useState<Carry | undefined>(undefined);
+  const { onCreatedAnother } = props;
   return (
     <Modal open={open} title={props.match ? "Editar partido" : "Nuevo partido"} onClose={props.onClose}>
-      <MatchForm key={props.match?._id ?? "new"} {...props} />
+      <MatchForm
+        key={`${props.match?._id ?? "new"}:${round}`}
+        {...props}
+        carry={props.match ? undefined : carry}
+        onCreatedAnother={onCreatedAnother && !props.match ? (next) => { onCreatedAnother(); setCarry(next); setRound((value) => value + 1); } : undefined}
+      />
     </Modal>
   );
 }
 
-function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omit<Props, "open">) {
+function MatchForm({ championshipId, phases = [], match, carry, onClose, onSaved, onCreatedAnother }: Omit<Props, "open" | "onCreatedAnother"> & { carry?: Carry; onCreatedAnother?: (carry: Carry) => void }) {
   const toast = useToast();
   const teams = useFetch<Paginated<TeamDTO>>(match ? null : `/teams?championshipId=${championshipId}&active=true&limit=100`);
   const currentPhase = match?.phaseId && typeof match.phaseId === "object" ? match.phaseId : null;
@@ -39,8 +56,8 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
   const inKnockout = currentPhase?.type === "knockout";
   const eligiblePhases = phases.filter((item) => item.type !== "knockout");
 
-  const [phaseId, setPhaseId] = useState(currentPhase?._id ?? (eligiblePhases.length === 1 ? eligiblePhases[0]._id : ""));
-  const [group, setGroup] = useState(match?.group ?? "");
+  const [phaseId, setPhaseId] = useState(currentPhase?._id ?? carry?.phaseId ?? (eligiblePhases.length === 1 ? eligiblePhases[0]._id : ""));
+  const [group, setGroup] = useState(match?.group ?? carry?.group ?? "");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
   const [scheduledAt, setScheduledAt] = useState(toDateTimeLocal(match?.scheduledAt));
@@ -48,7 +65,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
   const [refereeId, setRefereeId] = useState(match?.refereeId?._id ?? "");
   const referees = useFetch<{ data: RefereeDTO[] }>(`/referees?championshipId=${championshipId}&active=true`);
   const venues = useFetch<{ data: VenueDTO[] }>(`/venues?championshipId=${championshipId}&active=true`);
-  const [matchdayId, setMatchdayId] = useState(match?.matchdayId?._id ?? "");
+  const [matchdayId, setMatchdayId] = useState(match?.matchdayId?._id ?? carry?.matchdayId ?? "");
   const [status, setStatus] = useState<MatchStatus>(match?.status ?? "scheduled");
   const [walkoverWinnerTeamId, setWalkoverWinnerTeamId] = useState(match?.walkoverWinnerTeamId?._id ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -88,7 +105,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
     }
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent, another = false) {
     event.preventDefault();
     setFormError("");
     const next: Record<string, string> = {};
@@ -128,7 +145,8 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
         });
       }
       toast.success(match ? "Partido actualizado" : "Partido creado correctamente");
-      onSaved();
+      if (another && onCreatedAnother) onCreatedAnother({ phaseId, group, matchdayId });
+      else onSaved();
     } catch (error) {
       if (error instanceof HttpError && Object.keys(error.fieldErrors).length > 0) setErrors(error.fieldErrors);
       else setFormError(errorMessage(error));
@@ -231,6 +249,7 @@ function MatchForm({ championshipId, phases = [], match, onClose, onSaved }: Omi
       )}
       <div className="action-bar">
         <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
+        {!match && onCreatedAnother && <Button variant="secondary" loading={saving} onClick={(event) => handleSubmit(event, true)}>Crear y agregar otro</Button>}
         <Button type="submit" loading={saving}>{match ? "Guardar cambios" : "Crear partido"}</Button>
       </div>
       <ConfirmDialog {...confirmProps} />

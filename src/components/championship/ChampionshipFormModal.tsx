@@ -13,6 +13,15 @@ interface Props {
   onSaved: (championship: ChampionshipDTO) => void;
 }
 
+/** Optional starting structure: only what is chosen here gets created, and each phase can be edited or deleted afterwards. */
+const PRESETS = {
+  none: { label: "Las armo yo después", phases: [] },
+  league: { label: "Liga: todos contra todos (una vuelta)", phases: [{ name: "Fase regular", type: "league", legs: 1 }] },
+  league2: { label: "Liga: todos contra todos (ida y vuelta)", phases: [{ name: "Fase regular", type: "league", legs: 2 }] },
+  groups: { label: "Grupos y luego eliminatoria", phases: [{ name: "Fase de grupos", type: "groups", legs: 1, groupCount: 2 }, { name: "Eliminatoria", type: "knockout", legs: 1 }] },
+} as const;
+type PresetId = keyof typeof PRESETS;
+
 interface FormValues {
   name: string;
   season: string;
@@ -44,6 +53,7 @@ function ChampionshipForm({ onClose, onSaved }: Omit<Props, "open">) {
   const toast = useToast();
   const [values, setValues] = useState<FormValues>(initialValues);
   const [logo, setLogo] = useState<string | null>(null);
+  const [preset, setPreset] = useState<PresetId>("none");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -90,6 +100,13 @@ function ChampionshipForm({ onClose, onSaved }: Omit<Props, "open">) {
           saved = { ...saved, logoUrl };
         } catch (error) {
           toast.error(`El torneo se creó, pero no se pudo subir el logo: ${errorMessage(error)}`);
+        }
+      }
+      if (PRESETS[preset].phases.length > 0) {
+        try {
+          for (const phase of PRESETS[preset].phases) await http(`/championships/${saved._id}/phases`, { json: phase });
+        } catch (error) {
+          toast.error(`El torneo se creó, pero no se pudieron crear las fases: ${errorMessage(error)}. Créalas desde Configuración.`);
         }
       }
       toast.success("Torneo creado correctamente");
@@ -143,6 +160,15 @@ function ChampionshipForm({ onClose, onSaved }: Omit<Props, "open">) {
           <option value="private">Privado (Solo con enlace directo)</option>
         </Select>
       </div>
+
+      <Select
+        label="Fases para empezar (opcional)"
+        value={preset}
+        onChange={(event) => setPreset(event.target.value as PresetId)}
+        hint={PRESETS[preset].phases.length > 0 ? `Se crea: ${PRESETS[preset].phases.map((phase) => phase.name).join(" → ")}. Luego eliges los equipos y generas el calendario; todo se puede cambiar.` : "Sin fases por ahora: las creas tú desde Configuración."}
+      >
+        {(Object.keys(PRESETS) as PresetId[]).map((id) => <option key={id} value={id}>{PRESETS[id].label}</option>)}
+      </Select>
 
       <div className="action-bar" style={{ marginTop: "var(--space-lg)" }}>
         <Button variant="secondary" onClick={onClose} disabled={saving} type="button">Cancelar</Button>

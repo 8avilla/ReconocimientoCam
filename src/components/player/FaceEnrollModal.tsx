@@ -10,17 +10,21 @@ interface Props {
   playerId: string;
   onClose: () => void;
   onSaved: () => void;
+  /** Dialog title; defaults to a generic one. */
+  title?: string;
+  /** When given, a "Saltar" button lets the caller move on without registering this player. */
+  onSkip?: () => void;
 }
 
 export function FaceEnrollModal({ open, ...props }: Props) {
   return (
-    <Modal open={open} title="Registrar identidad facial" onClose={props.onClose} wide>
+    <Modal open={open} title={props.title ?? "Registrar identidad facial"} onClose={props.onClose} wide>
       <FaceEnrollForm {...props} />
     </Modal>
   );
 }
 
-function FaceEnrollForm({ playerId, onClose, onSaved }: Omit<Props, "open">) {
+function FaceEnrollForm({ playerId, onClose, onSaved, onSkip }: Omit<Props, "open">) {
   const toast = useToast();
   const [image, setImage] = useState<CapturedFace | null>(null);
   const [saving, setSaving] = useState(false);
@@ -44,6 +48,7 @@ function FaceEnrollForm({ playerId, onClose, onSaved }: Omit<Props, "open">) {
       <FaceEnrollment image={image} onImageChange={setImage} />
       <div className="action-bar">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancelar</Button>
+        {onSkip && <Button variant="ghost" onClick={onSkip} disabled={saving}>Saltar</Button>}
         <Button size="large" onClick={handleSave} loading={saving} disabled={!image}>Guardar rostro</Button>
       </div>
     </div>

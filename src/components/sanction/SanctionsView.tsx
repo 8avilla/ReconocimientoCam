@@ -9,6 +9,7 @@ import { SuspensionFormModal } from "@/components/sanction/SuspensionFormModal";
 import { Avatar, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { useRole } from "@/components/layout/RoleContext";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { useStoredState } from "@/lib/client/useStoredState";
@@ -34,7 +35,8 @@ function Sanctions({ championshipId }: { championshipId: string }) {
   const [status, setStatus] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
   // Suspensions or fines (money); fines are only for those who manage sanctions.
-  const [storedSection, setSection] = useStoredState<"suspensions" | "fines">("super-torneos:sanctions:section", "fines", (value) => value === "suspensions" || value === "fines");
+  // Everything owed (card and manual fines, registration fees) and the suspensions, in one place.
+  const [storedSection, setSection] = useStoredState<"suspensions" | "fines" | "registration">("super-torneos:sanctions:section", "fines", (value) => value === "suspensions" || value === "fines" || value === "registration");
   const section = manage ? storedSection : "suspensions";
   const [formOpen, setFormOpen] = useState(false);
   const [fineFormOpen, setFineFormOpen] = useState(false);
@@ -75,16 +77,20 @@ function Sanctions({ championshipId }: { championshipId: string }) {
     <>
       <PageHeader
         title="Sanciones"
-        description="Suspensiones por tarjetas y decisiones del comité."
-        actions={manage && <Button icon={<Plus size={18} />} onClick={() => (section === "fines" ? setFineFormOpen(true) : setFormOpen(true))}>{section === "fines" ? "Nueva multa" : "Nueva suspensión"}</Button>}
-        mobileActions={manage ? [section === "fines" ? { label: "Nueva multa", icon: <Plus size={20} />, onClick: () => setFineFormOpen(true) } : { label: "Nueva suspensión", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }] : undefined}
+        description="Multas, cuotas de inscripción y suspensiones del torneo."
+        actions={manage && section !== "registration" && <Button icon={<Plus size={18} />} onClick={() => (section === "fines" ? setFineFormOpen(true) : setFormOpen(true))}>{section === "fines" ? "Nueva multa" : "Nueva suspensión"}</Button>}
+        mobileActions={manage && section !== "registration" ? [section === "fines" ? { label: "Nueva multa", icon: <Plus size={20} />, onClick: () => setFineFormOpen(true) } : { label: "Nueva suspensión", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }] : undefined}
       />
 
       {manage && (
         <div className="segmented" role="group" aria-label="Tipo de sanción" style={{ marginBottom: "var(--space-lg)" }}>
           <button aria-pressed={section === "fines"} className={section === "fines" ? "active" : ""} onClick={() => setSection("fines")}>
             <Banknote size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
-            Multas & Tasas
+            Multas
+          </button>
+          <button aria-pressed={section === "registration"} className={section === "registration" ? "active" : ""} onClick={() => setSection("registration")}>
+            <Banknote size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
+            Cuotas
           </button>
           <button aria-pressed={section === "suspensions"} className={section === "suspensions" ? "active" : ""} onClick={() => setSection("suspensions")}>
             <ShieldAlert size={16} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
@@ -93,7 +99,14 @@ function Sanctions({ championshipId }: { championshipId: string }) {
         </div>
       )}
 
-      {section === "fines" ? (
+      {manage && section !== "suspensions" && (
+        <p className="text-secondary text-small" style={{ marginBottom: "var(--space-md)" }}>
+          Los valores de la cuota y de las multas por tarjeta se ajustan en <Link href={championshipPath(championshipId, "gestionar", "?s=finances")} className="text-strong">Configuración → Finanzas y multas</Link>.
+        </p>
+      )}
+      {section === "registration" ? (
+        <FinesView championshipId={championshipId} type="registration" newOpen={false} onNewClose={() => undefined} />
+      ) : section === "fines" ? (
         <FinesView championshipId={championshipId} newOpen={fineFormOpen} onNewClose={() => setFineFormOpen(false)} />
       ) : (
         <>
@@ -188,6 +201,7 @@ function Sanctions({ championshipId }: { championshipId: string }) {
         open={formOpen}
         championshipId={championshipId}
         onClose={() => setFormOpen(false)}
+        onCreatedAnother={reload}
         onSaved={() => {
           setFormOpen(false);
           reload();

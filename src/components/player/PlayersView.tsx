@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, LayoutGrid, List, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
+import { ChevronRight, LayoutGrid, List, Plus, ScanFace, Search, UserRound, Users, ListPlus } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
+import { PlayersBulkModal } from "@/components/player/PlayersBulkModal";
 import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
-import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
+import { useStoredState } from "@/lib/client/useStoredState";
+import { newPlayerPath } from "@/lib/paths";
+import type { Paginated, PlayerDTO, PlayerListDTO, TeamDTO } from "@/types/api";
 
 const PAGE_SIZE = 25;
 type FilterMode = "all" | "no_face" | "has_face" | "incomplete";
@@ -26,8 +29,9 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const [teamId, setTeamId] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [pages, setPages] = useState(1);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useStoredState<"list" | "grid">("super-torneos:view:players", "list", (value) => value === "list" || value === "grid");
   const openPlayer = useOpenPlayer();
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -38,30 +42,28 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const params = new URLSearchParams({ championshipId, limit: String(PAGE_SIZE * pages) });
   if (debouncedSearch) params.set("q", debouncedSearch);
   if (teamId) params.set("teamId", teamId);
-  const { data, error, loading, reload } = useFetch<Paginated<PlayerDTO>>(`/players?${params}`);
+  if (filterMode !== "all") params.set("filter", filterMode);
+  const { data, error, loading, reload } = useFetch<PlayerListDTO>(`/players?${params}`);
 
   const players = data?.data ?? [];
   const hasMore = data ? data.data.length < data.meta.total : false;
   const filtered = Boolean(debouncedSearch || teamId || filterMode !== "all");
 
-  const withFaceCount = players.filter((p) => p.hasFace).length;
-  const noFaceCount = players.filter((p) => !p.hasFace).length;
-  const incompleteCount = players.filter((p) => !p.documentId || !p.birthDate).length;
-
-  const displayedPlayers = players.filter((player) => {
-    if (filterMode === "no_face") return !player.hasFace;
-    if (filterMode === "has_face") return player.hasFace;
-    if (filterMode === "incomplete") return !player.documentId || !player.birthDate;
-    return true;
-  });
+  const counts = data?.counts;
+  const displayedPlayers = players;
 
   return (
     <>
       <PageHeader
         title="Jugadores"
         description="Identidad, foto y estado de los jugadores del torneo."
-        actions={manage && <Link href="/players/new" className="btn primary"><Plus size={18} aria-hidden /> Nuevo jugador</Link>}
-        mobileActions={manage ? [{ label: "Nuevo jugador", icon: <Plus size={20} />, href: "/players/new" }] : undefined}
+        actions={manage && (
+          <>
+            <Button variant="secondary" icon={<ListPlus size={18} />} onClick={() => setBulkOpen(true)}>Agregar varios</Button>
+            <Link href={newPlayerPath(championshipId)} className="btn primary"><Plus size={18} aria-hidden /> Nuevo jugador</Link>
+          </>
+        )}
+        mobileActions={manage ? [{ label: "Nuevo jugador", icon: <Plus size={20} />, href: newPlayerPath(championshipId) }, { label: "Agregar varios jugadores", icon: <ListPlus size={20} />, onClick: () => setBulkOpen(true) }] : undefined}
       />
 
       {/* Search & Team Select Bar */}
@@ -83,19 +85,19 @@ function PlayersList({ championshipId }: { championshipId: string }) {
       </div>
 
       {/* Quick Filter Chips */}
-      {players.length > 0 && (
+      {(players.length > 0 || filterMode !== "all") && (
         <div className="filter-chips" style={{ marginBottom: "var(--space-lg)" }}>
-          <button className={`filter-chip${filterMode === "all" ? " active" : ""}`} onClick={() => setFilterMode("all")}>
-            Todos <span className="filter-chip-badge">{players.length}</span>
+          <button className={`filter-chip${filterMode === "all" ? " active" : ""}`} onClick={() => { setFilterMode("all"); setPages(1); }}>
+            Todos <span className="filter-chip-badge">{counts?.all ?? "…"}</span>
           </button>
-          <button className={`filter-chip${filterMode === "no_face" ? " active" : ""}`} onClick={() => setFilterMode("no_face")}>
-            ⚠️ Sin Rostro <span className="filter-chip-badge">{noFaceCount}</span>
+          <button className={`filter-chip${filterMode === "no_face" ? " active" : ""}`} onClick={() => { setFilterMode("no_face"); setPages(1); }}>
+            ⚠️ Sin Rostro <span className="filter-chip-badge">{counts?.noFace ?? "…"}</span>
           </button>
-          <button className={`filter-chip${filterMode === "has_face" ? " active" : ""}`} onClick={() => setFilterMode("has_face")}>
-            ✅ Con Rostro <span className="filter-chip-badge">{withFaceCount}</span>
+          <button className={`filter-chip${filterMode === "has_face" ? " active" : ""}`} onClick={() => { setFilterMode("has_face"); setPages(1); }}>
+            ✅ Con Rostro <span className="filter-chip-badge">{counts?.hasFace ?? "…"}</span>
           </button>
-          <button className={`filter-chip${filterMode === "incomplete" ? " active" : ""}`} onClick={() => setFilterMode("incomplete")}>
-            ⚠️ Datos Incompletos <span className="filter-chip-badge">{incompleteCount}</span>
+          <button className={`filter-chip${filterMode === "incomplete" ? " active" : ""}`} onClick={() => { setFilterMode("incomplete"); setPages(1); }}>
+            ⚠️ Datos Incompletos <span className="filter-chip-badge">{counts?.incomplete ?? "…"}</span>
           </button>
         </div>
       )}
@@ -110,7 +112,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             icon={<Users size={28} />}
             title={filtered ? "Sin resultados" : "Aún no hay jugadores"}
             description={filtered ? "Prueba cambiando la búsqueda o los filtros." : "Registra el primer jugador de este torneo."}
-            action={manage && !filtered && <Link href="/players/new" className="btn primary">Registrar jugador</Link>}
+            action={manage && !filtered && <Link href={newPlayerPath(championshipId)} className="btn primary">Registrar jugador</Link>}
           />
         </div>
       ) : (
@@ -125,7 +127,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
           </div>
           <div className="flush-list">
             <h2 className="band band-muted band-small">
-              Jugadores ({displayedPlayers.length} {filterMode !== "all" ? `de ${players.length}` : ""})
+              Jugadores ({data?.meta.total ?? displayedPlayers.length}{filterMode !== "all" && counts ? ` de ${counts.all}` : ""})
             </h2>
             {viewMode === "grid" ? (
               <div className="roster-card-grid">
@@ -178,6 +180,16 @@ function PlayersList({ championshipId }: { championshipId: string }) {
           )}
         </>
       )}
+      <PlayersBulkModal
+        open={bulkOpen}
+        championshipId={championshipId}
+        teamId={teamId}
+        onClose={() => setBulkOpen(false)}
+        onCreated={() => {
+          setBulkOpen(false);
+          reload();
+        }}
+      />
     </>
   );
 }

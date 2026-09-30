@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { LayoutGrid, List, Users } from "lucide-react";
 import { FaceBadge } from "@/components/player/PlayerBadges";
+import { FaceQueue } from "@/components/player/FaceQueue";
 import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
+import { useStoredState } from "@/lib/client/useStoredState";
 import { REGISTRATION_STATUS_LABEL } from "@/lib/labels";
 import type { RosterEntryDTO } from "@/types/api";
 
@@ -18,13 +20,17 @@ interface Props {
   onRetry: () => void;
   /** Whether the viewer may register new players (shows the "Agregar jugador" shortcut when the squad is empty). */
   canAddPlayer?: boolean;
+  /** Where "Agregar jugador" goes (the registration wizard with this team chosen). */
+  newPlayerHref?: string;
+  /** Opens the "add several players" sheet; shown next to the single-player shortcut when the squad is empty. */
+  onBulk?: () => void;
   /** Called after the player sheet changed something, so the roster can refresh. */
   onChanged?: () => void;
 }
 
 /** Squad grouped by position: photo with the shirt number, name, face registration and registration status. */
-export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAddPlayer, onChanged }: Props) {
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+export function TeamRosterTab({ entries, loading, error, onRetry, canAddPlayer, newPlayerHref, onBulk, onChanged }: Props) {
+  const [viewMode, setViewMode] = useStoredState<"list" | "grid">("super-torneos:view:roster", "list", (value) => value === "list" || value === "grid");
   const openPlayer = useOpenPlayer();
 
   if (error) return <ErrorState message={error.message} onRetry={onRetry} />;
@@ -36,7 +42,12 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAdd
           icon={<Users size={28} />}
           title="Este equipo aún no tiene jugadores"
           description="Registra jugadores para armar la plantilla."
-          action={canAddPlayer && <Link href={`/players/new?teamId=${teamId}`} className="btn primary">Agregar jugador</Link>}
+          action={canAddPlayer && newPlayerHref && (
+            <div className="row-wrap" style={{ justifyContent: "center" }}>
+              <Link href={newPlayerHref} className="btn primary">Agregar jugador</Link>
+              {onBulk && <button className="btn secondary" onClick={onBulk}>Agregar varios</button>}
+            </div>
+          )}
         />
       </div>
     );
@@ -50,6 +61,12 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAdd
 
   return (
     <div className="stack" style={{ gap: 0 }}>
+      {canAddPlayer && (
+        <FaceQueue
+          players={entries.filter((entry) => entry.status === "active" && !entry.playerId.hasFace).map((entry) => ({ _id: entry.playerId._id, fullName: entry.playerId.fullName }))}
+          onChanged={() => onChanged?.()}
+        />
+      )}
       {/* Roster View Toggle Bar */}
       <div className="view-toggle-bar">
         <button

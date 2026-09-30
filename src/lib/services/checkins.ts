@@ -84,6 +84,71 @@ export async function registerCheckIn(actor: Actor, matchId: string, input: Regi
   return checkIn;
 }
 
+export interface BulkCheckInInput {
+  status: "present" | "absent" | "pending";
+  playerIds?: string[];
+  teamId?: string;
+}
+
+/**
+ * Manual attendance for many players in one go, with no per-player reason: "mark the whole squad present"
+ * (only those still pending) or set/undo the state of specific players. Players whose registration is not
+ * active (suspended, etc.) are never marked present. Returns the players that changed.
+ */
+export async function registerBulkCheckIn(actor: Actor, matchId: string, input: BulkCheckInInput) {
+  await syncMatchCallUps(matchId);
+  const match = await Match.findById(matchId).lean();
+  if (!match) throw notFound("Partido no encontrado");
+  await requireOrganizerOfChampionship(actor, match.championshipId);
+  if (match.status !== "scheduled" && match.status !== "live") {
+    throw conflict("El partido no admite registro de asistencia", "match_not_open");
+  }
+
+  const scope = input.playerIds
+    ? { playerId: { $in: input.playerIds } }
+    : { teamId: input.teamId, status: "pending" as const };
+  let rows = await PlayerCheckIn.find({ matchId: match._id, ...scope });
+
+  if (input.status === "present") {
+    const callUps = await MatchCallUp.find({ _id: { $in: rows.map((row) => row.callUpId) } })
+      .populate({ path: "registrationId", select: "status" })
+      .lean();
+    const active = new Set(
+      callUps.filter((callUp) => (callUp.registrationId as unknown as { status?: string } | null)?.status === "active").map((callUp) => callUp._id.toString())
+    );
+    rows = rows.filter((row) => active.has(row.callUpId.toString()));
+  }
+
+  const now = new Date();
+  for (const row of rows) {
+    if (input.status === "pending") {
+      row.set({ status: "pending", method: undefined, checkedInAt: undefined, manualReason: undefined, operatorName: actor.name, operatorUserId: actor.userId });
+    } else {
+      row.set({
+        status: input.status,
+        method: "manual",
+        checkedInAt: now,
+        manualReason: input.status === "present" && !input.playerIds ? "Marcado en bloque" : undefined,
+        operatorName: actor.name,
+        operatorUserId: actor.userId,
+      });
+    }
+    await row.save();
+  }
+
+  if (rows.length > 0) {
+    await recordAudit(actor, {
+      action: "check_in",
+      entityType: "check_in",
+      entityId: rows[0]._id,
+      championshipId: match.championshipId,
+      summary: `Asistencia ${input.status === "present" ? "presente" : input.status === "absent" ? "ausente" : "pendiente"} (manual) para ${rows.length} jugador(es)`,
+      changes: { matchId, playerIds: rows.map((row) => row.playerId.toString()), bulk: !input.playerIds },
+    });
+  }
+  return { updated: rows.map((row) => row.playerId.toString()) };
+}
+
 export async function getAttendance(matchId: string) {
   await syncMatchCallUps(matchId);
   const [checkIns, callUps] = await Promise.all([

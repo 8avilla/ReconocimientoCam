@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowLeftRight, Ellipsis, Search } from "lucide-react";
 import { Avatar, Button, useToast } from "@/components/ui";
+import { useIsMobile } from "@/lib/client/useMediaQuery";
 import type { MatchEventType } from "@/lib/constants";
 import { errorMessage, http } from "@/lib/client/http";
 import { EVENT_TYPE_LABEL, MATCH_PERIOD_LABEL, SUSPENSION_REASON_LABEL } from "@/lib/labels";
@@ -36,6 +37,9 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // On a phone two squads stacked make a very long page: one team at a time, switched from tabs.
+  const isMobile = useIsMobile();
+  const [teamId, setTeamId] = useState(match.homeTeamId._id);
   // Long press on a counter takes one event away; the click that follows a long press must not add one back.
   const press = useRef<{ timer: ReturnType<typeof setTimeout> | null; fired: boolean }>({ timer: null, fired: false });
   const [now, setNow] = useState(() => Date.now());
@@ -187,8 +191,20 @@ export function MatchRoster({ match, events, players, sentOff, onChanged, onOthe
         <input className="input" type="search" placeholder="Buscar jugador por nombre o número..." aria-label="Buscar jugador" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
+      {isMobile && (
+        <div className="team-tabs" role="tablist" aria-label="Equipo">
+          {teams.map((team) => (
+            <button key={team._id} role="tab" aria-selected={teamId === team._id} className={`team-tab${teamId === team._id ? " active" : ""}`} onClick={() => setTeamId(team._id)}>
+              <Avatar src={team.shieldUrl} name={team.name} size={32} square />
+              <span className="team-tab-name">{team.name}</span>
+              <span className="team-tab-count">{score[team._id]} goles</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="form-grid two" style={{ alignItems: "start" }}>
-        {teams.map((team) => {
+        {teams.filter((team) => !isMobile || team._id === teamId).map((team) => {
           const squad = players.filter((player) => player.teamId === team._id && (!term || player.fullName.toLowerCase().includes(term) || String(player.shirtNumber ?? "") === term)).sort((a, b) => (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
           return (
             <div key={team._id} className="flush-list">

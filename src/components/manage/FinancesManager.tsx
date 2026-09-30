@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { Button, ConfirmDialog, Input, useToast } from "@/components/ui";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
+import { championshipPath } from "@/lib/paths";
 import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
 import type { ChampionshipDTO } from "@/types/api";
 
@@ -67,6 +69,10 @@ export function FinancesManager({ championshipId }: { championshipId: string }) 
   return (
     <form onSubmit={handleSubmit} className="stack" style={{ gap: "var(--space-lg)" }} noValidate>
       {formError && <div className="alert error" role="alert"><AlertCircle size={18} /> {formError}</div>}
+
+      <p className="text-secondary text-small">
+        Aquí defines los valores. Lo que cada equipo debe y lo que ha pagado se ve en <Link href={championshipPath(championshipId, "sanciones")} className="text-strong">Sanciones → Multas y Cuotas</Link>.
+      </p>
 
       <section className="card stack-sm" style={{ background: "var(--color-background)" }}>
         <h3>Cuota de inscripción por equipo</h3>

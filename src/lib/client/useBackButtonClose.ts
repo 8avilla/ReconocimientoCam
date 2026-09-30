@@ -40,6 +40,16 @@ function onPopState(event: PopStateEvent) {
   }
 }
 
+/**
+ * Call right before a `router.push/replace` that happens while an overlay closes (e.g. "delete, then go back to the
+ * list"). A router navigation only changes the address once the new page is ready, which can take longer than the
+ * grace period below; without this the closing overlay would hand its history entry back in the meantime and the
+ * browser would restore the old address, undoing the navigation.
+ */
+export function noteNavigation() {
+  lastLinkClickAt = Date.now();
+}
+
 function watchLinkClicks() {
   document.addEventListener("click", (event) => {
     if ((event.target as Element | null)?.closest?.("a[href]")) lastLinkClickAt = Date.now();
@@ -65,7 +75,8 @@ export function useBackButtonClose(open: boolean, onClose: () => void): () => vo
     entryRef.current = entry;
     window.history.pushState({ modal: true }, "");
     stack.push(entry);
-    const pathAtOpen = window.location.pathname;
+    // The query counts too: a search-only navigation (`router.replace("?s=phases")`) must not be undone either.
+    const addressAtOpen = window.location.pathname + window.location.search;
     return () => {
       entryRef.current = null;
       const index = stack.indexOf(entry);
@@ -73,7 +84,7 @@ export function useBackButtonClose(open: boolean, onClose: () => void): () => vo
       stack.splice(index, 1);
       // Closed from the outside: give the entry back once things settle, unless the page is navigating.
       setTimeout(() => {
-        const navigating = Date.now() - lastLinkClickAt < 2000 || window.location.pathname !== pathAtOpen;
+        const navigating = Date.now() - lastLinkClickAt < 2000 || window.location.pathname + window.location.search !== addressAtOpen;
         if (stack.length === 0 && !navigating && window.history.state?.modal) skipBack();
       }, 400);
     };

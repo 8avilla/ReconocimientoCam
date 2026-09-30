@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, LayoutGrid, List, Plus, Search, Shield, Star } from "lucide-react";
+import { ChevronRight, LayoutGrid, List, Plus, Search, Shield, Star, ListPlus } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
-import { FinesView } from "@/components/sanction/FinesView";
+import { TeamsBulkModal } from "@/components/team/TeamsBulkModal";
 import { TeamFormModal } from "@/components/team/TeamFormModal";
 import { Avatar, Badge, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
@@ -22,11 +22,10 @@ function TeamsList({ championshipId }: { championshipId: string }) {
   const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);
   const { can } = useRole();
   const manage = can("team.manage");
-  const [storedSection, setSection] = useStoredState<"teams" | "fees">("super-torneos:teams:section", "teams", (value) => value === "teams" || value === "fees");
-  const section = manage ? storedSection : "teams";
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [viewMode, setViewMode] = useStoredState<"list" | "grid">("super-torneos:view:teams", "list", (value) => value === "list" || value === "grid");
 
   const teams = (data?.data ?? []).filter((team) => team.name.toLowerCase().includes(search.trim().toLowerCase()));
 
@@ -91,21 +90,15 @@ function TeamsList({ championshipId }: { championshipId: string }) {
       <PageHeader
         title="Equipos"
         description="Gestiona los equipos del torneo."
-        actions={manage && section === "teams" && <Button icon={<Plus size={18} />} onClick={() => setFormOpen(true)}>Nuevo equipo</Button>}
-        mobileActions={manage && section === "teams" ? [{ label: "Nuevo equipo", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }] : undefined}
+        actions={manage && (
+          <>
+            <Button variant="secondary" icon={<ListPlus size={18} />} onClick={() => setBulkOpen(true)}>Agregar varios</Button>
+            <Button icon={<Plus size={18} />} onClick={() => setFormOpen(true)}>Nuevo equipo</Button>
+          </>
+        )}
+        mobileActions={manage ? [{ label: "Nuevo equipo", icon: <Plus size={20} />, onClick: () => setFormOpen(true) }, { label: "Agregar varios equipos", icon: <ListPlus size={20} />, onClick: () => setBulkOpen(true) }] : undefined}
       />
 
-      {manage && (
-        <div className="segmented" role="group" aria-label="Vista de equipos" style={{ marginBottom: "var(--space-lg)" }}>
-          <button aria-pressed={section === "teams"} className={section === "teams" ? "active" : ""} onClick={() => setSection("teams")}>Equipos</button>
-          <button aria-pressed={section === "fees"} className={section === "fees" ? "active" : ""} onClick={() => setSection("fees")}>Cuotas de inscripción</button>
-        </div>
-      )}
-
-      {section === "fees" ? (
-        <FinesView championshipId={championshipId} type="registration" newOpen={false} onNewClose={() => {}} />
-      ) : (
-      <>
       {/* Search and View Toggle */}
       <div className="row-between" style={{ marginBottom: "var(--space-lg)", gap: "var(--space-md)", flexWrap: "wrap" }}>
         <div className="search grow" style={{ minWidth: 220, maxWidth: 420 }}>
@@ -182,14 +175,22 @@ function TeamsList({ championshipId }: { championshipId: string }) {
           )}
         </div>
       )}
-      </>
-      )}
 
+      <TeamsBulkModal
+        open={bulkOpen}
+        championshipId={championshipId}
+        onClose={() => setBulkOpen(false)}
+        onCreated={() => {
+          setBulkOpen(false);
+          reload();
+        }}
+      />
       <TeamFormModal
         open={formOpen}
         championshipId={championshipId}
         team={null}
         onClose={() => setFormOpen(false)}
+        onCreatedAnother={reload}
         onSaved={() => {
           setFormOpen(false);
           reload();

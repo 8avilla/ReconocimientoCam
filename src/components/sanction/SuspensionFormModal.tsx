@@ -13,6 +13,8 @@ interface Props {
   championshipId: string;
   onClose: () => void;
   onSaved: () => void;
+  /** When given, the form offers "Guardar y agregar otra": saved, this runs, and the form stays open keeping what repeats. */
+  onCreatedAnother?: () => void;
 }
 
 export function SuspensionFormModal({ open, ...props }: Props) {
@@ -23,7 +25,7 @@ export function SuspensionFormModal({ open, ...props }: Props) {
   );
 }
 
-function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open">) {
+function SuspensionForm({ championshipId, onClose, onSaved, onCreatedAnother }: Omit<Props, "open">) {
   const toast = useToast();
   const teams = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${championshipId}&limit=100`);
   const [teamId, setTeamId] = useState("");
@@ -37,7 +39,7 @@ function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
   const dirty = Boolean(teamId || registrationId || note.trim() || matches !== "1");
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent, another = false) {
     event.preventDefault();
     setFormError("");
     const next: Record<string, string> = {};
@@ -50,7 +52,11 @@ function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
     try {
       await http("/suspensions", { json: { registrationId, matches: Number(matches), note: note.trim() } });
       toast.success("Suspensión registrada");
-      onSaved();
+      if (another && onCreatedAnother) {
+        // Team, matches and reason usually repeat; only the player changes.
+        setRegistrationId("");
+        onCreatedAnother();
+      } else onSaved();
     } catch (error) {
       if (error instanceof HttpError && Object.keys(error.fieldErrors).length > 0) setErrors(error.fieldErrors);
       else setFormError(errorMessage(error));
@@ -75,6 +81,7 @@ function SuspensionForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
       <Input label="Motivo" required value={note} onChange={(e) => setNote(e.target.value)} error={errors.note} />
       <div className="action-bar">
         <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
+        {onCreatedAnother && <Button variant="secondary" loading={saving} onClick={(event) => handleSubmit(event, true)}>Suspender y agregar otro</Button>}
         <Button type="submit" loading={saving}>Suspender</Button>
       </div>
       <ConfirmDialog {...confirmProps} />

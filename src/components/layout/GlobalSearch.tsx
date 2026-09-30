@@ -20,9 +20,20 @@ import type { SearchDTO } from "@/types/api";
  */
 export function GlobalSearch({ championshipId }: { championshipId?: string }) {
   const [open, setOpen] = useState(false);
+  // Ctrl/Cmd+K opens the search from anywhere, like in most desktop tools.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen(true);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
   return (
     <>
-      <button className="icon-button topbar-search" aria-label="Buscar" onClick={() => setOpen(true)}>
+      <button className="icon-button topbar-search" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)" onClick={() => setOpen(true)}>
         <Search size={22} />
       </button>
       {/* Mounted only while open so it starts empty every time. */}

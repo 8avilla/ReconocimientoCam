@@ -95,6 +95,11 @@ export interface PlayerPhotoDTO {
   uploadedAt: string;
 }
 
+/** The players list, with how many players each quick filter matches (over the whole search, not just the loaded page). */
+export interface PlayerListDTO extends Paginated<PlayerDTO> {
+  counts: { all: number; noFace: number; hasFace: number; incomplete: number };
+}
+
 export interface PlayerDTO {
   _id: string;
   publicId: string;

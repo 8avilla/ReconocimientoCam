@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bulkCheckInSchema,
   checkInCreateSchema,
   championshipCreateSchema,
   matchCreateSchema,
@@ -62,5 +63,17 @@ describe("championshipCreateSchema", () => {
       endDate: "2025-09-01",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("bulkCheckInSchema", () => {
+  it("marks a whole team present, or sets specific players", () => {
+    expect(bulkCheckInSchema.safeParse({ status: "present", teamId: id }).success).toBe(true);
+    expect(bulkCheckInSchema.safeParse({ status: "pending", playerIds: [id] }).success).toBe(true);
+  });
+
+  it("needs players or a team, and a team only works for present", () => {
+    expect(bulkCheckInSchema.safeParse({ status: "present" }).success).toBe(false);
+    expect(bulkCheckInSchema.safeParse({ status: "absent", teamId: id }).success).toBe(false);
   });
 });

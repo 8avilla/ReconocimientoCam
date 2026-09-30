@@ -6,6 +6,7 @@ import { CalendarDays, Goal, MapPin } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { MyTeams } from "@/components/home/MyTeams";
 import { SetupChecklist } from "@/components/home/SetupChecklist";
+import { LiveMatchesBanner } from "@/components/match/LiveMatchesBanner";
 import { MatchList } from "@/components/match/MatchList";
 import { PlayerRanking } from "@/components/stats/StatsView";
 import { TeamStandingsTab } from "@/components/team/TeamStandingsTab";
@@ -59,6 +60,7 @@ function Dashboard({ championship }: { championship: ChampionshipDTO }) {
       </section>
 
       <div className="stack" style={{ gap: "var(--space-2xl)" }}>
+        <LiveMatchesBanner championshipId={championshipId} />
         {overview.data && can("championship.manage") && <SetupChecklist championshipId={championshipId} overview={overview.data} />}
 
         <div className="home-row-2">

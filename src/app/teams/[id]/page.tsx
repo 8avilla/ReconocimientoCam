@@ -3,18 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Pencil, Star, Trash2, UserPlus } from "lucide-react";
+import { ListPlus, Pencil, Star, Trash2, UserPlus } from "lucide-react";
 import { TeamMatchesTab } from "@/components/team/TeamMatchesTab";
 import { TeamRosterTab } from "@/components/team/TeamRosterTab";
 import { TeamStaffBlock } from "@/components/team/TeamStaffBlock";
 import { TeamStatsTab } from "@/components/team/TeamStatsTab";
 import { TeamFormModal } from "@/components/team/TeamFormModal";
-import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
+import { PlayersBulkModal } from "@/components/player/PlayersBulkModal";
+import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
 import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
-import { championshipPath } from "@/lib/paths";
+import { championshipPath, newPlayerPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
 import type { RosterEntryDTO, TeamDTO } from "@/types/api";
@@ -45,6 +46,7 @@ export default function TeamDetailPage() {
   const [tab, setTab] = useState<TeamTab>("roster");
   const [rosterTab, setRosterTab] = useStoredState<RosterSubTab>("super-torneos:team:rosterTab", "players", (value) => ROSTER_SUB_TABS.some((item) => item.id === value));
   const [editOpen, setEditOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -78,7 +80,7 @@ export default function TeamDetailPage() {
         breadcrumb={[{ label: "Equipos", href: championshipPath(current.championshipId, "equipos") }, { label: current.name }]}
         // On phones the buttons become the floating "+" sheet, so the title keeps the full width.
         mobileActions={[
-          ...(can("roster.manage") ? [{ label: "Agregar jugador", icon: <UserPlus size={20} />, href: `/players/new?teamId=${id}` }] : []),
+          ...(can("roster.manage") ? [{ label: "Agregar jugador", icon: <UserPlus size={20} />, href: newPlayerPath(current.championshipId, id) }, { label: "Agregar varios jugadores", icon: <ListPlus size={20} />, onClick: () => setBulkOpen(true) }] : []),
           ...(can("team.manage")
             ? [
                 { label: "Editar equipo", icon: <Pencil size={20} />, onClick: () => setEditOpen(true) },
@@ -88,7 +90,8 @@ export default function TeamDetailPage() {
         ]}
         actions={
           <>
-            {can("roster.manage") && <Link href={`/players/new?teamId=${id}`} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>}
+            {can("roster.manage") && <Button variant="secondary" icon={<ListPlus size={18} />} onClick={() => setBulkOpen(true)}>Agregar varios</Button>}
+            {can("roster.manage") && <Link href={newPlayerPath(current.championshipId, id)} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>}
             {can("team.manage") && <ActionMenu
               label="Más acciones del equipo"
               actions={[
@@ -170,12 +173,24 @@ export default function TeamDetailPage() {
               error={roster.error}
               onRetry={roster.reload}
               canAddPlayer={can("player.manage")}
+              newPlayerHref={newPlayerPath(current.championshipId, id)}
+              onBulk={() => setBulkOpen(true)}
               onChanged={roster.reload}
             />
           )}
         </>
       )}
 
+      <PlayersBulkModal
+        open={bulkOpen}
+        championshipId={current.championshipId}
+        teamId={id}
+        onClose={() => setBulkOpen(false)}
+        onCreated={() => {
+          setBulkOpen(false);
+          reloadAll();
+        }}
+      />
       <TeamFormModal
         open={editOpen}
         championshipId={current.championshipId}

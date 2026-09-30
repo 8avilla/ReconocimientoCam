@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, ImagePlus } from "lucide-react";
 import { Avatar, Button, ConfirmDialog, Input, Modal, Select, useToast } from "@/components/ui";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
 import { fileToResizedDataUrl } from "@/lib/client/image";
 import { useFetch } from "@/lib/client/useFetch";
 import { useUnsavedGuard } from "@/lib/client/useUnsavedGuard";
+import { newPlayerPath } from "@/lib/paths";
 import { currentPhase } from "@/lib/rules/currentPhase";
 import type { PhaseDTO, TeamDTO } from "@/types/api";
 
@@ -17,18 +19,28 @@ interface Props {
   team: TeamDTO | null;
   onClose: () => void;
   onSaved: (team: TeamDTO) => void;
+  /** When given (creating only), the form offers "Crear y agregar otro": the team is saved, this runs, and the form stays open and empty. */
+  onCreatedAnother?: () => void;
 }
 
 export function TeamFormModal({ open, ...props }: Props) {
+  // Bumping the round remounts the form, which is what empties it for the next team.
+  const [round, setRound] = useState(0);
+  const { onCreatedAnother } = props;
   return (
     <Modal open={open} title={props.team ? "Editar equipo" : "Nuevo equipo"} onClose={props.onClose}>
-      <TeamForm key={props.team?._id ?? "new"} {...props} />
+      <TeamForm
+        key={`${props.team?._id ?? "new"}:${round}`}
+        {...props}
+        onCreatedAnother={onCreatedAnother && !props.team ? () => { onCreatedAnother(); setRound((value) => value + 1); } : undefined}
+      />
     </Modal>
   );
 }
 
-function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open">) {
+function TeamForm({ championshipId, team, onClose, onSaved, onCreatedAnother }: Omit<Props, "open">) {
   const toast = useToast();
+  const router = useRouter();
   const [name, setName] = useState(team?.name ?? "");
   const [delegateName, setDelegateName] = useState(team?.delegateName ?? "");
   const [primaryColor, setPrimaryColor] = useState(team?.primaryColor ?? "#16A34A");
@@ -64,7 +76,7 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
     }
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent, another = false) {
     event.preventDefault();
     setFormError("");
     if (!name.trim()) {
@@ -87,8 +99,16 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
           toast.error(`El equipo se guardó, pero no se pudo subir el escudo: ${errorMessage(error)}`);
         }
       }
-      toast.success(team ? "Equipo actualizado" : "Equipo creado correctamente");
-      onSaved(saved);
+      if (team) {
+        toast.success("Equipo actualizado");
+        onSaved(saved);
+      } else if (another && onCreatedAnother) {
+        toast.success(`${saved.name} creado`);
+        onCreatedAnother();
+      } else {
+        toast.success("Equipo creado correctamente", { label: "Agregar jugadores", onClick: () => router.push(newPlayerPath(championshipId, saved._id)) });
+        onSaved(saved);
+      }
     } catch (error) {
       if (error instanceof HttpError && Object.keys(error.fieldErrors).length > 0) setErrors(error.fieldErrors);
       else setFormError(errorMessage(error));
@@ -139,6 +159,7 @@ function TeamForm({ championshipId, team, onClose, onSaved }: Omit<Props, "open"
 
       <div className="action-bar">
         <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
+        {!team && onCreatedAnother && <Button variant="secondary" loading={saving} onClick={(event) => handleSubmit(event, true)}>Crear y agregar otro</Button>}
         <Button type="submit" loading={saving}>{team ? "Guardar cambios" : "Crear equipo"}</Button>
       </div>
       <ConfirmDialog {...confirmProps} />

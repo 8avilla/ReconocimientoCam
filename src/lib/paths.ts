@@ -6,6 +6,9 @@ export function championshipPath(id: string, section?: Section, query = ""): str
   return `/c/${id}${section ? `/${section}` : ""}${query}`;
 }
 
+/** The player registration wizard of a championship, optionally with a team already chosen. */
+export const newPlayerPath = (championshipId: string, teamId?: string) => `/c/${championshipId}/jugadores/nuevo${teamId ? `?teamId=${teamId}` : ""}`;
+
 /** The championship and section a pathname belongs to, when it is under `/c/<id>`. */
 export function parseChampionshipPath(pathname: string): { id: string; section: Section | null } | null {
   const match = /^\/c\/([^/]+)(?:\/([^/]+))?/.exec(pathname);

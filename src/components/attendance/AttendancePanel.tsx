@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ClipboardCheck, ScanFace, ScanLine, Search, SquarePen } from "lucide-react";
+import { Check, CheckCheck, ClipboardCheck, ScanFace, ScanLine, Search, SquarePen } from "lucide-react";
 import { CheckInBadge, VerificationBadge } from "@/components/attendance/AttendanceBadges";
 import { CameraAttendanceModal } from "@/components/attendance/CameraAttendanceModal";
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
-import { http } from "@/lib/client/http";
+import { errorMessage, http } from "@/lib/client/http";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { VerificationFlow } from "@/components/verification/VerificationFlow";
-import { Avatar, Badge, Button, EmptyState } from "@/components/ui";
+import { Avatar, Badge, Button, EmptyState, useToast } from "@/components/ui";
 import { SUSPENSION_REASON_LABEL } from "@/lib/labels";
-import type { AttendanceDTO, AttendanceRowDTO, MatchDTO } from "@/types/api";
+import type { AttendanceDTO, AttendanceRowDTO, CheckInStatusDTO, MatchDTO } from "@/types/api";
 
 interface Props {
   matchId: string;
@@ -39,6 +39,39 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
     import("@/components/camera/FaceCapture").then((module) => module.preloadFaceDetector()).catch(() => undefined);
   }, [matchId, readOnly, matchOpen]);
   const [manualFor, setManualFor] = useState<AttendanceRowDTO | null>(null);
+  const toast = useToast();
+  const [marking, setMarking] = useState(false);
+
+  /** Manual attendance for several players at once; the toast's "Deshacer" puts each one back as it was. */
+  async function mark(payload: { status: CheckInStatusDTO; playerIds?: string[]; teamId?: string }, message: (count: number) => string, before: { playerId: string; status: CheckInStatusDTO }[]) {
+    setMarking(true);
+    try {
+      const { updated } = await http<{ updated: string[] }>(`/matches/${matchId}/check-ins/bulk`, { json: payload });
+      if (updated.length === 0) {
+        toast.error("No hay jugadores por marcar");
+        return;
+      }
+      onChanged();
+      toast.success(message(updated.length), {
+        label: "Deshacer",
+        onClick: async () => {
+          try {
+            for (const status of ["pending", "absent"] as const) {
+              const ids = before.filter((row) => updated.includes(row.playerId) && row.status === status).map((row) => row.playerId);
+              if (ids.length > 0) await http(`/matches/${matchId}/check-ins/bulk`, { json: { status, playerIds: ids } });
+            }
+            onChanged();
+          } catch (error) {
+            toast.error(errorMessage(error));
+          }
+        },
+      });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setMarking(false);
+    }
+  }
 
   const { checkIns } = attendance;
   const teamSuspended = (attendance.suspended ?? []).filter((item) => item.teamId === teamId);
@@ -51,10 +84,18 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
     .filter((row) => !term || row.playerId.fullName.toLowerCase().includes(term) || String(row.shirtNumber ?? "") === term)
     .sort((a, b) => (a.shirtNumber ?? 0) - (b.shirtNumber ?? 0));
 
+  const markable = (row: AttendanceRowDTO) => row.status !== "present" && row.registrationStatus === "active";
+  const pendingOfTeam = checkIns.filter((row) => row.teamId === teamId && row.status === "pending" && row.registrationStatus === "active");
+  const markOne = (row: AttendanceRowDTO) =>
+    mark({ status: "present", playerIds: [row.playerId._id] }, () => `Presente · ${row.playerId.fullName}`, [{ playerId: row.playerId._id, status: row.status }]);
+
   const rowActions = (row: AttendanceRowDTO) =>
     canOperate && (
       <div className="row" style={{ justifyContent: "flex-end", gap: "var(--space-xs)" }}>
-        {row.status !== "present" && row.registrationStatus === "active" && (
+        {markable(row) && (
+          <Button size="small" variant="secondary" icon={<Check size={16} />} disabled={marking} onClick={() => markOne(row)}>Presente</Button>
+        )}
+        {markable(row) && (
           <Button size="small" onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>Verificar</Button>
         )}
         <Button size="small" variant="ghost" onClick={() => setManualFor(row)}>Manual</Button>
@@ -88,6 +129,18 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
           );
         })}
       </div>
+      {canOperate && pendingOfTeam.length > 0 && (
+        <div style={{ marginBottom: "var(--space-md)" }}>
+          <Button
+            variant="secondary"
+            icon={<CheckCheck size={18} />}
+            loading={marking}
+            onClick={() => mark({ status: "present", teamId }, (count) => `${count} jugadores marcados presentes`, pendingOfTeam.map((row) => ({ playerId: row.playerId._id, status: row.status })))}
+          >
+            Marcar a todos presentes ({pendingOfTeam.length})
+          </Button>
+        </div>
+      )}
       <div className="search" style={{ marginBottom: "var(--space-lg)", maxWidth: 420 }}>
         <Search size={18} aria-hidden />
         <input className="input" type="search" placeholder="Buscar por nombre o número..." aria-label="Buscar jugador" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -136,7 +189,12 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
                 <CheckInBadge status={row.status} />
                 {canOperate && (
                   <div className="row" style={{ gap: 2 }}>
-                    {row.status !== "present" && row.registrationStatus === "active" && (
+                    {markable(row) && (
+                      <button className="icon-button" aria-label={`Marcar presente a ${row.playerId.fullName}`} disabled={marking} onClick={() => markOne(row)}>
+                        <Check size={18} />
+                      </button>
+                    )}
+                    {markable(row) && (
                       <button className="icon-button" aria-label={`Verificar a ${row.playerId.fullName}`} onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>
                         <ScanFace size={18} />
                       </button>

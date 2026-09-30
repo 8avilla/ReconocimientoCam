@@ -153,6 +153,8 @@ export const playerListQuery = paginationSchema.extend({
   q: z.string().trim().max(60).optional(),
   championshipId: objectIdSchema.optional(),
   teamId: objectIdSchema.optional(),
+  /** Quick filter of the players list; the counts of every option come back with the list. */
+  filter: z.enum(["no_face", "has_face", "incomplete"]).optional(),
 });
 
 export const faceEnrollSchema = z.object({
@@ -355,6 +357,20 @@ export const checkInCreateSchema = z
     path: ["status"],
   });
 
+/**
+ * Attendance of several players at once. `playerIds` sets exactly those players (present, absent or back to
+ * pending: the one-tap toggle and its undo); `teamId` alone marks every still-pending player of that team
+ * as present ("marcar a todos").
+ */
+export const bulkCheckInSchema = z
+  .object({
+    status: z.enum(["present", "absent", "pending"]),
+    playerIds: z.array(objectIdSchema).min(1).max(100).optional(),
+    teamId: objectIdSchema.optional(),
+  })
+  .refine((value) => value.playerIds || value.teamId, { message: "Indica los jugadores o el equipo", path: ["playerIds"] })
+  .refine((value) => value.playerIds || value.status === "present", { message: "Marcar a todo un equipo solo sirve para presentes", path: ["status"] });
+
 export const lookupQuery = z.object({ code: z.string().trim().min(1, "Ingresa un código").max(60) });
 
 export const verificationCreateSchema = z.object({ playerId: objectIdSchema, image: imageDataUrlSchema });
@@ -526,3 +542,10 @@ export const systemSettingsUpdateSchema = z.object({
   verifyThreshold: z.number().min(0).max(1),
   reviewThreshold: z.number().min(0).max(1),
 });
+
+// ---------- Usage ----------
+
+/** A screen view as a route pattern such as `/c/:id/partidos` (the client replaces every id before sending). */
+export const usageViewSchema = z.object({ route: z.string().trim().min(1).max(100).regex(/^\/[a-z0-9/:_-]*$/i, "Ruta no válida") });
+
+export const usageSummaryQuery = z.object({ days: z.coerce.number().int().min(1).max(365).default(30) });

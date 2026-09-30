@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Award, ChevronRight, DollarSign, Globe, Link2, Lock, MapPin, Settings, Share2, Trophy, Users, Whistle } from "lucide-react";
+import { Award, ChevronRight, DollarSign, Globe, Link2, Lock, MapPin, Settings, Trophy, Users, Whistle } from "lucide-react";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { FinancesManager } from "@/components/manage/FinancesManager";
 import { GeneralInfoManager } from "@/components/manage/GeneralInfoManager";
@@ -17,8 +17,8 @@ import { useFetch } from "@/lib/client/useFetch";
 import { championshipPath } from "@/lib/paths";
 import type { PhaseDTO, RefereeDTO, VenueDTO } from "@/types/api";
 
-type Tab = "general" | "link" | "phases" | "referees" | "venues" | "organizers" | "finances" | "rules" | "share";
-const TABS: Tab[] = ["general", "link", "phases", "referees", "venues", "organizers", "finances", "rules", "share"];
+type Tab = "general" | "link" | "phases" | "referees" | "venues" | "organizers" | "finances" | "rules";
+const TABS: Tab[] = ["general", "link", "phases", "referees", "venues", "organizers", "finances", "rules"];
 
 /** Organizer's workspace for one championship: everything that used to be split between these tabs and
  * the separate "Editar torneo" modal now lives in one "Configuración" list — a vertical list of
@@ -28,7 +28,9 @@ export function ManageView({ championshipId }: { championshipId: string }) {
   const { current } = useChampionship();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requested = searchParams.get("s");
+  // "Compartir" used to be its own section; it now lives with the link and visibility, so old addresses still land there.
+  const asked = searchParams.get("s");
+  const requested = asked === "share" ? "link" : asked;
   const tab: Tab | null = TABS.find((item) => item === requested) ?? null;
   const openSection = (id: Tab) => router.push(championshipPath(championshipId, "gestionar", `?s=${id}`));
 
@@ -47,30 +49,39 @@ export function ManageView({ championshipId }: { championshipId: string }) {
 
   const items: { id: Tab; label: string; description: string; icon: React.ReactNode; count?: number }[] = [
     { id: "general", label: "Información general", description: "Nombre, logo, temporada y fechas", icon: <Settings size={20} /> },
-    { id: "link", label: "Enlace y visibilidad", description: "Dirección pública y quién puede verlo", icon: <Link2 size={20} /> },
+    { id: "link", label: "Enlace, visibilidad y compartir", description: "Dirección pública, quién puede verlo y cómo compartirlo", icon: <Link2 size={20} /> },
     { id: "phases", label: "Fases", description: "Configura las etapas del torneo", icon: <Trophy size={20} />, count: phaseList.length },
     { id: "referees", label: "Árbitros", description: "Personas que dirigen los partidos", icon: <Whistle size={20} />, count: refereeList.length },
     { id: "venues", label: "Sitios", description: "Canchas y lugares de los partidos", icon: <MapPin size={20} />, count: venueList.length },
     { id: "organizers", label: "Organizadores", description: "Personas que administran el torneo", icon: <Users size={20} />, count: organizersCount },
     { id: "finances", label: "Finanzas y multas", description: "Cuota de inscripción y multas por tarjeta", icon: <DollarSign size={20} /> },
     { id: "rules", label: "Reglas", description: "Puntos, plantillas y sanciones", icon: <Award size={20} /> },
-    { id: "share", label: "Compartir", description: "Enlace público del torneo", icon: <Share2 size={20} /> },
   ];
   const active = items.find((item) => item.id === tab);
 
   if (active) {
+    // A phase opened from the list has its own screen: the crumbs lead back to the list and the title is the phase.
+    const openPhase = active.id === "phases" ? phaseList.find((item) => item._id === (searchParams.get("phase") ?? "")) : undefined;
+    const section = { label: "Configuración", href: championshipPath(championshipId, "gestionar") };
     return (
       <>
-        <PageHeader breadcrumb={[{ label: "Configuración", href: championshipPath(championshipId, "gestionar") }, { label: active.label }]} title={active.label} />
+        <PageHeader
+          breadcrumb={openPhase ? [section, { label: active.label, href: championshipPath(championshipId, "gestionar", "?s=phases") }, { label: openPhase.name }] : [section, { label: active.label }]}
+          title={openPhase?.name ?? active.label}
+        />
         {active.id === "general" && <GeneralInfoManager championshipId={championshipId} />}
-        {active.id === "link" && <LinkVisibilityManager championshipId={championshipId} />}
+        {active.id === "link" && (
+          <div className="stack" style={{ gap: "var(--space-xl)" }}>
+            <LinkVisibilityManager championshipId={championshipId} />
+            <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />
+          </div>
+        )}
         {active.id === "phases" && <PhasesManager championshipId={championshipId} />}
         {active.id === "referees" && <RefereesManager championshipId={championshipId} />}
         {active.id === "venues" && <VenuesManager championshipId={championshipId} />}
         {active.id === "organizers" && <OrganizersManager championshipId={championshipId} />}
         {active.id === "finances" && <FinancesManager championshipId={championshipId} />}
         {active.id === "rules" && <RulesManager championshipId={championshipId} />}
-        {active.id === "share" && <ShareLink championshipId={championshipId} name={current?.name ?? "el torneo"} />}
       </>
     );
   }

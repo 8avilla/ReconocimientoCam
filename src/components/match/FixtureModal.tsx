@@ -6,9 +6,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarPlus } from "lucide-react";
 import { Button, Modal, Select, useToast } from "@/components/ui";
+import { MatchdayScheduleModal } from "@/components/match/MatchdayScheduleModal";
 import { errorMessage, http } from "@/lib/client/http";
 import { LEGS_LABEL, PHASE_TYPE_LABEL } from "@/lib/labels";
-import type { FixturePreviewDTO, PhaseDTO } from "@/types/api";
+import type { FixturePreviewDTO, MatchdayDTO, PhaseDTO } from "@/types/api";
 
 interface Props {
   open: boolean;
@@ -43,6 +44,8 @@ export function FixtureWizard({ championshipId, phases, initialPhaseId, target, 
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Once the matches exist, the first fecha still without days opens for scheduling right away.
+  const [scheduling, setScheduling] = useState<{ first: { _id: string; name: string }; following: { _id: string; name: string }[] } | null>(null);
 
   async function load(replaceScheduled: boolean) {
     setBusy(true);
@@ -62,12 +65,23 @@ export function FixtureWizard({ championshipId, phases, initialPhaseId, target, 
     try {
       const result = await http<FixturePreviewDTO>(endpoint, { json: { preview: false, replaceScheduled: replace } });
       toast.success(`Se crearon ${result.created} partidos. Ahora asígnales día y hora.`);
-      onCreated();
+      const pending = !target && result.created > 0 ? await unscheduledMatchdays(phaseId) : [];
+      if (pending.length > 0) setScheduling({ first: pending[0], following: pending.slice(1) });
+      else onCreated();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  if (scheduling) {
+    return (
+      <>
+        <p className="text-secondary">Partidos creados. Asigna día, hora y cancha de {scheduling.first.name}{scheduling.following.length > 0 ? " y sigue con las demás fechas" : ""}.</p>
+        <MatchdayScheduleModal open matchday={scheduling.first} following={scheduling.following} onClose={onCreated} onSaved={onCreated} />
+      </>
+    );
   }
 
   if (!target && eligible.length === 0) {
@@ -162,4 +176,14 @@ export function FixtureWizard({ championshipId, phases, initialPhaseId, target, 
       </div>
     </div>
   );
+}
+
+/** The fechas of the phase that have matches but none with a day yet, in order; empty when none or it can't be loaded. */
+async function unscheduledMatchdays(phaseId: string): Promise<{ _id: string; name: string }[]> {
+  try {
+    const { data } = await http<{ data: MatchdayDTO[] }>(`/phases/${phaseId}/matchdays`);
+    return data.filter((item) => item.matches.total > 0 && item.from === null).map((item) => ({ _id: item._id, name: item.name }));
+  } catch {
+    return [];
+  }
 }

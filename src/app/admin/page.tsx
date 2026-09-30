@@ -1,26 +1,28 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { History, ScrollText, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, History, ScrollText, Settings, ShieldCheck, Users } from "lucide-react";
 import { RolesManager } from "@/components/admin/RolesManager";
 import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager";
+import { UsageStats } from "@/components/admin/UsageStats";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { Avatar, Badge, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
 import type { AuditLogDTO, Paginated } from "@/types/api";
 
-type Tab = "activity" | "users" | "roles" | "settings";
+type Tab = "activity" | "usage" | "users" | "roles" | "settings";
 
 /** Administration: activity log, users, roles and system-wide configuration. Only the admin role reaches this screen. */
 export default function AdminPage() {
-  const [tab, setTab] = useStoredState<Tab>("super-torneos:admin:tab", "activity", (value) => ["activity", "users", "roles", "settings"].includes(value));
+  const [tab, setTab] = useStoredState<Tab>("super-torneos:admin:tab", "activity", (value) => ["activity", "usage", "users", "roles", "settings"].includes(value));
 
   const totalUsers = useFetch<Paginated<unknown>>("/users?limit=1");
   const totalRoles = useFetch<Paginated<unknown>>("/roles?limit=1");
 
   const tabs: { id: Tab; label: string; icon: ReactNode; count?: number }[] = [
     { id: "activity", label: "Actividad", icon: <ScrollText size={16} aria-hidden /> },
+    { id: "usage", label: "Uso", icon: <BarChart3 size={16} aria-hidden /> },
     { id: "users", label: "Usuarios", icon: <Users size={16} aria-hidden />, count: totalUsers.data?.meta.total },
     { id: "roles", label: "Roles", icon: <ShieldCheck size={16} aria-hidden />, count: totalRoles.data?.meta.total },
     { id: "settings", label: "Configuración", icon: <Settings size={16} aria-hidden /> },
@@ -42,6 +44,7 @@ export default function AdminPage() {
       </div>
 
       {tab === "activity" && <ActivityLog />}
+      {tab === "usage" && <UsageStats />}
       {tab === "users" && <UsersManager />}
       {tab === "roles" && <RolesManager />}
       {tab === "settings" && <SystemSettingsManager />}

@@ -28,9 +28,21 @@ export const GET = route(async (request) => {
     filter._id = { $in: await TeamRegistration.distinct("playerId", registrationFilter) };
   }
 
-  const [players, total] = await Promise.all([
-    Player.find(filter).sort({ fullName: 1 }).skip(skipFor(query)).limit(query.limit).lean(),
-    Player.countDocuments(filter),
+  // The quick filters run here (not on the loaded page) so their counts and results cover every player.
+  const hasFace = { biometricConsentAt: { $exists: true, $ne: null } };
+  const missing = (field: string) => ({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: "" }] });
+  const clauses = {
+    no_face: { $nor: [hasFace] },
+    has_face: hasFace,
+    incomplete: { $or: [missing("documentId"), missing("birthDate")] },
+  };
+  const narrowed = (extra?: Record<string, unknown>) => (extra ? { $and: [filter, extra] } : filter);
+  const [players, total, countNoFace, countHasFace, countIncomplete] = await Promise.all([
+    Player.find(narrowed(query.filter && clauses[query.filter])).sort({ fullName: 1 }).skip(skipFor(query)).limit(query.limit).lean(),
+    Player.countDocuments(narrowed(query.filter && clauses[query.filter])),
+    Player.countDocuments(narrowed(clauses.no_face)),
+    Player.countDocuments(narrowed(clauses.has_face)),
+    Player.countDocuments(narrowed(clauses.incomplete)),
   ]);
 
   const registrations = await TeamRegistration.find({
@@ -59,18 +71,25 @@ export const GET = route(async (request) => {
         : null,
     };
   });
-  const body: Paginated<(typeof data)[number]> = { data, meta: { page: query.page, limit: query.limit, total } };
+  const body: Paginated<(typeof data)[number]> & { counts: { all: number; noFace: number; hasFace: number; incomplete: number } } = {
+    data,
+    meta: { page: query.page, limit: query.limit, total },
+    counts: { all: countNoFace + countHasFace, noFace: countNoFace, hasFace: countHasFace, incomplete: countIncomplete },
+  };
   return json(body);
 });
 
 export const POST = route(async (request) => {
   const input = await parseBody(request, playerCreateSchema);
-  const player = await Player.create({ ...input, publicId: generatePublicId() });
-  await recordAudit(getActor(request), {
+  const actor = getActor(request);
+  const player = await Player.create({ ...input, publicId: generatePublicId(), createdByUserId: actor.userId });
+  await recordAudit(actor, {
     action: "create",
     entityType: "player",
     entityId: player._id,
     summary: `Jugador creado: ${player.fullName}`,
   });
-  return json(player, 201);
+  const { createdByUserId, ...body } = player.toObject();
+  void createdByUserId;
+  return json(body, 201);
 });

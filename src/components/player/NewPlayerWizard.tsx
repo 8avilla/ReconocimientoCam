@@ -9,6 +9,7 @@ import { FaceEnrollment, type CapturedFace } from "@/components/player/FaceEnrol
 import { Button, Input, Loading, PageHeader, Select, useToast } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
 import { errorMessage, http, HttpError } from "@/lib/client/http";
+import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import type { Paginated, PlayerDTO, TeamDTO } from "@/types/api";
 
@@ -65,7 +66,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     if (Object.keys(next).length === 0) setStep(2);
   }
 
-  async function handleSave() {
+  /** `addAnother` keeps the team and position and starts the next player's form instead of leaving the wizard. */
+  async function handleSave(addAnother = false) {
     setSaving(true);
     setFormError("");
     let playerId: string | null = null;
@@ -101,14 +103,22 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     if (image) {
       try {
         await http(`/players/${playerId}/face`, { json: { image: image.face, carnetImage: image.carnet } });
-        toast.success("Jugador registrado correctamente");
+        toast.success(`${values.fullName.trim()} registrado correctamente`);
       } catch (error) {
         toast.error(`Jugador registrado, pero no se pudo guardar el rostro: ${errorMessage(error)}`);
       }
     } else {
-      toast.success("Jugador registrado. Falta registrar su rostro.");
+      toast.success(`${values.fullName.trim()} registrado. Falta registrar su rostro.`);
     }
-    router.push("/players");
+    if (addAnother) {
+      setValues((current) => ({ ...current, fullName: "", documentId: "", birthDate: "", shirtNumber: "" }));
+      setImage(null);
+      setErrors({});
+      setStep(1);
+      setSaving(false);
+      return;
+    }
+    router.push(championshipPath(championshipId, "jugadores"));
     openPlayer(playerId);
   }
 
@@ -116,7 +126,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     <>
       <PageHeader
         title="Registro de jugador"
-        breadcrumb={[{ label: "Jugadores", href: "/players" }, { label: "Nuevo jugador" }]}
+        breadcrumb={[{ label: "Jugadores", href: championshipPath(championshipId, "jugadores") }, { label: "Nuevo jugador" }]}
       />
 
       <div className="card featured stack" style={{ maxWidth: 720 }}>
@@ -137,7 +147,7 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
 
         {step === 1 && (
           <form className="stack" noValidate onSubmit={(event) => { event.preventDefault(); goToPhoto(); }}>
-            <Input label="Nombre completo" required autoComplete="off" value={values.fullName} onChange={set("fullName")} error={errors.fullName} />
+            <Input label="Nombre completo" required autoFocus autoComplete="off" value={values.fullName} onChange={set("fullName")} error={errors.fullName} />
             <div className="form-grid two">
               <Input label="Documento (opcional)" autoComplete="off" inputMode="numeric" value={values.documentId} onChange={set("documentId")} error={errors.documentId} />
               <Input label="Fecha de nacimiento (opcional)" type="date" value={values.birthDate} onChange={set("birthDate")} error={errors.birthDate} max={new Date().toISOString().slice(0, 10)} />
@@ -194,7 +204,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
             )}
             <div className="action-bar">
               <Button variant="secondary" onClick={() => setStep(2)} disabled={saving}>Atrás</Button>
-              <Button size="large" onClick={handleSave} loading={saving}>Guardar jugador</Button>
+              <Button variant="secondary" size="large" onClick={() => handleSave(true)} disabled={saving}>Guardar y agregar otro</Button>
+              <Button size="large" onClick={() => handleSave()} loading={saving}>Guardar jugador</Button>
             </div>
           </div>
         )}

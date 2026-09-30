@@ -8,6 +8,7 @@ import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { EventComposerModal, type PresentPlayer } from "@/components/match/EventComposerModal";
 import { EventTimeline } from "@/components/match/EventTimeline";
 import { MatchClock } from "@/components/match/MatchClock";
+import { MatchQuickSchedule } from "@/components/match/MatchQuickSchedule";
 import { MatchQuickStatus } from "@/components/match/MatchQuickStatus";
 import { MatchLineup } from "@/components/match/MatchLineup";
 import { MatchPreview } from "@/components/match/MatchPreview";
@@ -117,6 +118,11 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
 
       <div style={{ marginBottom: "var(--space-2xl)" }}>
         <MatchScoreboard match={current} />
+        {manage && ["scheduled", "postponed", "suspended"].includes(current.status) && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-sm)" }}>
+            <MatchQuickSchedule match={current} onChanged={match.reload} />
+          </div>
+        )}
       </div>
 
       {operate && <MatchClock periodLabels={championship.data?.rules.periodLabels ?? ["1er Tiempo", "2do Tiempo"]} />}

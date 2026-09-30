@@ -211,7 +211,7 @@ export function FinesView({
       )}
 
       {current && <FineModal fine={current} onClose={() => setSelected(null)} onChanged={reload} />}
-      <ManualFineModal open={newOpen} championshipId={championshipId} onClose={onNewClose} onSaved={() => { onNewClose(); reload(); }} />
+      <ManualFineModal open={newOpen} championshipId={championshipId} onClose={onNewClose} onSaved={() => { onNewClose(); reload(); }} onCreatedAnother={reload} />
 
       <Modal open={filtersOpen} title="Filtros" onClose={() => setFiltersOpen(false)}>
         <div className="stack">

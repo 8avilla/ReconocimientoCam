@@ -53,9 +53,13 @@ export const PATCH = route<Params>(async (request, { id }) => {
 });
 
 export const DELETE = route<Params>(async (request, { id }) => {
-  const player = await Player.findById(id);
+  const player = await Player.findById(id).select("+createdByUserId");
   if (!player) throw notFound("Jugador no encontrado");
-  await requireOrganizerOfPlayer(getActor(request), id);
+  // Whoever created an identity can take it back while it has no registration (e.g. the registration failed
+  // right after and the wizard rolls the identity back); anyone else needs to organize one of its championships.
+  const actor = getActor(request);
+  const ownUnregistered = Boolean(actor.userId) && player.createdByUserId === actor.userId && !(await TeamRegistration.exists({ playerId: id }));
+  if (!ownUnregistered) await requireOrganizerOfPlayer(actor, id);
 
   const [registrations, checkIns] = await Promise.all([
     TeamRegistration.exists({ playerId: id }),

@@ -33,6 +33,8 @@ export interface IPlayer {
    * recognition and not covered by the biometric consent above.
    */
   photos: IPlayerPhoto[];
+  /** Who registered this identity: lets them undo it (delete) while it still has no registration. */
+  createdByUserId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,8 @@ const PlayerSchema = new Schema<IPlayer>(
     // Sparse: many players are missing this at first; the unique index must only apply when it's set.
     documentId: { type: String, unique: true, sparse: true, trim: true },
     birthDate: { type: Date },
+    // Never returned by default (it is only read when deleting).
+    createdByUserId: { type: String, default: null, select: false },
     photoUrl: { type: String, default: "" },
     photoBlobName: { type: String, default: "" },
     facePhotoUrl: { type: String, default: "" },

@@ -13,6 +13,8 @@ interface Props {
   championshipId: string;
   onClose: () => void;
   onSaved: () => void;
+  /** When given, the form offers "Guardar y agregar otra": saved, this runs, and the form stays open keeping what repeats. */
+  onCreatedAnother?: () => void;
 }
 
 export function ManualFineModal({ open, ...props }: Props) {
@@ -24,7 +26,7 @@ export function ManualFineModal({ open, ...props }: Props) {
 }
 
 /** A fine that does not come from a card (no-show, misconduct...). */
-function ManualFineForm({ championshipId, onClose, onSaved }: Omit<Props, "open">) {
+function ManualFineForm({ championshipId, onClose, onSaved, onCreatedAnother }: Omit<Props, "open">) {
   const toast = useToast();
   const teams = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${championshipId}&limit=100`);
   const [teamId, setTeamId] = useState("");
@@ -38,7 +40,7 @@ function ManualFineForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
   const dirty = Boolean(teamId || playerId || amount || concept.trim());
   const { requestClose, confirmProps } = useUnsavedGuard(dirty, onClose);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent, another = false) {
     event.preventDefault();
     setFormError("");
     const next: Record<string, string> = {};
@@ -51,7 +53,11 @@ function ManualFineForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
     try {
       await http("/fines", { json: { championshipId, teamId, playerId: playerId || undefined, amount: Number(amount), concept: concept.trim() } });
       toast.success("Multa creada");
-      onSaved();
+      if (another && onCreatedAnother) {
+        // Team, amount and reason usually repeat; only the player changes.
+        setPlayerId("");
+        onCreatedAnother();
+      } else onSaved();
     } catch (error) {
       if (error instanceof HttpError && Object.keys(error.fieldErrors).length > 0) setErrors(error.fieldErrors);
       else setFormError(errorMessage(error));
@@ -76,6 +82,7 @@ function ManualFineForm({ championshipId, onClose, onSaved }: Omit<Props, "open"
       <Input label="Motivo" required value={concept} onChange={(e) => setConcept(e.target.value)} error={errors.concept} hint="Por ejemplo: inasistencia, reclamo airado..." />
       <div className="action-bar">
         <Button variant="secondary" onClick={requestClose} disabled={saving}>Cancelar</Button>
+        {onCreatedAnother && <Button variant="secondary" loading={saving} onClick={(event) => submit(event, true)}>Crear y agregar otra</Button>}
         <Button type="submit" size="large" loading={saving}>Crear multa</Button>
       </div>
       <ConfirmDialog {...confirmProps} />

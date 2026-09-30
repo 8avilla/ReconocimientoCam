@@ -1,24 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarClock, CalendarDays, CalendarPlus, ChevronDown, FilterX, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FixtureModal } from "@/components/match/FixtureModal";
 import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { MatchdayScheduleModal } from "@/components/match/MatchdayScheduleModal";
+import { LiveMatchesBanner } from "@/components/match/LiveMatchesBanner";
 import { MatchList } from "@/components/match/MatchList";
 import { Button, EmptyState, ErrorState, Loading, Modal, PageHeader } from "@/components/ui";
 import { PLAYED_MATCH_STATUSES, UNPLAYED_MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
-import { useStoredState } from "@/lib/client/useStoredState";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, TeamDTO } from "@/types/api";
 
-export function MatchesView({ initialScheduled }: { initialScheduled?: "true" | "false" }) {
-  return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} initialScheduled={initialScheduled} />}</RequireChampionship>;
+export function MatchesView() {
+  return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} />}</RequireChampionship>;
 }
 
 type MatchesTab = "results" | "upcoming";
@@ -27,31 +28,64 @@ const MATCHES_TABS: { id: MatchesTab; label: string }[] = [
   { id: "upcoming", label: "Próximos" },
 ];
 
-function MatchesList({ championshipId, initialScheduled }: { championshipId: string; initialScheduled?: "true" | "false" }) {
-  // Filters are remembered per championship, so coming back to the list keeps what the organizer was looking at.
-  const key = (name: string) => `super-torneos:matches:${championshipId}:${name}`;
-  // "Próximos partidos" is always the tab you land on; switching to "Resultados" only lasts the visit.
-  const [tab, setTab] = useState<MatchesTab>("upcoming");
-  const tabStatuses: readonly MatchStatus[] = tab === "results" ? PLAYED_MATCH_STATUSES : UNPLAYED_MATCH_STATUSES;
+/** Filters live in the address (`?vista=resultados&fase=…&equipo=…`), so a filtered list can be shared; the last
+ * ones used are also remembered per championship and applied when the list is opened without any. */
+const FILTER_PARAMS = ["vista", "estado", "fase", "equipo", "fecha", "programacion", "desde", "hasta"] as const;
 
-  const [storedStatus, setStatus] = useStoredState<string>(key("status"), "");
-  // A remembered status from the other tab (e.g. "Finalizado" while now viewing "Próximos partidos") doesn't apply here.
-  const status = tabStatuses.includes(storedStatus as MatchStatus) ? storedStatus : "";
-  const [storedPhaseId, setPhaseId] = useStoredState<string>(key("phase"), "");
-  const [storedTeamId, setTeamId] = useStoredState<string>(key("team"), "");
-  const [storedMatchdayId, setMatchdayId] = useStoredState<string>(key("matchday"), "");
-  const [storedScheduledFilter, setStoredScheduledFilter] = useStoredState<string>(key("scheduled"), "");
-  const [scheduledOverrideActive, setScheduledOverrideActive] = useState(initialScheduled !== undefined);
-  // Only meaningful among upcoming matches (an already-played match virtually always has a day and time).
-  const scheduledFilter = tab !== "upcoming" ? "" : scheduledOverrideActive && initialScheduled !== undefined ? initialScheduled : storedScheduledFilter;
-  const setScheduledFilter = (value: string) => {
-    setScheduledOverrideActive(false);
-    setStoredScheduledFilter(value);
+function MatchesList({ championshipId }: { championshipId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const param = (name: (typeof FILTER_PARAMS)[number]) => params.get(name) ?? "";
+  const setParams = (patch: Partial<Record<(typeof FILTER_PARAMS)[number], string>>) => {
+    const next = new URLSearchParams(params.toString());
+    for (const [name, value] of Object.entries(patch)) {
+      if (value) next.set(name, value);
+      else next.delete(name);
+    }
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
+  const filterQuery = FILTER_PARAMS.filter((name) => params.get(name)).map((name) => `${name}=${encodeURIComponent(params.get(name)!)}`).join("&");
+  const storageKey = `super-torneos:matches:${championshipId}:filters`;
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      if (!restored.current) {
+        restored.current = true;
+        const saved = filterQuery ? null : window.localStorage.getItem(storageKey);
+        if (saved) {
+          router.replace(`${pathname}?${saved}`, { scroll: false });
+          return;
+        }
+      }
+      if (filterQuery) window.localStorage.setItem(storageKey, filterQuery);
+      else window.localStorage.removeItem(storageKey);
+    } catch {
+      // Not remembered when storage is unavailable.
+    }
+  }, [filterQuery, storageKey, pathname, router]);
+
+  const tab: MatchesTab = param("vista") === "resultados" ? "results" : "upcoming";
+  const tabStatuses: readonly MatchStatus[] = tab === "results" ? PLAYED_MATCH_STATUSES : UNPLAYED_MATCH_STATUSES;
+  // A status from the other tab (e.g. "Finalizado" while on "Próximos") doesn't apply here.
+  const status = tabStatuses.includes(param("estado") as MatchStatus) ? param("estado") : "";
+  const storedPhaseId = param("fase");
+  const storedTeamId = param("equipo");
+  const storedMatchdayId = param("fecha");
+  // Only meaningful among upcoming matches (an already-played match virtually always has a day and time).
+  const scheduledFilter = tab !== "upcoming" ? "" : param("programacion") === "sin" ? "false" : param("programacion") === "con" ? "true" : "";
+  const fromDay = param("desde");
+  const toDay = param("hasta");
+  const setTab = (next: MatchesTab) => setParams({ vista: next === "results" ? "resultados" : "", estado: "", programacion: "" });
+  const setStatus = (value: string) => setParams({ estado: value });
+  const setTeamId = (value: string) => setParams({ equipo: value });
+  const setMatchdayId = (value: string) => setParams({ fecha: value });
+  const setPhaseAndResetFecha = (value: string) => setParams({ fase: value, fecha: "" });
+  const setScheduledFilter = (value: string) => setParams({ programacion: value === "false" ? "sin" : value === "true" ? "con" : "" });
+  const setFromDay = (value: string) => setParams({ desde: value });
+  const setToDay = (value: string) => setParams({ hasta: value });
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  // Calendar-day range ("YYYY-MM-DD", local time).
-  const [fromDay, setFromDay] = useStoredState<string>(key("from"), "");
-  const [toDay, setToDay] = useStoredState<string>(key("to"), "");
   const phases = useFetch<{ data: PhaseDTO[] }>(`/championships/${championshipId}/phases`);
   const phaseList = phases.data?.data ?? [];
   const teamsFetch = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${championshipId}&limit=100`);
@@ -78,7 +112,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   const matches = tab === "results"
     ? [...searched].sort((a, b) => new Date(b.scheduledAt ?? 0).getTime() - new Date(a.scheduledAt ?? 0).getTime())
     : searched;
-  const clearFilters = () => { setStatus(""); setPhaseId(""); setTeamId(""); setMatchdayId(""); setScheduledFilter(""); setFromDay(""); setToDay(""); setSearch(""); };
+  const clearFilters = () => { setParams({ estado: "", fase: "", equipo: "", fecha: "", programacion: "", desde: "", hasta: "" }); setSearch(""); };
   const { can } = useRole();
   const manage = can("match.manage");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -91,7 +125,7 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
   // Styled as plain text + a chevron (not a boxed dropdown): the phase this championship is in, tap to change.
   const phasePicker = phaseList.length > 0 && (
     <div className="dropdown-picker">
-      <select className="dropdown-picker-select" aria-label="Filtrar por fase" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setMatchdayId(""); }}>
+      <select className="dropdown-picker-select" aria-label="Filtrar por fase" value={phaseId} onChange={(e) => setPhaseAndResetFecha(e.target.value)}>
         <option value="">Todas las fases</option>
         {phaseList.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
       </select>
@@ -170,6 +204,8 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
           <Link href={championshipPath(championshipId, "gestionar")} className="btn secondary small">Configurar fases</Link>
         </div>
       )}
+
+      <LiveMatchesBanner championshipId={championshipId} spaced />
 
       <div className="tabs-line" role="tablist" aria-label="Tipo de partidos">
         {MATCHES_TABS.map((item) => (
@@ -265,6 +301,11 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
         <MatchdayScheduleModal
           open
           matchday={{ _id: matchdayId, name: allMatchdays.find((item) => item._id === matchdayId)?.name ?? "Fecha" }}
+          following={followingMatchdays(allMatchdays, matchdayId)}
+          onProgress={() => {
+            reload();
+            matchdaysFetch.reload();
+          }}
           onClose={() => setScheduleOpen(false)}
           onSaved={() => {
             setScheduleOpen(false);
@@ -290,6 +331,10 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
         phases={phaseList}
         match={null}
         onClose={() => setFormOpen(false)}
+        onCreatedAnother={() => {
+          reload();
+          matchdaysFetch.reload();
+        }}
         onSaved={() => {
           setFormOpen(false);
           reload();
@@ -298,4 +343,14 @@ function MatchesList({ championshipId, initialScheduled }: { championshipId: str
       />
     </>
   );
+}
+
+/** The fechas after this one in the same phase that have matches, in order: the schedule sheet can move on through them. */
+function followingMatchdays(all: (MatchdayDTO & { phaseName: string })[], matchdayId: string): { _id: string; name: string }[] {
+  const current = all.find((item) => item._id === matchdayId);
+  if (!current) return [];
+  return all
+    .filter((item) => item.phaseId === current.phaseId && item.number > current.number && item.matches.total > 0)
+    .sort((a, b) => a.number - b.number)
+    .map((item) => ({ _id: item._id, name: item.name }));
 }

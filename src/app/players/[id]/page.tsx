@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, Camera, CheckCircle2, Copy, Download, Goal, Pencil, Printer, ScanFace, ShieldAlert, ShieldOff, SquareStack, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, CheckCircle2, Copy, Download, Goal, Pencil, ScanFace, ShieldAlert, ShieldOff, SquareStack, Trash2 } from "lucide-react";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
@@ -12,7 +12,7 @@ import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
-import { urlToCoverDataUrl } from "@/lib/client/image";
+import { downloadCarnetImage } from "@/lib/client/carnetExport";
 import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
@@ -25,7 +25,7 @@ type Dialog = "edit" | "photo" | "face" | "removeFace" | "delete" | null;
 type Tab = "perfil" | "rostro" | "actividad";
 const TABS: { id: Tab; label: string }[] = [
   { id: "perfil", label: "Perfil" },
-  { id: "rostro", label: "Rostro y fotos" },
+  { id: "rostro", label: "Imágenes" },
   { id: "actividad", label: "Actividad" },
 ];
 
@@ -66,40 +66,8 @@ export default function PlayerProfilePage() {
   };
 
   async function downloadCarnet() {
-    const node = document.querySelector<HTMLElement>(".print-target");
-    if (!node) return;
-    const EXPORT_SCALE = 4;
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(node, {
-        backgroundColor: "#ffffff",
-        scale: EXPORT_SCALE,
-        useCORS: true,
-        onclone: async (clonedDoc) => {
-          const targets = Array.from(clonedDoc.querySelectorAll<HTMLElement>('[style*="background-image"]'));
-          await Promise.all(
-            targets.map(async (element) => {
-              const match = /url\("?(https?:[^")]+)"?\)/.exec(element.style.backgroundImage);
-              if (!match) return;
-              const boxWidth = (Number(element.dataset.carnetW) || 170) * EXPORT_SCALE;
-              const boxHeight = (Number(element.dataset.carnetH) || 170) * EXPORT_SCALE;
-              try {
-                const dataUrl = await urlToCoverDataUrl(match[1], boxWidth, boxHeight);
-                const img = clonedDoc.createElement("img");
-                img.src = dataUrl;
-                img.className = element.className;
-                element.replaceWith(img);
-              } catch {
-                // Leave original
-              }
-            })
-          );
-        },
-      });
-      const link = document.createElement("a");
-      link.download = `carnet-${current.publicId}-${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      await downloadCarnetImage(current.publicId);
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -141,7 +109,6 @@ export default function PlayerProfilePage() {
             actions={[
               ...(canSeeCarnet
                 ? [
-                    { label: "Imprimir carnet", icon: <Printer size={18} />, onClick: () => window.print() },
                     { label: "Descargar carnet", icon: <Download size={18} />, onClick: downloadCarnet },
                   ]
                 : []),
@@ -193,8 +160,8 @@ export default function PlayerProfilePage() {
                 {can("player.manage") && (
                   <button
                     className="player-avatar-camera-btn"
-                    title="Cambiar foto de perfil"
-                    aria-label="Cambiar foto de perfil"
+                    title="Cambiar imagen del perfil"
+                    aria-label="Cambiar imagen del perfil"
                     onClick={() => setDialog("photo")}
                   >
                     <Camera size={18} />
@@ -205,7 +172,7 @@ export default function PlayerProfilePage() {
               {can("player.manage") && (
                 <div className="row-wrap" style={{ justifyContent: "center", marginTop: "var(--space-sm)" }}>
                   <Button variant="ghost" size="small" icon={<Camera size={14} />} onClick={() => setDialog("photo")}>
-                    Cambiar foto
+                    Cambiar imagen
                   </Button>
                 </div>
               )}
@@ -317,6 +284,26 @@ export default function PlayerProfilePage() {
         <div className="stack" style={{ gap: "var(--space-2xl)" }}>
           <section className="card stack">
             <div className="row-between">
+              <h3>Imagen del perfil</h3>
+              {!current.photoUrl && <Badge tone="warning">Falta</Badge>}
+            </div>
+            <div className="row" style={{ gap: "var(--space-md)", alignItems: "flex-start" }}>
+              <Avatar src={current.photoUrl || current.facePhotoUrl} name={current.fullName} size={112} square />
+              <div className="stack-sm grow">
+                <p className="text-secondary" style={{ margin: 0 }}>
+                  Es la imagen que se ve en listas, alineaciones y en el carnet. Es una sola para todo.
+                </p>
+                {can("player.manage") && (
+                  <Button variant="secondary" icon={<Camera size={18} />} onClick={() => setDialog("photo")} style={{ alignSelf: "flex-start" }}>
+                    {current.photoUrl ? "Cambiar imagen" : "Agregar imagen"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="card stack">
+            <div className="row-between">
               <h3>Verificación facial</h3>
               <FaceBadge hasFace={current.hasFace} />
             </div>
@@ -324,13 +311,13 @@ export default function PlayerProfilePage() {
               {current.hasFace && <Avatar src={current.facePhotoUrl || current.photoUrl} name={current.fullName} size={56} />}
               <p className="text-secondary grow">
                 {current.hasFace
-                  ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}.`
-                  : "Registra el rostro del jugador para poder verificar su identidad en los partidos."}
+                  ? `Rostro registrado el ${formatDate(current.biometricConsentAt)}. Solo se usa para verificar su identidad en los partidos; no cambia la imagen del perfil.`
+                  : "Registra la identidad facial del jugador para poder verificar su identidad en los partidos. Es independiente de la imagen del perfil."}
               </p>
             </div>
             {can("player.manage") && <div className="row-wrap">
               <Button icon={<Camera size={18} />} onClick={() => setDialog("face")}>
-                {current.hasFace ? "Actualizar rostro" : "Registrar rostro"}
+                {current.hasFace ? "Actualizar identidad facial" : "Registrar identidad facial"}
               </Button>
               {current.hasFace && (
                 <Button variant="secondary" icon={<ShieldOff size={18} />} onClick={() => setDialog("removeFace")}>

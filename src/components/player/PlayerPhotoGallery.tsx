@@ -16,7 +16,7 @@ const MAX_PHOTOS = 8;
 
 /**
  * General photos of the player (identification, posters): no face detection, no embedding, and
- * kept apart from the biometric photo/consent above. Tap a thumbnail to see it larger; that's
+ * kept apart from the biometric photo above. Tap a thumbnail to see it larger; that's
  * where the "use as ID photo" / "use for face recognition" actions live.
  */
 export function PlayerPhotoGallery({
@@ -89,10 +89,10 @@ export function PlayerPhotoGallery({
       if (crops) {
         // Sets the crop directly as the carnet photo — it never becomes its own gallery entry.
         await http(`/players/${playerId}/carnet-photo`, { json: { image: crops.carnet } });
-        toast.success("Foto de carnet actualizada");
+        toast.success("Imagen del perfil actualizada");
       } else {
         await http(`/players/${playerId}/photos/${photo._id}/carnet`, { method: "POST" });
-        toast.success("Foto de carnet actualizada (no se detectó un rostro; se usó la foto completa)");
+        toast.success("Imagen del perfil actualizada (no se detectó un rostro; se usó la foto completa)");
       }
       setViewing(null);
       onChanged();
@@ -163,7 +163,7 @@ export function PlayerPhotoGallery({
         )}
       </div>
       <p className="text-secondary text-small">
-        Fotos generales del jugador, para identificarlo o para afiches. No se usan para verificar su identidad en los partidos.
+        Fotos generales del jugador (documentos, afiches, etc.). No se usan para verificar su identidad en los partidos.
         {photos.length > 0 && " Toca una foto para verla más grande."}
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
@@ -210,7 +210,7 @@ export function PlayerPhotoGallery({
                   loading={settingCarnet}
                   onClick={() => setAsCarnet(viewing)}
                 >
-                  {viewingIsCarnet ? "Ya es la foto del carnet" : "Usar como foto del carnet"}
+                  {viewingIsCarnet ? "Ya es la imagen del perfil" : "Usar como imagen del perfil"}
                 </Button>
                 <Button
                   variant="secondary"
@@ -244,7 +244,7 @@ export function PlayerPhotoGallery({
       />
       <ConfirmDialog
         open={Boolean(pendingBiometric)}
-        title="Registrar rostro desde esta foto"
+        title="Registrar identidad facial desde esta foto"
         message="Se detectó un rostro en la foto. Al confirmar, reemplaza el rostro y la foto de referencia usados para verificar la identidad del jugador en los partidos."
         confirmLabel="Usar esta foto"
         loading={savingBiometric}

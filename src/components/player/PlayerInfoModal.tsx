@@ -1,21 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import { ArrowRight, Camera, CheckCircle2, Copy, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, Trash2, UserRound, FileText } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ArrowRight, Camera, CheckCircle2, Copy, Download, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, Trash2, UserRound, FileText } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
+import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
 import { RegistrationBadge } from "@/components/player/PlayerBadges";
 import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, useToast } from "@/components/ui";
+import { downloadCarnetImage } from "@/lib/client/carnetExport";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
 import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
-import type { Paginated, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
+import type { Paginated, PlayerCardDTO, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
 
-type Dialog = "edit" | "photo" | "face" | "faceDone" | "more" | "delete" | null;
+type Dialog = "edit" | "card" | "photo" | "face" | "faceDone" | "more" | "delete" | null;
 
 interface Props {
   /** Id of the player to show; null keeps the sheet closed. */
@@ -46,10 +48,6 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   const changed = () => {
     player.reload();
     onChanged?.();
-  };
-  const closeAll = () => {
-    setDialog(null);
-    onClose();
   };
 
   async function copyIdentifier() {
@@ -124,10 +122,10 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
             {manage && (
               <div className="player-quick-actions">
                 <button type="button" className="player-quick-action primary" onClick={() => setDialog("photo")}>
-                  <Camera size={22} aria-hidden /> Tomar foto
+                  <Camera size={22} aria-hidden /> Imagen del perfil
                 </button>
                 <button type="button" className="player-quick-action" onClick={() => setDialog("face")}>
-                  <ScanFace size={22} aria-hidden /> {data.hasFace ? "Actualizar rostro" : "Registrar rostro"}
+                  <ScanFace size={22} aria-hidden /> {data.hasFace ? "Actualizar identidad facial" : "Registrar identidad facial"}
                 </button>
                 <button type="button" className="player-quick-action" onClick={() => setDialog("edit")}>
                   <Pencil size={22} aria-hidden /> Editar datos
@@ -191,9 +189,12 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
 
           <Modal open={dialog === "more"} title="Más opciones" onClose={() => setDialog(null)}>
             <div className="stack">
-              {canOpenProfile && (
+              {manage && (
                 <div className="manage-config-list">
-                  <MoreLink href={`/players/${data._id}`} icon={<FileText size={20} />} label="Ver o descargar carnet" onClick={closeAll} />
+                  <button type="button" className="manage-config-row" onClick={() => setDialog("card")}>
+                    <span className="manage-config-icon"><FileText size={20} aria-hidden /></span>
+                    <span className="grow text-strong">Ver o descargar carnet</span>
+                  </button>
                 </div>
               )}
               <div className="manage-config-list">
@@ -204,6 +205,8 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
               </div>
             </div>
           </Modal>
+
+          <CardModal open={dialog === "card"} playerId={data._id} onClose={() => setDialog(null)} />
 
           <ConfirmDialog
             open={dialog === "delete"}
@@ -234,11 +237,72 @@ function InfoRow({ label, value, pending, action, leading }: { label: string; va
   );
 }
 
-function MoreLink({ href, icon, label, onClick }: { href: string; icon: ReactNode; label: string; onClick: () => void }) {
+/** The player's ID card on screen, with download, without leaving the sheet. */
+function CardModal({ open, playerId, onClose }: { open: boolean; playerId: string; onClose: () => void }) {
+  const toast = useToast();
+  const card = useFetch<PlayerCardDTO>(open ? `/players/${playerId}/card` : null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function download() {
+    if (!card.data) return;
+    setDownloading(true);
+    try {
+      await downloadCarnetImage(card.data.publicId);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
-    <Link href={href} className="manage-config-row" onClick={onClick}>
-      <span className="manage-config-icon">{icon}</span>
-      <span className="grow text-strong">{label}</span>
-    </Link>
+    <Modal
+      open={open}
+      title="Carnet"
+      onClose={onClose}
+      footer={
+        <>
+          <Button icon={<Download size={18} />} loading={downloading} disabled={!card.data} onClick={download}>Descargar</Button>
+        </>
+      }
+    >
+      {card.error ? (
+        <ErrorState message={card.error.message} onRetry={card.reload} />
+      ) : !card.data ? (
+        <Loading />
+      ) : (
+        <>
+          <CardPreview card={card.data} />
+          {/* The export renders this true-size copy; the preview above is scaled to fit the screen. */}
+          <PlayerIdCardPrint card={card.data} />
+        </>
+      )}
+    </Modal>
+  );
+}
+
+const CARD_WIDTH = 480;
+const CARD_HEIGHT = 300;
+
+/** Shows the card scaled down to the width available, so it never overflows the dialog. */
+function CardPreview({ card }: { card: PlayerCardDTO }) {
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (!box) return;
+    const update = () => setScale(Math.min(1, box.clientWidth / CARD_WIDTH));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [box]);
+
+  return (
+    <div ref={setBox} style={{ width: "100%", height: CARD_HEIGHT * scale, overflow: "hidden" }}>
+      <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <PlayerIdCardPrint card={card} preview />
+      </div>
+    </div>
   );
 }

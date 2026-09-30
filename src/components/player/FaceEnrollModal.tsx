@@ -14,7 +14,7 @@ interface Props {
 
 export function FaceEnrollModal({ open, ...props }: Props) {
   return (
-    <Modal open={open} title="Registrar rostro" onClose={props.onClose} wide>
+    <Modal open={open} title="Registrar identidad facial" onClose={props.onClose} wide>
       <FaceEnrollForm {...props} />
     </Modal>
   );

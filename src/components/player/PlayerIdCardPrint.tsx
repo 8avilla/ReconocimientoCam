@@ -9,15 +9,14 @@ import type { PlayerCardDTO } from "@/types/api";
 import styles from "./PlayerIdCardPrint.module.css";
 
 /**
- * Landscape, printable version of the player's ID card. Stays off-screen (see .offscreen) until
- * "Imprimir carnet" calls `window.print()`; the ".print-target" rule in globals.css then hides
- * everything else on the page and shows only this card. "Descargar carnet" instead renders this
- * same element to a PNG (see downloadCarnet in the player page).
+ * Landscape version of the player's ID card. Shown inside the "Carnet" dialog or kept off-screen
+ * (see .offscreen) on the profile page; "Descargar carnet" renders the `.carnet-export-target`
+ * element to a PNG (see `downloadCarnetImage`).
  *
- * No document id or birth date on this card by design: it's meant to be printed or shared as an
- * image, and those fields stay restricted to organizers inside the app.
+ * No document id or birth date on this card by design: it's meant to be shared as an image, and
+ * those fields stay restricted to organizers inside the app.
  */
-export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
+export function PlayerIdCardPrint({ card, preview = false }: { card: PlayerCardDTO; /** On-screen copy for a dialog. The off-screen copy (default) is the one "Descargar carnet" renders, at its true size. */ preview?: boolean }) {
   const [qr, setQr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,8 +30,8 @@ export function PlayerIdCardPrint({ card }: { card: PlayerCardDTO }) {
   }, [card.qrPayload]);
 
   return (
-    <div className={`${styles.offscreen} print-target`}>
-      <article className={styles.card} aria-label={`Carnet para imprimir de ${card.fullName}`}>
+    <div className={preview ? undefined : `${styles.offscreen} carnet-export-target`}>
+      <article className={styles.card} aria-label={`Carnet de ${card.fullName}`}>
         <img src="/brand-wordmark.png" alt="Super Torneos" className={styles.brand} />
 
         {card.championship && (

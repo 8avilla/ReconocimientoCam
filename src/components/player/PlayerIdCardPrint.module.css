@@ -1,8 +1,4 @@
-/* Kept out of the normal flow (top-left corner, invisible via visibility rules) until printed;
-   see the ".print-target" rules in globals.css, which reposition it for the print page. Scoped to
-   screen only: at equal specificity with ".print-target", this would otherwise win the cascade
-   over its "position: fixed" during print (both are simple single-class rules on the same element),
-   leaving the card stuck off-screen instead of filling the printed page. */
+/* Kept out of the normal flow (top-left corner, invisible) until "Descargar carnet" renders it to an image. */
 @media screen {
   .offscreen {
     position: absolute;

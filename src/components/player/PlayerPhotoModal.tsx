@@ -20,7 +20,7 @@ interface Props {
 /** Profile photo: take one with the camera or pick one from the gallery, preview it, then save. */
 export function PlayerPhotoModal({ open, ...props }: Props) {
   return (
-    <Modal open={open} title="Foto del jugador" onClose={props.onClose}>
+    <Modal open={open} title="Imagen del perfil" onClose={props.onClose}>
       <PhotoForm key={props.player._id} {...props} />
     </Modal>
   );
@@ -51,7 +51,7 @@ function PhotoForm({ player, onClose, onSaved }: Omit<Props, "open">) {
       const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
       const crops = await detectFaceCropsInImage(pending).catch(() => null);
       await http(`/players/${player._id}/carnet-photo`, { json: { image: crops?.carnet ?? pending } });
-      toast.success("Foto de perfil actualizada");
+      toast.success("Imagen del perfil actualizada");
       onSaved();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -66,6 +66,7 @@ function PhotoForm({ player, onClose, onSaved }: Omit<Props, "open">) {
 
   return (
     <div className="stack">
+      <p className="text-secondary text-small" style={{ margin: 0 }}>Es la imagen que se ve en listas y alineaciones, y la que va en el carnet.</p>
       <div className="row" style={{ gap: "var(--space-md)", alignItems: "flex-start" }}>
         <Avatar src={pending ?? (player.photoUrl || player.facePhotoUrl)} name={player.fullName} size={112} square />
         <div className="stack-sm grow">

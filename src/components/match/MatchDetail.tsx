@@ -18,6 +18,7 @@ import { ActionMenu, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } 
 import type { MatchEventType } from "@/lib/constants";
 import { championshipPath } from "@/lib/paths";
 import { errorMessage, http } from "@/lib/client/http";
+import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { suggestedMinute } from "@/lib/rules/match";
@@ -35,6 +36,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const router = useRouter();
   const toast = useToast();
   const match = useFetch<MatchDTO>(`/matches/${id}`);
+  useSyncChampionship(match.data?.championshipId);
   const events = useFetch<{ data: MatchEventDTO[] }>(`/matches/${id}/events`);
   const attendance = useFetch<AttendanceDTO>(`/matches/${id}/attendance`);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?matchId=${id}&limit=50`);

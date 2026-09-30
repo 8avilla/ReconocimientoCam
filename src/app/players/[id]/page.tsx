@@ -13,6 +13,7 @@ import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { fileToResizedDataUrl, urlToCoverDataUrl } from "@/lib/client/image";
+import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
@@ -41,6 +42,7 @@ export default function PlayerProfilePage() {
   const card = useFetch<PlayerCardDTO>(canSeeCarnet ? `/players/${id}/card` : null);
   const [tab, setTab] = useStoredState<Tab>("super-torneos:player:tab", "perfil", (value) => TABS.some((item) => item.id === value));
   const liveChampionshipId = player.data?.registrations.find((registration) => registration.status !== "inactive")?.championshipId?._id;
+  useSyncChampionship(liveChampionshipId);
   const stats = useFetch<PlayerStatsSummaryDTO>(`/players/${id}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}`);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);

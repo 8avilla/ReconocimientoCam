@@ -13,6 +13,7 @@ import { TeamFormModal } from "@/components/team/TeamFormModal";
 import { ActionMenu, Avatar, Badge, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
+import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { canAccess } from "@/lib/roles";
@@ -39,6 +40,7 @@ export default function TeamDetailPage() {
   const router = useRouter();
   const toast = useToast();
   const team = useFetch<TeamDTO>(`/teams/${id}`);
+  useSyncChampionship(team.data?.championshipId);
   const roster = useFetch<{ data: RosterEntryDTO[] }>(`/teams/${id}/roster`);
   const { can, role } = useRole();
   const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);

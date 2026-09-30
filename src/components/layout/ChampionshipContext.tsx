@@ -105,3 +105,16 @@ export function useChampionship(): ChampionshipContextValue {
   if (!context) throw new Error("useChampionship must be used inside ChampionshipProvider");
   return context;
 }
+
+/**
+ * A match, team, player or phase detail page has no `/c/<id>/…` in its own address, so `current` falls
+ * back to whichever championship was last browsed that way — which is wrong once the entity on screen
+ * belongs to a different one (e.g. reached via search or a shared link). Call this once the entity has
+ * loaded so the topbar and nav catch up to it instead of showing a stale, unrelated championship.
+ */
+export function useSyncChampionship(championshipId: string | null | undefined) {
+  const { setCurrentId } = useChampionship();
+  useEffect(() => {
+    if (championshipId) setCurrentId(championshipId);
+  }, [championshipId, setCurrentId]);
+}

@@ -8,6 +8,7 @@ import { TieCard } from "@/components/knockout/TieCard";
 import { TiesEditorModal } from "@/components/knockout/TiesEditorModal";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
+import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
@@ -27,6 +28,7 @@ export function KnockoutManager({ phaseId }: { phaseId: string }) {
   const toast = useToast();
   const manage = useRole().can("championship.manage");
   const bracket = useFetch<BracketDTO>(`/phases/${phaseId}/bracket`);
+  useSyncChampionship(bracket.data?.phase.championshipId);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [deleting, setDeleting] = useState(false);
 

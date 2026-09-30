@@ -1,10 +1,11 @@
-// import bcrypt from "bcryptjs"; // only used by the commented-out credentials provider below
+import bcrypt from "bcryptjs";
 import NextAuth, { type DefaultSession } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import type { Provider } from "next-auth/providers";
 import { connectToDatabase } from "@/lib/db";
+import { clearFailures, isRateLimited, recordFailure } from "@/lib/rateLimit";
 import { ensureDefaultRoles } from "@/lib/services/roles";
 import { resolveOrganizerInvites } from "@/lib/services/users";
 import { User } from "@/models/User";
@@ -38,34 +39,33 @@ const providers: Provider[] = [
     // Always ask which Google account, instead of silently reusing whichever is already signed into the browser.
     authorization: { params: { prompt: "select_account" } },
   }),
-  // Credentials (email/password) login is built but turned off for now, per request — only Google signs
-  // people in at the moment. The provider, its API routes and the account modal's form all still exist;
-  // re-add this block to `providers` (and re-show the "Iniciar sesión con correo" entry point in
-  // RoleSwitcher.tsx) once it's ready to go live.
-  // Credentials({
-  //   id: "credentials",
-  //   name: "Correo y contraseña",
-  //   credentials: { email: {}, password: {} },
-  //   async authorize(credentials) {
-  //     const email = String(credentials?.email ?? "").trim().toLowerCase();
-  //     const password = String(credentials?.password ?? "");
-  //     if (!email || !password) return null;
-  //     await connectToDatabase();
-  //     const user = await User.findOne({ email }).select("email name image passwordHash").lean();
-  //     // Same generic failure whether the email doesn't exist, has no password set (Google-only
-  //     // account), or the password is wrong — never reveal which one, to avoid leaking real emails.
-  //     if (!user?.passwordHash) return null;
-  //     const valid = await bcrypt.compare(password, user.passwordHash);
-  //     if (!valid) return null;
-  //
-  //     // Explicitly check for false so that older accounts without the field don't get blocked
-  //     if (user.emailVerified === false) {
-  //       throw new Error("Revisa tu correo y verifica tu cuenta antes de iniciar sesión.");
-  //     }
-  //
-  //     return { id: user._id.toString(), email: user.email, name: user.name, image: user.image };
-  //   },
-  // }),
+  // Email/password sign-in, for accounts created with a password (demo users, or self-registered ones).
+  Credentials({
+    id: "credentials",
+    name: "Correo y contraseña",
+    credentials: { email: {}, password: {} },
+    async authorize(credentials) {
+      const email = String(credentials?.email ?? "").trim().toLowerCase();
+      const password = String(credentials?.password ?? "");
+      if (!email || !password) return null;
+      // Too many wrong passwords for this email in a short time: refuse without even checking.
+      if (isRateLimited(email)) throw new Error("Demasiados intentos. Espera unos minutos e inténtalo de nuevo.");
+      await connectToDatabase();
+      const user = await User.findOne({ email }).select("email name image passwordHash emailVerified").lean();
+      // Same generic failure whether the email doesn't exist, has no password set (Google-only
+      // account), or the password is wrong — never reveal which one, to avoid leaking real emails.
+      if (!user?.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+        recordFailure(email);
+        return null;
+      }
+      // Explicitly check for false so that older accounts without the field don't get blocked
+      if (user.emailVerified === false) {
+        throw new Error("Revisa tu correo y verifica tu cuenta antes de iniciar sesión.");
+      }
+      clearFailures(email);
+      return { id: user._id.toString(), email: user.email, name: user.name, image: user.image };
+    },
+  }),
 ];
 
 // Only for automated testing (Playwright/API scripts), never shown as a button: it must be requested by

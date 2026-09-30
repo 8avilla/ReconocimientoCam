@@ -65,6 +65,11 @@ export interface IChampionship {
   organizerUserIds: Types.ObjectId[];
   /** Emails invited as organizer that have not signed in yet; resolved into `organizerUserIds` on their first login. */
   organizerInviteEmails: string[];
+  /** Master copy that "Probar con una demo" clones for each user; nobody edits it as a real championship. */
+  isDemoTemplate?: boolean;
+  /** Set on a per-user demo copy: whose it is and when it is purged. */
+  demoOwnerUserId?: Types.ObjectId;
+  demoExpiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,11 +129,16 @@ const ChampionshipSchema = new Schema<IChampionship>(
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User" },
     organizerUserIds: { type: [Schema.Types.ObjectId], ref: "User", default: [] },
     organizerInviteEmails: { type: [String], default: [] },
+    isDemoTemplate: { type: Boolean },
+    demoOwnerUserId: { type: Schema.Types.ObjectId, ref: "User" },
+    demoExpiresAt: { type: Date },
   },
   { timestamps: true }
 );
 
 ChampionshipSchema.index({ name: 1, season: 1 }, { unique: true });
+ChampionshipSchema.index({ demoOwnerUserId: 1 }, { sparse: true });
+ChampionshipSchema.index({ demoExpiresAt: 1 }, { sparse: true });
 
 export const Championship: Model<IChampionship> =
   (models.Championship as Model<IChampionship>) || model<IChampionship>("Championship", ChampionshipSchema);

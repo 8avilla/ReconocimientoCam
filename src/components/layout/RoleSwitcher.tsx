@@ -10,9 +10,10 @@ import { useRole } from "./RoleContext";
 
 type Mode = "default" | "login" | "register" | "forgot";
 
-/** Credentials (email/password) login is built but turned off for now, per request — only Google signs
- * people in at the moment. Flip this back on (and re-enable the provider in src/auth.ts) when it's ready. */
-const ALLOW_CREDENTIALS_LOGIN = false;
+/** Email/password sign-in next to Google's. */
+const ALLOW_CREDENTIALS_LOGIN = true;
+/** Open self-registration stays off: accounts with a password are handed out (see `npm run demo:user`). */
+const ALLOW_SELF_REGISTER = false;
 
 /** Google's official "G" logomark — the asset Google's own branding guidelines call for on a third-party "Sign in with Google" button. */
 function GoogleIcon() {
@@ -99,9 +100,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
                 <button className="btn secondary block" onClick={() => setMode("login")}>
                   <Mail size={18} aria-hidden /> Iniciar sesión con correo
                 </button>
-                <button className="link-button" onClick={() => setMode("register")}>
-                  ¿No tienes cuenta? Crear una
-                </button>
+                {ALLOW_SELF_REGISTER && (
+                  <button className="link-button" onClick={() => setMode("register")}>
+                    ¿No tienes cuenta? Crear una
+                  </button>
+                )}
               </>
             )}
           </>
@@ -170,7 +173,7 @@ function CredentialsForm({ mode, onModeChange, onDone }: { mode: "login" | "regi
         {mode === "login" && (
           <>
             <button className="link-button" type="button" onClick={() => onModeChange("forgot")}>¿Olvidaste tu contraseña?</button>
-            <button className="link-button" type="button" onClick={() => onModeChange("register")}>¿No tienes cuenta? Crear una</button>
+            {ALLOW_SELF_REGISTER && <button className="link-button" type="button" onClick={() => onModeChange("register")}>¿No tienes cuenta? Crear una</button>}
           </>
         )}
         {mode === "register" && (

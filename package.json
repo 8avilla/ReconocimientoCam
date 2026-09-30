@@ -12,6 +12,9 @@
     "typecheck": "tsc --noEmit",
     "calibrate": "tsx scripts/calibrate-faces.ts",
     "reembed": "tsx --env-file=.env.local scripts/reembed-faces.ts",
+    "demo:template": "tsx --env-file=.env.local scripts/demo-template.ts",
+    "demo:cleanup": "tsx --env-file=.env.local scripts/demo-cleanup.ts",
+    "demo:user": "tsx --env-file=.env.local scripts/create-demo-user.ts",
     "integrity": "tsx --env-file=.env.local scripts/check-integrity.ts"
   },
   "dependencies": {

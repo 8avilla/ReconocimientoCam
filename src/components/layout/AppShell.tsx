@@ -14,6 +14,7 @@ import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/pat
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
 import { useChampionship } from "./ChampionshipContext";
+import { PlayerSheetProvider } from "@/components/player/PlayerSheetContext";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
 import { AccountModal } from "./RoleSwitcher";
@@ -55,8 +56,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const { role, user, isSignedIn } = useRole();
-  const { current } = useChampionship();
+  const { current, championships } = useChampionship();
 
   // Inside a championship (its own address, or one of its detail pages) the menu is that championship's sections.
   const routed = parseChampionshipPath(pathname);
@@ -74,6 +76,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const desktopItems: NavItem[] = scoped && canAccess(role, "/admin") ? [...items, { href: "/admin", label: "Administración", icon: Settings }] : items;
 
   return (
+    <PlayerSheetProvider>
     <div className={styles.container}>
       <div className={styles.viewport}>
         <header className={styles.topbar}>
@@ -83,18 +86,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
 
             {scoped && (
-              <div className={styles.scopeChip}>
-                <Trophy size={14} style={{ color: "#facc15" }} />
-                <span className="truncate">{current?.name ?? "Torneo"}</span>
-              </div>
+              <button type="button" className={styles.scopeChip} aria-haspopup="dialog" aria-label="Cambiar de torneo" onClick={() => setSwitcherOpen(true)}>
+                <Trophy size={14} style={{ color: "#facc15", flexShrink: 0 }} />
+                <span className="truncate" style={{ minWidth: 0 }}>{current?.name ?? "Torneo"}</span>
+                <ChevronDown size={14} aria-hidden />
+              </button>
             )}
             {scoped && (
-              <div className={styles.scopeButtonTop}>
+              <button type="button" className={styles.scopeButtonTop} aria-haspopup="dialog" aria-label="Cambiar de torneo" onClick={() => setSwitcherOpen(true)}>
                 <ChampionshipTile logoUrl={current?.logoUrl} size={32} />
                 <span className={styles.scopeName}>{current?.name ?? "Torneo"}</span>
                 {status && <Badge tone={status.tone}>{status.label}</Badge>}
                 {current && <Badge icon={<Trophy size={12} />}>{`Temporada ${current.season}`}</Badge>}
-              </div>
+                <ChevronDown size={16} aria-hidden />
+              </button>
             )}
 
             <div className={styles.topbarActions}>
@@ -146,6 +151,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </nav>
       </div>
+
+      <Modal open={switcherOpen} title="Cambiar de torneo" onClose={() => setSwitcherOpen(false)}>
+        <div className="manage-config-list">
+          {championships.map((item) => (
+            <Link key={item._id} href={championshipPath(item._id)} className="manage-config-row champ-switch-row" aria-current={item._id === current?._id ? "true" : undefined} onClick={() => setSwitcherOpen(false)}>
+              <ChampionshipTile logoUrl={item.logoUrl} size={32} />
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span className="text-strong champ-switch-name">{item.name}</span>
+                <span className="text-secondary text-small" style={{ display: "block" }}>Temporada {item.season}</span>
+              </span>
+              {item._id === current?._id && <Badge>Actual</Badge>}
+            </Link>
+          ))}
+          <Link href="/" className="manage-config-row" onClick={() => setSwitcherOpen(false)}>
+            <span className="manage-config-icon"><Trophy size={20} aria-hidden /></span>
+            <span className="grow text-strong">Ver todos los torneos</span>
+            <ChevronRight size={18} aria-hidden color="var(--color-text-disabled)" />
+          </Link>
+        </div>
+      </Modal>
 
       <Modal open={moreOpen} title="Más opciones" onClose={() => setMoreOpen(false)}>
         <div className="stack" style={{ gap: "var(--space-lg)" }}>
@@ -222,6 +247,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Rendered at the shell's top level (not nested in the "Más" sheet), so closing that sheet never takes this down with it. */}
       <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
+    </PlayerSheetProvider>
   );
 }
 

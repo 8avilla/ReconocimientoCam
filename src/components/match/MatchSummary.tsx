@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { EmptyState } from "@/components/ui";
 import { Clock } from "lucide-react";
 import type { MatchEventType } from "@/lib/constants";
@@ -38,6 +41,7 @@ export function MatchSummary({
   shirtByPlayer: Record<string, number | null>;
 }) {
   const [home, away] = teams;
+  const openPlayer = useOpenPlayer();
   const timeline = events.filter((event) => !event.voided && TIMELINE_TYPES.includes(event.type)).sort((a, b) => a.minute - b.minute);
 
   const withScore = timeline.reduce<{ event: MatchEventDTO; score: Score }[]>((acc, event) => {
@@ -89,7 +93,7 @@ export function MatchSummary({
             {suspensions.map((suspension, index) => (
               <span key={suspension._id}>
                 {index > 0 && ", "}
-                <Link href={`/players/${suspension.playerId._id}`} className="event-row-name">{suspension.playerId.fullName}</Link>{" "}
+                <button type="button" className="event-row-name" onClick={() => openPlayer(suspension.playerId._id)}>{suspension.playerId.fullName}</button>{" "}
                 (<Link href={`/teams/${suspension.teamId._id}`}>{suspension.teamId.name}</Link>)
               </span>
             ))}
@@ -112,6 +116,7 @@ function EventRow({
   away: Team;
   shirt: (playerId: string) => string;
 }) {
+  const openPlayer = useOpenPlayer();
   const isHome = event.teamId === home._id;
   const isGoal = GOAL_TYPES.includes(event.type);
   const prefix = PREFIX_LABEL[event.type];
@@ -125,20 +130,20 @@ function EventRow({
         {event.type === "substitution" ? (
           <>
             {event.relatedPlayerId && (
-              <Link href={`/players/${event.relatedPlayerId._id}`} className="event-row-name truncate">
+              <button type="button" className="event-row-name truncate" onClick={() => openPlayer(event.relatedPlayerId!._id)}>
                 {shirt(event.relatedPlayerId._id)}{event.relatedPlayerId.fullName}
-              </Link>
+              </button>
             )}
             {event.playerId && (
               <span className="event-row-name text-secondary truncate">{shirt(event.playerId._id)}{event.playerId.fullName}</span>
             )}
           </>
         ) : (
-          <Link href={event.playerId ? `/players/${event.playerId._id}` : "#"} className="truncate">
+          <button type="button" className="truncate" disabled={!event.playerId} style={{ textAlign: "left" }} onClick={() => event.playerId && openPlayer(event.playerId._id)}>
             {prefix && <span className="text-secondary text-small">{prefix}</span>}
             <span className="event-row-name">{event.playerId ? `${shirt(event.playerId._id)}${event.playerId.fullName}` : "Sin anotador"}</span>
             {event.relatedPlayerId && <span className="event-row-name text-secondary"> (asist. {event.relatedPlayerId.fullName})</span>}
-          </Link>
+          </button>
         )}
       </div>
     </div>

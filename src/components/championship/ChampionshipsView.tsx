@@ -4,14 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { championshipPath } from "@/lib/paths";
-import { Layers, LogIn, Plus, Search, Star, Trash2, Trophy } from "lucide-react";
+import { LogIn, Plus, Search, Star, Trophy } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
 import { useChampionship } from "@/components/layout/ChampionshipContext";
 import { AccountModal } from "@/components/layout/RoleSwitcher";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
-import { ActionMenu, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
-import { errorMessage, http } from "@/lib/client/http";
+import { Badge, Button, EmptyState, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import type { ChampionshipDTO } from "@/types/api";
 
@@ -21,29 +20,12 @@ export function ChampionshipsView() {
   const toast = useToast();
   const router = useRouter();
   const { championships, favoriteIds, toggleFavorite, loading, error, reload } = useChampionship();
-  const { user, isSignedIn, canManageChampionship } = useRole();
+  const { isSignedIn, canManageChampionship } = useRole();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   // Creates a new championship only — editing an existing one now happens from its own "Configuración" panel.
   const [formOpen, setFormOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [deleting, setDeleting] = useState<ChampionshipDTO | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
-  async function confirmDelete() {
-    if (!deleting) return;
-    setDeleteLoading(true);
-    try {
-      await http(`/championships/${deleting._id}`, { method: "DELETE" });
-      toast.success("Torneo eliminado");
-      setDeleting(null);
-      reload();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setDeleteLoading(false);
-    }
-  }
 
   const term = search.trim().toLowerCase();
   const byName = (a: ChampionshipDTO, b: ChampionshipDTO) => a.name.localeCompare(b.name);
@@ -57,7 +39,6 @@ export function ChampionshipsView() {
   const renderRow = (championship: ChampionshipDTO) => {
     const status = CHAMPIONSHIP_STATUS_LABEL[championship.status];
     const followed = favoriteIds.has(championship._id);
-    const manageThis = canManageChampionship(championship);
     return (
       <div key={championship._id} className="champ-row">
         {/* Tapping a championship always does the same for everyone: go into it. */}
@@ -80,17 +61,6 @@ export function ChampionshipsView() {
         >
           <Star size={22} fill={followed ? "currentColor" : "none"} />
         </button>
-        {(manageThis || user?.isAdmin) && (
-          <ActionMenu
-            label={`Más acciones de ${championship.name}`}
-            actions={[
-              ...(manageThis ? [
-                { label: "Configuración", icon: <Layers size={18} />, href: championshipPath(championship.slug || championship._id, "gestionar") },
-              ] : []),
-              ...(user?.isAdmin ? [{ label: "Eliminar", icon: <Trash2 size={18} />, danger: true, onClick: () => setDeleting(championship) }] : []),
-            ]}
-          />
-        )}
       </div>
     );
   };
@@ -176,15 +146,6 @@ export function ChampionshipsView() {
         }}
       />
       <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
-      <ConfirmDialog
-        open={deleting !== null}
-        title="Eliminar torneo"
-        message={`¿Eliminar "${deleting?.name}"? Solo es posible si no tiene equipos ni partidos.`}
-        confirmLabel="Eliminar"
-        loading={deleteLoading}
-        onConfirm={confirmDelete}
-        onClose={() => setDeleting(null)}
-      />
     </>
   );
 }

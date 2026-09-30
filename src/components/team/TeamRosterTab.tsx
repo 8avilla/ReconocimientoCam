@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { LayoutGrid, List, UserCog, Users } from "lucide-react";
 import { FaceBadge } from "@/components/player/PlayerBadges";
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { ActionMenu, Avatar, Badge, EmptyState, ErrorState, Loading } from "@/components/ui";
 import { POSITIONS, type Position } from "@/lib/constants";
 import { REGISTRATION_STATUS_LABEL } from "@/lib/labels";
@@ -19,11 +20,14 @@ interface Props {
   onExpressEdit?: (entry: RosterEntryDTO) => void;
   /** Whether the viewer may open player profiles (visitors cannot). */
   linkPlayers?: boolean;
+  /** Called after the player sheet changed something, so the roster can refresh. */
+  onChanged?: () => void;
 }
 
 /** Squad grouped by position: photo with the shirt number, name, face registration and registration status. */
-export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpressEdit, linkPlayers = true }: Props) {
+export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpressEdit, linkPlayers = true, onChanged }: Props) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const openPlayer = useOpenPlayer();
 
   if (error) return <ErrorState message={error.message} onRetry={onRetry} />;
   if (loading && entries.length === 0) return <Loading />;
@@ -78,7 +82,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
                   const status = REGISTRATION_STATUS_LABEL[entry.status];
                   return (
                     <li key={entry._id} className="list-row">
-                      <PlayerLink href={`/players/${entry.playerId._id}`} enabled={linkPlayers}>
+                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)} enabled={linkPlayers}>
                         <span className="shirt-photo">
                           <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={48} />
                           <span className="shirt-number">{entry.shirtNumber ?? "–"}</span>
@@ -107,7 +111,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
                   const status = REGISTRATION_STATUS_LABEL[entry.status];
                   return (
                     <div key={entry._id} className="roster-card">
-                      <PlayerLink href={`/players/${entry.playerId._id}`} enabled={linkPlayers}>
+                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)} enabled={linkPlayers}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                           <span className="shirt-photo" style={{ marginBottom: 8 }}>
                             <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={64} />
@@ -145,7 +149,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, onExpr
 }
 
 /** Link to the player profile, or a plain block when the viewer cannot open it. */
-function PlayerLink({ href, enabled, children }: { href: string; enabled: boolean; children: React.ReactNode }) {
-  return enabled ? <Link href={href} className="row grow" style={{ minWidth: 0 }}>{children}</Link> : <div className="row grow" style={{ minWidth: 0 }}>{children}</div>;
+function PlayerLink({ onOpen, enabled, children }: { onOpen: () => void; enabled: boolean; children: React.ReactNode }) {
+  return enabled ? <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={onOpen}>{children}</button> : <div className="row grow" style={{ minWidth: 0 }}>{children}</div>;
 }
 

@@ -149,7 +149,7 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
         ) : !attendance.data ? (
           <Loading />
         ) : (
-          <MatchLineup checkIns={rows} events={eventList} teams={teams} />
+          <MatchLineup checkIns={rows} events={eventList} teams={teams} onChanged={reloadAll} />
         ))}
 
       {activeTab === "events" && (

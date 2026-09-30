@@ -1,18 +1,18 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, Camera, CheckCircle2, Copy, Download, Goal, Paperclip, Pencil, Printer, ScanFace, ShieldAlert, ShieldOff, Sparkles, SquareStack, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, CheckCircle2, Copy, Download, Goal, Pencil, Printer, ScanFace, ShieldAlert, ShieldOff, SquareStack, Trash2 } from "lucide-react";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
 import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
+import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
 import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
-import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, PageHeader, useToast } from "@/components/ui";
+import { ActionMenu, Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, PageHeader, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
-import { fileToResizedDataUrl, urlToCoverDataUrl } from "@/lib/client/image";
+import { urlToCoverDataUrl } from "@/lib/client/image";
 import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
@@ -20,10 +20,8 @@ import { useStoredState } from "@/lib/client/useStoredState";
 import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerStatsSummaryDTO, SuspensionDTO } from "@/types/api";
 
-// getUserMedia only runs in the browser.
-const SimpleCameraCapture = dynamic(() => import("@/components/camera/SimpleCameraCapture").then((mod) => mod.SimpleCameraCapture), { ssr: false });
 
-type Dialog = "edit" | "face" | "removeFace" | "delete" | null;
+type Dialog = "edit" | "photo" | "face" | "removeFace" | "delete" | null;
 type Tab = "perfil" | "rostro" | "actividad";
 const TABS: { id: Tab; label: string }[] = [
   { id: "perfil", label: "Perfil" },
@@ -46,9 +44,6 @@ export default function PlayerProfilePage() {
   const stats = useFetch<PlayerStatsSummaryDTO>(`/players/${id}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}`);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
-  const [photoCameraOpen, setPhotoCameraOpen] = useState(false);
-  const [changingPhoto, setChangingPhoto] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   if (player.error) return <ErrorState message={player.error.message} onRetry={player.reload} />;
   if (!player.data) return <Loading />;
@@ -108,37 +103,6 @@ export default function PlayerProfilePage() {
     } catch (error) {
       toast.error(errorMessage(error));
     }
-  }
-
-  async function setProfilePhoto(image: string) {
-    setChangingPhoto(true);
-    try {
-      const { detectFaceCropsInImage } = await import("@/components/camera/faceCrop");
-      const crops = await detectFaceCropsInImage(image).catch(() => null);
-      await http(`/players/${id}/carnet-photo`, { json: { image: crops?.carnet ?? image } });
-      toast.success("Foto de perfil actualizada");
-      reloadAll();
-    } catch (error) {
-      toast.error(errorMessage(error));
-    } finally {
-      setChangingPhoto(false);
-    }
-  }
-
-  async function handleProfilePhotoFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      await setProfilePhoto(await fileToResizedDataUrl(file, 1280, "image/jpeg"));
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  }
-
-  async function handleProfilePhotoCamera(image: string) {
-    setPhotoCameraOpen(false);
-    await setProfilePhoto(image);
   }
 
   async function copyIdentifier() {
@@ -231,8 +195,7 @@ export default function PlayerProfilePage() {
                     className="player-avatar-camera-btn"
                     title="Cambiar foto de perfil"
                     aria-label="Cambiar foto de perfil"
-                    disabled={changingPhoto}
-                    onClick={() => setPhotoCameraOpen(true)}
+                    onClick={() => setDialog("photo")}
                   >
                     <Camera size={18} />
                   </button>
@@ -240,17 +203,10 @@ export default function PlayerProfilePage() {
               </div>
 
               {can("player.manage") && (
-                <div className="row-wrap" style={{ justifyContent: "center", gap: "var(--space-xs)", marginTop: "var(--space-sm)" }}>
-                  <Button variant="ghost" size="small" icon={<Camera size={14} />} loading={changingPhoto} onClick={() => setPhotoCameraOpen(true)}>
-                    Tomar foto
+                <div className="row-wrap" style={{ justifyContent: "center", marginTop: "var(--space-sm)" }}>
+                  <Button variant="ghost" size="small" icon={<Camera size={14} />} onClick={() => setDialog("photo")}>
+                    Cambiar foto
                   </Button>
-                  <Button variant="ghost" size="small" icon={<Paperclip size={14} />} loading={changingPhoto} onClick={() => photoInputRef.current?.click()}>
-                    Adjuntar
-                  </Button>
-                  <input ref={photoInputRef} type="file" accept="image/*" hidden onChange={handleProfilePhotoFile} />
-                  <Modal open={photoCameraOpen} title="Tomar foto de perfil" onClose={() => setPhotoCameraOpen(false)}>
-                    <SimpleCameraCapture onCapture={handleProfilePhotoCamera} onCancel={() => setPhotoCameraOpen(false)} />
-                  </Modal>
                 </div>
               )}
 
@@ -393,6 +349,7 @@ export default function PlayerProfilePage() {
       {canSeeCarnet && card.data && <PlayerIdCardPrint card={card.data} />}
 
       <PlayerFormModal open={dialog === "edit"} player={current} registration={liveRegistration} onClose={() => setDialog(null)} onSaved={closeAndReload} />
+      <PlayerPhotoModal open={dialog === "photo"} player={current} onClose={() => setDialog(null)} onSaved={closeAndReload} />
       <FaceEnrollModal open={dialog === "face"} playerId={id} onClose={() => setDialog(null)} onSaved={closeAndReload} />
       <ConfirmDialog
         open={dialog === "removeFace"}

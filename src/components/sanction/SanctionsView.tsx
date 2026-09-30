@@ -10,6 +10,7 @@ import { Avatar, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Loading, 
 import { errorMessage, http } from "@/lib/client/http";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { useStoredState } from "@/lib/client/useStoredState";
 import { formatDate, SUSPENSION_REASON_LABEL, SUSPENSION_STATUS_LABEL } from "@/lib/labels";
 import type { Paginated, SuspensionDTO } from "@/types/api";
@@ -29,6 +30,7 @@ function Sanctions({ championshipId }: { championshipId: string }) {
   const { can } = useRole();
   const manage = can("sanction.manage");
   const toast = useToast();
+  const openPlayer = useOpenPlayer();
   const [status, setStatus] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
   // Suspensions or fines (money); fines are only for those who manage sanctions.
@@ -133,9 +135,9 @@ function Sanctions({ championshipId }: { championshipId: string }) {
 
                 return (
                   <div key={item._id} className="list-row" style={{ alignItems: "flex-start", gap: "var(--space-md)", padding: "var(--space-md)" }}>
-                    <Link href={`/players/${item.playerId._id}`}>
+                    <button type="button" aria-label={`Ver a ${item.playerId.fullName}`} onClick={() => openPlayer(item.playerId._id)}>
                       <Avatar src={item.playerId.photoUrl} name={item.playerId.fullName} size={48} />
-                    </Link>
+                    </button>
                     <div className="grow" style={{ minWidth: 0 }}>
                       <div className="row-wrap" style={{ gap: 6, alignItems: "center", marginBottom: 2 }}>
                         <span className="champ-caption truncate">
@@ -148,7 +150,7 @@ function Sanctions({ championshipId }: { championshipId: string }) {
                         </span>
                       </div>
                       <div className="champ-name truncate">
-                        <Link href={`/players/${item.playerId._id}`}>{item.playerId.fullName}</Link>
+                        <button type="button" style={{ textAlign: "left" }} onClick={() => openPlayer(item.playerId._id)}>{item.playerId.fullName}</button>
                       </div>
 
                       {/* Progress bar for matches served */}

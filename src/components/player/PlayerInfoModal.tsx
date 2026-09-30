@@ -1,0 +1,244 @@
+"use client";
+
+import Link from "next/link";
+import { useState, type ReactNode } from "react";
+import { ArrowRight, Camera, CheckCircle2, Copy, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, Trash2, UserRound, FileText } from "lucide-react";
+import { useRole } from "@/components/layout/RoleContext";
+import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
+import { PlayerFormModal } from "@/components/player/PlayerFormModal";
+import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
+import { RegistrationBadge } from "@/components/player/PlayerBadges";
+import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, useToast } from "@/components/ui";
+import { errorMessage, http } from "@/lib/client/http";
+import { useFetch } from "@/lib/client/useFetch";
+import { formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
+import { canAccess } from "@/lib/roles";
+import type { Paginated, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
+
+type Dialog = "edit" | "photo" | "face" | "faceDone" | "more" | "delete" | null;
+
+interface Props {
+  /** Id of the player to show; null keeps the sheet closed. */
+  playerId: string | null;
+  onClose: () => void;
+  /** Called after anything was changed, so the list behind can refresh. */
+  onChanged?: () => void;
+}
+
+/**
+ * Quick sheet for a player: who they are, what is missing, and the everyday actions (photo, face, edit data)
+ * without leaving the list. Each action opens its own small dialog and returns to the sheet afterwards.
+ */
+export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
+  const toast = useToast();
+  const { can, role } = useRole();
+  const manage = can("player.manage");
+  const player = useFetch<PlayerDetailDTO>(playerId ? `/players/${playerId}` : null);
+  const suspensions = useFetch<Paginated<SuspensionDTO>>(playerId ? `/suspensions?playerId=${playerId}&status=active&limit=10` : null);
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [busy, setBusy] = useState(false);
+
+  const data = player.data?._id === playerId ? player.data : null;
+  const registration = data?.registrations.find((item) => item.status !== "inactive") ?? null;
+  const missingData = data ? !data.documentId || !data.birthDate : false;
+  const canOpenProfile = canAccess(role, "/players/x");
+
+  const changed = () => {
+    player.reload();
+    onChanged?.();
+  };
+  const closeAll = () => {
+    setDialog(null);
+    onClose();
+  };
+
+  async function copyIdentifier() {
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(data.publicId);
+      toast.success("Identificador copiado");
+    } catch {
+      toast.error("No se pudo copiar");
+    }
+  }
+
+  async function deletePlayer() {
+    if (!data) return;
+    setBusy(true);
+    try {
+      await http(`/players/${data._id}`, { method: "DELETE" });
+      toast.success("Jugador eliminado");
+      setDialog(null);
+      onChanged?.();
+      onClose();
+    } catch (error) {
+      toast.error(errorMessage(error));
+      setDialog(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const subtitle = registration ? [registration.shirtNumber != null && `#${registration.shirtNumber}`, registration.teamId?.name].filter(Boolean).join(" · ") : "Sin equipo";
+
+  return (
+    <>
+      <Modal open={Boolean(playerId) && dialog === null} title="Ficha del jugador" onClose={onClose}>
+        {player.error ? (
+          <ErrorState message={player.error.message} onRetry={player.reload} />
+        ) : !data ? (
+          <Loading />
+        ) : (
+          <div className="stack" style={{ gap: "var(--space-lg)" }}>
+            <div className="row" style={{ gap: "var(--space-md)" }}>
+              <span className="player-quick-avatar">
+                <Avatar src={data.photoUrl || data.facePhotoUrl} name={data.fullName} size={64} />
+                {data.hasFace && <span className="player-quick-avatar-dot" aria-hidden><Camera size={12} /></span>}
+              </span>
+              <div className="grow" style={{ minWidth: 0 }}>
+                <h3 style={{ margin: 0 }} className="truncate">{data.fullName}</h3>
+                <div className="text-secondary truncate">{subtitle}</div>
+              </div>
+            </div>
+
+            <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>
+              {data.hasFace ? (
+                <Badge tone="success" icon={<ShieldCheck size={12} aria-hidden />}>Rostro registrado</Badge>
+              ) : (
+                <Badge tone="warning" icon={<ScanFace size={12} aria-hidden />}>Sin rostro</Badge>
+              )}
+              {missingData && <Badge tone="warning" icon={<UserRound size={12} aria-hidden />}>Datos incompletos</Badge>}
+              {registration && registration.status !== "active" && <RegistrationBadge status={registration.status} />}
+            </div>
+
+            {suspensions.data?.data.map((suspension) => (
+              <div key={suspension._id} className="alert error" role="alert">
+                <ShieldAlert size={18} />
+                <span className="grow">
+                  Suspendido en {suspension.teamId.name} — {SUSPENSION_REASON_LABEL[suspension.reason]}, cumplió {suspension.matchesServed} de {suspension.matchesToServe}{" "}
+                  {suspension.matchesToServe === 1 ? "partido" : "partidos"}.
+                </span>
+              </div>
+            ))}
+
+            {manage && (
+              <div className="player-quick-actions">
+                <button type="button" className="player-quick-action primary" onClick={() => setDialog("photo")}>
+                  <Camera size={22} aria-hidden /> Tomar foto
+                </button>
+                <button type="button" className="player-quick-action" onClick={() => setDialog("face")}>
+                  <ScanFace size={22} aria-hidden /> {data.hasFace ? "Actualizar rostro" : "Registrar rostro"}
+                </button>
+                <button type="button" className="player-quick-action" onClick={() => setDialog("edit")}>
+                  <Pencil size={22} aria-hidden /> Editar datos
+                </button>
+                <button type="button" className="player-quick-action" onClick={() => setDialog("more")}>
+                  <MoreHorizontal size={22} aria-hidden /> Más opciones
+                </button>
+              </div>
+            )}
+
+            <section className="stack-sm">
+              <h4 style={{ margin: 0 }}>Información rápida</h4>
+              <dl className="stack-sm" style={{ margin: 0 }}>
+                <InfoRow label="Documento" value={data.documentId} pending={manage} />
+                <InfoRow label="Fecha de nacimiento" value={data.birthDate ? formatDate(data.birthDate) : undefined} pending={manage} />
+                <InfoRow
+                  label="Identificador"
+                  value={data.publicId}
+                  action={<button type="button" className="icon-button" aria-label="Copiar identificador" onClick={copyIdentifier}><Copy size={14} /></button>}
+                />
+                <InfoRow
+                  label="Equipo"
+                  value={registration?.teamId?.name}
+                  leading={registration?.teamId && <Avatar src={registration.teamId.shieldUrl} name={registration.teamId.name} size={20} square />}
+                />
+                <InfoRow label="Número" value={registration?.shirtNumber != null ? String(registration.shirtNumber) : undefined} />
+                <InfoRow label="Posición" value={registration?.position ?? undefined} />
+              </dl>
+            </section>
+
+            {canOpenProfile && (
+              <Link href={`/players/${data._id}`} className="btn secondary" onClick={onClose}>
+                Ver perfil completo <ArrowRight size={18} aria-hidden />
+              </Link>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {data && (
+        <>
+          <PlayerFormModal open={dialog === "edit"} player={data} registration={registration} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); changed(); }} />
+          <PlayerPhotoModal open={dialog === "photo"} player={data} onClose={() => setDialog(null)} onSaved={() => { setDialog(null); changed(); }} />
+          <FaceEnrollModal open={dialog === "face"} playerId={data._id} onClose={() => setDialog(null)} onSaved={() => { changed(); setDialog("faceDone"); }} />
+
+          <Modal open={dialog === "faceDone"} title="Rostro registrado" onClose={() => setDialog(null)}>
+            <div className="stack" style={{ alignItems: "center", textAlign: "center", gap: "var(--space-md)" }}>
+              <CheckCircle2 size={64} color="var(--color-success)" aria-hidden />
+              <p className="text-secondary" style={{ margin: 0 }}>El rostro del jugador ha sido guardado correctamente.</p>
+              <Avatar src={data.facePhotoUrl || data.photoUrl} name={data.fullName} size={96} />
+              <div>
+                <div className="text-strong">{data.fullName}</div>
+                <div className="text-secondary">{subtitle}</div>
+              </div>
+              <div className="stack-sm" style={{ width: "100%" }}>
+                <Button size="large" onClick={() => setDialog(null)}>Continuar</Button>
+                <Button variant="secondary" onClick={() => setDialog("face")}>Tomar otra foto</Button>
+              </div>
+            </div>
+          </Modal>
+
+          <Modal open={dialog === "more"} title="Más opciones" onClose={() => setDialog(null)}>
+            <div className="stack">
+              {canOpenProfile && (
+                <div className="manage-config-list">
+                  <MoreLink href={`/players/${data._id}`} icon={<FileText size={20} />} label="Ver o descargar carnet" onClick={closeAll} />
+                </div>
+              )}
+              <div className="manage-config-list">
+                <button type="button" className="manage-config-row" onClick={() => setDialog("delete")} style={{ color: "var(--color-error)" }}>
+                  <span className="manage-config-icon" style={{ color: "var(--color-error)" }}><Trash2 size={20} aria-hidden /></span>
+                  <span className="grow text-strong">Eliminar jugador</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+
+          <ConfirmDialog
+            open={dialog === "delete"}
+            title="Eliminar jugador"
+            message="Solo es posible si el jugador no tiene inscripciones ni asistencias. En otro caso, márcalo como inactivo."
+            confirmLabel="Eliminar"
+            loading={busy}
+            onConfirm={deletePlayer}
+            onClose={() => setDialog(null)}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function InfoRow({ label, value, pending, action, leading }: { label: string; value?: string; pending?: boolean; action?: ReactNode; leading?: ReactNode }) {
+  return (
+    <div className="row-between">
+      <dt className="text-secondary">{label}</dt>
+      <dd className="row" style={{ gap: 6, margin: 0, minWidth: 0 }}>
+        {leading}
+        <span className="text-strong truncate">{value || "—"}</span>
+        {!value && pending && <Badge tone="warning">Pendiente</Badge>}
+        {action}
+      </dd>
+    </div>
+  );
+}
+
+function MoreLink({ href, icon, label, onClick }: { href: string; icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <Link href={href} className="manage-config-row" onClick={onClick}>
+      <span className="manage-config-icon">{icon}</span>
+      <span className="grow text-strong">{label}</span>
+    </Link>
+  );
+}

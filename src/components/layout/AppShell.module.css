@@ -16,14 +16,15 @@
 .topbarLogo { height: 32px; width: auto; border-radius: var(--radius-sm); }
 .topbarLogoLink { display: inline-flex; flex-shrink: 0; }
 .scopeChip {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; max-width: 100%; min-width: 0; padding: 0 14px;
+  cursor: pointer; flex: 0 1 auto;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; max-width: 55vw; min-width: 0; padding: 0 14px;
   border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff; font-weight: 700; font-size: 13px; transition: background 0.15s ease;
 }
 .scopeChip:active { background: rgba(255, 255, 255, 0.25); }
 
 /* Desktop-only championship badge and account trigger; hidden on phones (the compact scopeChip covers that). */
-.scopeButtonTop { display: none; }
+.scopeButtonTop { display: none; cursor: pointer; min-width: 0; max-width: 460px; flex: 0 1 auto; color: inherit; font: inherit; }
 .accountTrigger { display: none; }
 
 .bottomNav {
@@ -52,7 +53,8 @@
     background: var(--color-navy-light); border: 1px solid rgba(255, 255, 255, 0.08); transition: background 0.15s ease;
   }
   .scopeButtonTop:hover { background: rgba(30, 41, 59, 0.8); }
-  .scopeName { font-weight: 700; font-size: 14px; color: #fff; white-space: nowrap; }
+  .scopeName { font-weight: 700; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .scopeButtonTop > *:not(.scopeName) { flex-shrink: 0; }
   .scopeButtonTop svg:last-child { color: rgba(255, 255, 255, 0.6); }
 
   .accountTrigger {

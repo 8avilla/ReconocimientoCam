@@ -23,10 +23,10 @@ import type { RosterEntryDTO, TeamDTO } from "@/types/api";
 
 type TeamTab = "results" | "fixtures" | "stats" | "roster";
 const TABS: { id: TeamTab; label: string }[] = [
+  { id: "roster", label: "Plantilla" },
   { id: "results", label: "Resultados de partidos" },
   { id: "fixtures", label: "Próximos Partidos" },
   { id: "stats", label: "Estadísticas" },
-  { id: "roster", label: "Plantilla" },
 ];
 
 type RosterSubTab = "players" | "staff";
@@ -44,7 +44,7 @@ export default function TeamDetailPage() {
   const roster = useFetch<{ data: RosterEntryDTO[] }>(`/teams/${id}/roster`);
   const { can, role } = useRole();
   const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);
-  const [tab, setTab] = useStoredState<TeamTab>("super-torneos:team:tab", "results", (value) => TABS.some((item) => item.id === value));
+  const [tab, setTab] = useState<TeamTab>("roster");
   const [rosterTab, setRosterTab] = useStoredState<RosterSubTab>("super-torneos:team:rosterTab", "players", (value) => ROSTER_SUB_TABS.some((item) => item.id === value));
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -164,6 +164,7 @@ export default function TeamDetailPage() {
               onRetry={roster.reload}
               onExpressEdit={can("player.manage") ? setExpressEditEntry : undefined}
               linkPlayers={canAccess(role, "/players/x")}
+              onChanged={roster.reload}
             />
           )}
         </>

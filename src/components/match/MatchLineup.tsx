@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { Avatar } from "@/components/ui";
 import { POSITIONS, type MatchEventType } from "@/lib/constants";
 import { EventIcon } from "./EventIcon";
@@ -27,7 +29,8 @@ const BADGE_TYPES: MatchEventType[] = ["yellow_card", "red_card", "substitution"
  * Matches how event tagging already treats attendance elsewhere in the app (see `MatchDetail`'s
  * `presentPlayers`): many amateur matches never confirm check-in one way or the other, so "pending" reads
  * as attended too — only an explicit "absent" excludes a player. */
-export function MatchLineup({ checkIns, events, teams }: { checkIns: AttendanceRowDTO[]; events: MatchEventDTO[]; teams: [Team, Team] }) {
+export function MatchLineup({ checkIns, events, teams, onChanged }: { checkIns: AttendanceRowDTO[]; events: MatchEventDTO[]; teams: [Team, Team]; onChanged?: () => void }) {
+  const openPlayer = useOpenPlayer();
   const present = checkIns.filter((row) => row.status !== "absent");
   const valid = events.filter((event) => !event.voided && BADGE_TYPES.includes(event.type));
 
@@ -62,7 +65,7 @@ export function MatchLineup({ checkIns, events, teams }: { checkIns: AttendanceR
                 <ul style={{ listStyle: "none" }}>
                   {players.map((player) => (
                     <li key={player.playerId}>
-                      <Link href={`/players/${player.playerId}`} className={`lineup-player${away ? " away" : ""}`}>
+                      <button type="button" className={`lineup-player${away ? " away" : ""}`} onClick={() => openPlayer(player.playerId, onChanged)}>
                         <span className="lineup-number">{player.shirtNumber ?? ""}</span>
                         <Avatar src={player.photoUrl} name={player.fullName} size={18} square />
                         <span className="truncate">{player.fullName}{player.goalkeeper ? " (G)" : ""}</span>
@@ -71,7 +74,7 @@ export function MatchLineup({ checkIns, events, teams }: { checkIns: AttendanceR
                             {player.badges.map((type, badgeIndex) => <EventIcon key={badgeIndex} type={type} size={12} />)}
                           </span>
                         )}
-                      </Link>
+                      </button>
                     </li>
                   ))}
                 </ul>

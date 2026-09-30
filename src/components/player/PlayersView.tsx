@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, Pencil, Plus, ScanFace, Search, UserRound, Users } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { ActionMenu, Avatar, Button, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
@@ -27,6 +28,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [pages, setPages] = useState(1);
   const [editingPlayer, setEditingPlayer] = useState<PlayerDTO | null>(null);
+  const openPlayer = useOpenPlayer();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -127,13 +129,13 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                   {displayedPlayers.map((player) => (
                     <tr key={player._id}>
                       <td>
-                        <Link href={`/players/${player._id}`} className="row">
+                        <button type="button" className="row" style={{ textAlign: "left" }} onClick={() => openPlayer(player._id, reload)}>
                           <Avatar src={player.photoUrl} name={player.fullName} size={40} />
                           <div>
                             <div className="text-strong">{player.fullName}</div>
                             <div className="text-secondary text-small">{player.documentId || "Sin documento"}</div>
                           </div>
-                        </Link>
+                        </button>
                       </td>
                       <td>{player.registration?.team?.name ?? "—"}{player.registration && ` · ${player.registration.shirtNumber != null ? `#${player.registration.shirtNumber}` : "sin número"}`}</td>
                       <td>{player.registration?.position ?? "—"}</td>
@@ -156,7 +158,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
             <div className="only-mobile">
               {displayedPlayers.map((player) => (
                 <div key={player._id} className="list-row">
-                  <Link href={`/players/${player._id}`} className="row grow" style={{ minWidth: 0 }}>
+                  <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={() => openPlayer(player._id, reload)}>
                     <Avatar src={player.photoUrl} name={player.fullName} size={44} />
                     <div className="grow" style={{ minWidth: 0 }}>
                       <div className="champ-caption truncate">
@@ -170,7 +172,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
                       {player.hasFace ? <ScanFace size={22} /> : <UserRound size={22} />}
                     </span>
                     <ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" />
-                  </Link>
+                  </button>
                   {manage && (
                     <ActionMenu
                       label={`Más acciones de ${player.fullName}`}
@@ -188,6 +190,7 @@ function PlayersList({ championshipId }: { championshipId: string }) {
           )}
         </>
       )}
+
 
       {editingPlayer && (
         <PlayerFormModal

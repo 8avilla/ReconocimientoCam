@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check } from "lucide-react";
+import { useOpenPlayer } from "@/components/player/PlayerSheetContext";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
 import { FaceEnrollment, type CapturedFace } from "@/components/player/FaceEnrollment";
 import { Button, Input, Loading, PageHeader, Select, useToast } from "@/components/ui";
@@ -34,6 +35,7 @@ export function NewPlayerWizard({ initialTeamId }: { initialTeamId: string }) {
 function Wizard({ championshipId, initialTeamId }: { championshipId: string; initialTeamId: string }) {
   const router = useRouter();
   const toast = useToast();
+  const openPlayer = useOpenPlayer();
   const teams = useFetch<Paginated<TeamDTO>>(`/teams?championshipId=${championshipId}&active=true&limit=100`);
 
   const [step, setStep] = useState<Step>(1);
@@ -106,7 +108,8 @@ function Wizard({ championshipId, initialTeamId }: { championshipId: string; ini
     } else {
       toast.success("Jugador registrado. Falta registrar su rostro.");
     }
-    router.push(`/players/${playerId}`);
+    router.push("/players");
+    openPlayer(playerId);
   }
 
   return (

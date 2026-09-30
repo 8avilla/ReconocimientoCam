@@ -1,24 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, Camera, CheckCircle2, Copy, Download, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, Trash2, UserRound, FileText } from "lucide-react";
+import { AlertCircle, Camera, CheckCircle2, Copy, Download, FileText, Goal, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, ShieldOff, SquareStack, Trash2, UserRound } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
+import { PlayerPhotoGallery } from "@/components/player/PlayerPhotoGallery";
 import { PlayerMatchHistory } from "@/components/player/PlayerMatchHistory";
 import { PlayerFormModal } from "@/components/player/PlayerFormModal";
 import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
-import { RegistrationBadge } from "@/components/player/PlayerBadges";
+import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, useToast } from "@/components/ui";
 import { downloadCarnetImage } from "@/lib/client/carnetExport";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
 import { ageFromBirthYear, formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
-import { canAccess } from "@/lib/roles";
-import type { Paginated, PlayerCardDTO, PlayerDetailDTO, SuspensionDTO } from "@/types/api";
+import type { Paginated, PlayerCardDTO, PlayerDetailDTO, PlayerStatsSummaryDTO, SuspensionDTO } from "@/types/api";
 
-type Dialog = "edit" | "card" | "photo" | "face" | "faceDone" | "more" | "delete" | null;
+type Dialog = "edit" | "card" | "photo" | "face" | "faceDone" | "more" | "removeFace" | "delete" | null;
 
 interface Props {
   /** Id of the player to show; null keeps the sheet closed. */
@@ -34,21 +33,26 @@ interface Props {
  */
 export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   const toast = useToast();
-  const { can, role } = useRole();
+  const { can } = useRole();
   const manage = can("player.manage");
   const player = useFetch<PlayerDetailDTO>(playerId ? `/players/${playerId}` : null);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(playerId ? `/suspensions?playerId=${playerId}&status=active&limit=10` : null);
+  const liveChampionshipId = player.data?.registrations.find((item) => item.status !== "inactive")?.championshipId?._id;
+  const stats = useFetch<PlayerStatsSummaryDTO>(playerId ? `/players/${playerId}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}` : null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"general" | "actividad">("general");
-
-  useEffect(() => setTab("general"), [playerId]);
+  const [tabPlayerId, setTabPlayerId] = useState(playerId);
+  // A different player always opens on "General" (state adjusted during render, not in an effect).
+  if (tabPlayerId !== playerId) {
+    setTabPlayerId(playerId);
+    setTab("general");
+  }
 
   const data = player.data?._id === playerId ? player.data : null;
   const registration = data?.registrations.find((item) => item.status !== "inactive") ?? null;
   const missingData = data ? !data.documentId || !data.birthDate : false;
   const age = ageFromBirthYear(data?.birthDate);
-  const canOpenProfile = canAccess(role, "/players/x");
 
   const changed = () => {
     player.reload();
@@ -82,7 +86,23 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
     }
   }
 
-  const subtitle = registration ? [registration.shirtNumber != null && `#${registration.shirtNumber}`, registration.teamId?.name].filter(Boolean).join(" · ") : "Sin equipo";
+  async function removeFace() {
+    if (!data) return;
+    setBusy(true);
+    try {
+      await http(`/players/${data._id}/face`, { method: "DELETE" });
+      toast.success("Datos biométricos eliminados");
+      setDialog(null);
+      changed();
+    } catch (error) {
+      toast.error(errorMessage(error));
+      setDialog(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const subtitle = registration ? [registration.shirtNumber != null && `#${registration.shirtNumber}`, registration.teamId?.name, registration.position].filter(Boolean).join(" · ") : "Sin equipo";
 
   return (
     <>
@@ -173,15 +193,51 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
                 <InfoRow label="Posición" value={registration?.position ?? undefined} />
               </dl>
             </section>
+
+            <section className="stack-sm">
+              <div className="row-between">
+                <h4 style={{ margin: 0 }}>Verificación facial</h4>
+                <FaceBadge hasFace={data.hasFace} />
+              </div>
+              <p className="text-secondary text-small" style={{ margin: 0 }}>
+                {data.hasFace
+                  ? `Rostro registrado el ${formatDate(data.biometricConsentAt)}. Solo se usa para verificar su identidad en los partidos; no cambia la imagen del perfil.`
+                  : "Registra la identidad facial para verificar su identidad en los partidos. Es independiente de la imagen del perfil."}
+              </p>
+            </section>
+
+            <PlayerPhotoGallery playerId={data._id} photos={data.photos ?? []} currentPhotoUrl={data.photoUrl} canManage={manage} onChanged={changed} />
               </>
             )}
 
-            {(!manage || tab === "actividad") && <PlayerMatchHistory playerId={data._id} />}
-
-            {canOpenProfile && (
-              <Link href={`/players/${data._id}`} className="btn secondary" onClick={onClose}>
-                Ver perfil completo <ArrowRight size={18} aria-hidden />
-              </Link>
+            {(!manage || tab === "actividad") && (
+              <>
+                <section className="stack-sm">
+                  <h4 style={{ margin: 0 }}>Estadísticas en el torneo</h4>
+                  {stats.data ? (
+                    <div className="stat-grid-enhanced">
+                      <StatTile color="blue" icon={<SquareStack size={20} />} label="Partidos" value={stats.data.matchesPlayed} />
+                      <StatTile
+                        color="green"
+                        icon={<Goal size={20} />}
+                        label="Goles"
+                        value={stats.data.goals}
+                        sub={stats.data.matchesPlayed > 0 ? `${(stats.data.goals / stats.data.matchesPlayed).toFixed(2)} por p.` : undefined}
+                      />
+                      <StatTile
+                        color="amber"
+                        icon={<AlertCircle size={20} />}
+                        label="Tarjetas"
+                        value={stats.data.yellowCards + stats.data.redCards}
+                        sub={`${stats.data.yellowCards} amarillas / ${stats.data.redCards} rojas`}
+                      />
+                    </div>
+                  ) : (
+                    <Loading />
+                  )}
+                </section>
+                <PlayerMatchHistory playerId={data._id} />
+              </>
             )}
           </div>
         )}
@@ -217,6 +273,12 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
                     <span className="manage-config-icon"><FileText size={20} aria-hidden /></span>
                     <span className="grow text-strong">Ver o descargar carnet</span>
                   </button>
+                  {data.hasFace && (
+                    <button type="button" className="manage-config-row" onClick={() => setDialog("removeFace")}>
+                      <span className="manage-config-icon"><ShieldOff size={20} aria-hidden /></span>
+                      <span className="grow text-strong">Eliminar datos biométricos</span>
+                    </button>
+                  )}
                 </div>
               )}
               <div className="manage-config-list">
@@ -231,6 +293,16 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
           <CardModal open={dialog === "card"} playerId={data._id} onClose={() => setDialog(null)} />
 
           <ConfirmDialog
+            open={dialog === "removeFace"}
+            title="Eliminar datos biométricos"
+            message="Se borrarán la foto y el rostro registrado del jugador. Esta acción no se puede deshacer."
+            confirmLabel="Eliminar"
+            loading={busy}
+            onConfirm={removeFace}
+            onClose={() => setDialog(null)}
+          />
+
+          <ConfirmDialog
             open={dialog === "delete"}
             title="Eliminar jugador"
             message="Solo es posible si el jugador no tiene inscripciones ni asistencias. En otro caso, márcalo como inactivo."
@@ -242,6 +314,17 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
         </>
       )}
     </>
+  );
+}
+
+function StatTile({ icon, label, value, color, sub }: { icon: ReactNode; label: string; value: number; color: "blue" | "green" | "amber" | "red"; sub?: string }) {
+  return (
+    <div className="stat-tile-enhanced">
+      <div className={`stat-tile-icon-box ${color}`}>{icon}</div>
+      <div className="val">{value}</div>
+      <div className="lbl">{label}</div>
+      {sub && <div className="sub">{sub}</div>}
+    </div>
   );
 }
 

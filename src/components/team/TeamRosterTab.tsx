@@ -18,14 +18,12 @@ interface Props {
   onRetry: () => void;
   /** Whether the viewer may register new players (shows the "Agregar jugador" shortcut when the squad is empty). */
   canAddPlayer?: boolean;
-  /** Whether the viewer may open player profiles (visitors cannot). */
-  linkPlayers?: boolean;
   /** Called after the player sheet changed something, so the roster can refresh. */
   onChanged?: () => void;
 }
 
 /** Squad grouped by position: photo with the shirt number, name, face registration and registration status. */
-export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAddPlayer, linkPlayers = true, onChanged }: Props) {
+export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAddPlayer, onChanged }: Props) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const openPlayer = useOpenPlayer();
 
@@ -82,7 +80,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAdd
                   const status = REGISTRATION_STATUS_LABEL[entry.status];
                   return (
                     <li key={entry._id} className="list-row">
-                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)} enabled={linkPlayers}>
+                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)}>
                         <span className="shirt-photo">
                           <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={48} />
                           <span className="shirt-number">{entry.shirtNumber ?? "–"}</span>
@@ -105,7 +103,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAdd
                   const status = REGISTRATION_STATUS_LABEL[entry.status];
                   return (
                     <div key={entry._id} className="roster-card">
-                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)} enabled={linkPlayers}>
+                      <PlayerLink onOpen={() => openPlayer(entry.playerId._id, onChanged)}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                           <span className="shirt-photo" style={{ marginBottom: 8 }}>
                             <Avatar src={entry.playerId.photoUrl} name={entry.playerId.fullName} size={64} />
@@ -134,8 +132,7 @@ export function TeamRosterTab({ teamId, entries, loading, error, onRetry, canAdd
   );
 }
 
-/** Link to the player profile, or a plain block when the viewer cannot open it. */
-function PlayerLink({ onOpen, enabled, children }: { onOpen: () => void; enabled: boolean; children: React.ReactNode }) {
-  return enabled ? <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={onOpen}>{children}</button> : <div className="row grow" style={{ minWidth: 0 }}>{children}</div>;
+/** Opens the player sheet (everyone can see it; what it shows depends on the viewer's role). */
+function PlayerLink({ onOpen, children }: { onOpen: () => void; children: React.ReactNode }) {
+  return <button type="button" className="row grow" style={{ minWidth: 0, textAlign: "left" }} onClick={onOpen}>{children}</button>;
 }
-

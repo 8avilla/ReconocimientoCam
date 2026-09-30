@@ -15,7 +15,6 @@ import { FAVORITE_TEAMS_KEY, useFavoriteSet } from "@/lib/client/favorites";
 import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
-import { canAccess } from "@/lib/roles";
 import { useFetch } from "@/lib/client/useFetch";
 import { useStoredState } from "@/lib/client/useStoredState";
 import type { RosterEntryDTO, TeamDTO } from "@/types/api";
@@ -41,7 +40,7 @@ export default function TeamDetailPage() {
   const team = useFetch<TeamDTO>(`/teams/${id}`);
   useSyncChampionship(team.data?.championshipId);
   const roster = useFetch<{ data: RosterEntryDTO[] }>(`/teams/${id}/roster`);
-  const { can, role } = useRole();
+  const { can } = useRole();
   const [favoriteTeams, toggleFavoriteTeam] = useFavoriteSet(FAVORITE_TEAMS_KEY);
   const [tab, setTab] = useState<TeamTab>("roster");
   const [rosterTab, setRosterTab] = useStoredState<RosterSubTab>("super-torneos:team:rosterTab", "players", (value) => ROSTER_SUB_TABS.some((item) => item.id === value));
@@ -161,7 +160,6 @@ export default function TeamDetailPage() {
               error={roster.error}
               onRetry={roster.reload}
               canAddPlayer={can("player.manage")}
-              linkPlayers={canAccess(role, "/players/x")}
               onChanged={roster.reload}
             />
           )}

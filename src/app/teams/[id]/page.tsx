@@ -76,6 +76,16 @@ export default function TeamDetailPage() {
       <PageHeader
         title={current.name}
         breadcrumb={[{ label: "Equipos", href: championshipPath(current.championshipId, "equipos") }, { label: current.name }]}
+        // On phones the buttons become the floating "+" sheet, so the title keeps the full width.
+        mobileActions={[
+          ...(can("roster.manage") ? [{ label: "Agregar jugador", icon: <UserPlus size={20} />, href: `/players/new?teamId=${id}` }] : []),
+          ...(can("team.manage")
+            ? [
+                { label: "Editar equipo", icon: <Pencil size={20} />, onClick: () => setEditOpen(true) },
+                { label: "Eliminar equipo", icon: <Trash2 size={20} />, danger: true, onClick: () => setDeleteOpen(true) },
+              ]
+            : []),
+        ]}
         actions={
           <>
             {can("roster.manage") && <Link href={`/players/new?teamId=${id}`} className="btn primary"><UserPlus size={18} aria-hidden /> Agregar jugador</Link>}

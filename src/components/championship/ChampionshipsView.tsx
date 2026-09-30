@@ -34,7 +34,8 @@ export function ChampionshipsView() {
   const matching = championships.filter((item) => !term || `${item.name} ${item.season}`.toLowerCase().includes(term));
   // "Mine" is anything I organize or chose to follow; everything else is there to discover.
   const mine = isSignedIn ? applySort(matching.filter((item) => canManageChampionship(item) || favoriteIds.has(item._id))) : [];
-  const discover = applySort(isSignedIn ? matching.filter((item) => !canManageChampionship(item) && !favoriteIds.has(item._id)) : matching);
+  // "Todos los torneos" lists every championship that is not a draft, including the ones already shown under "Mis torneos".
+  const discover = applySort(matching.filter((item) => item.status !== "draft"));
 
   const renderRow = (championship: ChampionshipDTO) => {
     const status = CHAMPIONSHIP_STATUS_LABEL[championship.status];

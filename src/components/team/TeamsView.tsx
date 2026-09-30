@@ -26,7 +26,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
   const section = manage ? storedSection : "teams";
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const teams = (data?.data ?? []).filter((team) => team.name.toLowerCase().includes(search.trim().toLowerCase()));
 
@@ -115,18 +115,18 @@ function TeamsList({ championshipId }: { championshipId: string }) {
 
         <div className="view-toggle-bar" style={{ margin: 0 }}>
           <button
-            className={`view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
-            onClick={() => setViewMode("grid")}
-            title="Vista de cuadrícula"
-          >
-            <LayoutGrid size={16} /> Tarjetas
-          </button>
-          <button
             className={`view-toggle-btn${viewMode === "list" ? " active" : ""}`}
             onClick={() => setViewMode("list")}
             title="Vista de lista"
           >
             <List size={16} /> Lista
+          </button>
+          <button
+            className={`view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
+            onClick={() => setViewMode("grid")}
+            title="Vista de cuadrícula"
+          >
+            <LayoutGrid size={16} /> Tarjetas
           </button>
         </div>
       </div>

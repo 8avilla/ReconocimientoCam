@@ -1,89 +1,87 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
- * The phone's back button closes the topmost open modal instead of leaving the page.
- * Each open modal owns one history entry; entries are counted (not tagged) because Next.js rewrites history.state.
- * Closing a modal by any other means (X, Esc, parent state) gives its entry back, once, after the current
- * render settles — so a modal that closes while the next one opens in the same commit doesn't confuse the history.
+ * The phone's back button closes the topmost open overlay instead of leaving the page.
+ *
+ * Every open overlay pushes one history entry tagged `{ modal: true }`. Rules that keep the history honest:
+ *  - Closing with the overlay's own X / Esc / backdrop goes through `requestClose`, which does `history.back()`;
+ *    the popstate handler then closes it, so no entry is left behind.
+ *  - Closing from the outside (parent state, a saved form) leaves a "stale" entry. If nothing navigates, it is
+ *    given back shortly after. It is NEVER given back while a navigation may be pending: a popstate would make
+ *    Next.js restore the previous URL and undo the navigation (this is what sent "Jugadores" to "Clasificación").
+ *  - A stale entry that is still there when the user presses back is recognized by its tag and skipped.
  */
-const modalStack: Array<() => void> = [];
-let historyEntries = 0;
+type Entry = { close: () => void };
+const stack: Entry[] = [];
 let ignoredPops = 0;
 let listening = false;
-let reconcileTimer: ReturnType<typeof setTimeout> | undefined;
-// Navigations (links, router.push) that happen while an overlay closes must not be undone by giving its entry back.
-let foreignPushes = 0;
-let ownPush = false;
-let patched = false;
+let lastLinkClickAt = 0;
 
-function watchNavigation() {
-  if (patched) return;
-  patched = true;
-  const original = window.history.pushState.bind(window.history);
-  window.history.pushState = (...args: Parameters<History["pushState"]>) => {
-    if (!ownPush) foreignPushes++;
-    return original(...args);
-  };
-}
+const skipBack = () => {
+  ignoredPops++;
+  window.history.back();
+};
 
-function pushOwnEntry() {
-  ownPush = true;
-  try {
-    window.history.pushState({ modal: true }, "");
-  } finally {
-    ownPush = false;
-  }
-}
-
-function onPopState() {
+function onPopState(event: PopStateEvent) {
+  const landedOnTaggedEntry = Boolean(event.state?.modal);
   if (ignoredPops > 0) {
     ignoredPops--;
+    // Still on a leftover entry of a closed overlay: keep going until the real page.
+    if (landedOnTaggedEntry && stack.length === 0) skipBack();
     return;
   }
-  if (historyEntries === 0) return;
-  historyEntries--;
-  modalStack.pop()?.();
+  if (stack.length > 0) {
+    stack.pop()?.close();
+    if (landedOnTaggedEntry && stack.length === 0) skipBack();
+  } else if (landedOnTaggedEntry) {
+    skipBack();
+  }
 }
 
-function reconcileHistory() {
-  clearTimeout(reconcileTimer);
-  const pushesBefore = foreignPushes;
-  reconcileTimer = setTimeout(() => {
-    const extra = historyEntries - modalStack.length;
-    if (extra <= 0) return;
-    historyEntries -= extra;
-    // The page navigated meanwhile: going back would undo it, so the stale entries are left in place.
-    if (foreignPushes !== pushesBefore) return;
-    ignoredPops++;
-    window.history.go(-extra);
-  }, 120);
+function watchLinkClicks() {
+  document.addEventListener("click", (event) => {
+    if ((event.target as Element | null)?.closest?.("a[href]")) lastLinkClickAt = Date.now();
+  }, true);
 }
 
-/** While `open`, the phone's back button calls `onClose` (closing the topmost overlay) instead of leaving the page. */
-export function useBackButtonClose(open: boolean, onClose: () => void) {
-  // Callers pass a new onClose on every render; the effect must only run when the overlay opens or closes.
+/** While `open`, the phone's back button calls `onClose`. Returns the function to use for the overlay's own close controls. */
+export function useBackButtonClose(open: boolean, onClose: () => void): () => void {
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   });
+  const entryRef = useRef<Entry | null>(null);
 
   useEffect(() => {
     if (!open) return;
     if (!listening) {
-      window.addEventListener("popstate", onPopState);
       listening = true;
+      window.addEventListener("popstate", onPopState);
+      watchLinkClicks();
     }
-    watchNavigation();
-    const close = () => onCloseRef.current();
-    pushOwnEntry();
-    historyEntries++;
-    modalStack.push(close);
+    const entry: Entry = { close: () => onCloseRef.current() };
+    entryRef.current = entry;
+    window.history.pushState({ modal: true }, "");
+    stack.push(entry);
+    const pathAtOpen = window.location.pathname;
     return () => {
-      const index = modalStack.indexOf(close);
-      if (index !== -1) modalStack.splice(index, 1);
-      reconcileHistory();
+      entryRef.current = null;
+      const index = stack.indexOf(entry);
+      if (index === -1) return; // closed by the back button: nothing left behind
+      stack.splice(index, 1);
+      // Closed from the outside: give the entry back once things settle, unless the page is navigating.
+      setTimeout(() => {
+        const navigating = Date.now() - lastLinkClickAt < 2000 || window.location.pathname !== pathAtOpen;
+        if (stack.length === 0 && !navigating && window.history.state?.modal) skipBack();
+      }, 400);
     };
   }, [open]);
+
+  return useCallback(() => {
+    const entry = entryRef.current;
+    if (entry && stack[stack.length - 1] === entry) window.history.back();
+    else onCloseRef.current();
+  }, []);
 }

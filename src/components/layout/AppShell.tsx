@@ -57,8 +57,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const { role, user, isSignedIn } = useRole();
-  const { current, championships } = useChampionship();
+  const { role, user, isSignedIn, canManageChampionship } = useRole();
+  const { current, championships, favoriteIds } = useChampionship();
+
+  // The switcher offers the championships the user organizes or follows (plus the one open now); "Ver todos" has the rest.
+  const switcherItems = championships.filter((item) => item._id === current?._id || favoriteIds.has(item._id) || (isSignedIn && canManageChampionship(item)));
 
   // Inside a championship (its own address, or one of its detail pages) the menu is that championship's sections.
   const routed = parseChampionshipPath(pathname);
@@ -154,7 +157,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <Modal open={switcherOpen} title="Cambiar de torneo" onClose={() => setSwitcherOpen(false)}>
         <div className="manage-config-list">
-          {championships.map((item) => (
+          {switcherItems.map((item) => (
             <Link key={item._id} href={championshipPath(item._id)} className="manage-config-row champ-switch-row" aria-current={item._id === current?._id ? "true" : undefined} onClick={() => setSwitcherOpen(false)}>
               <ChampionshipTile logoUrl={item.logoUrl} size={32} />
               <span className="grow" style={{ minWidth: 0 }}>

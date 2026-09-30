@@ -18,21 +18,16 @@ interface ModalProps {
 export function Modal({ title, open, onClose, wide, children, footer }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
-  // Callers pass a new onClose on every render; the effect below must only run when the modal opens or closes,
-  // otherwise it would steal the focus from the field being typed in on each keystroke.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  });
-
-  useBackButtonClose(open, onClose);
+  // Stable, so the effect below only runs when the modal opens or closes (otherwise it would steal the focus
+  // from the field being typed in on each keystroke). It closes through the history so the back button stays in sync.
+  const requestClose = useBackButtonClose(open, onClose);
 
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onCloseRef.current();
+        requestClose();
         return;
       }
       // Keep keyboard focus inside the dialog (background content must not be tabbable while it's open).
@@ -65,11 +60,11 @@ export function Modal({ title, open, onClose, wide, children, footer }: ModalPro
       document.body.style.overflow = "";
       previouslyFocused?.focus();
     };
-  }, [open]);
+  }, [open, requestClose]);
 
   if (!open) return null;
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && requestClose()}>
       <div
         ref={dialogRef}
         className={`modal${wide ? " wide" : ""}`}
@@ -80,7 +75,7 @@ export function Modal({ title, open, onClose, wide, children, footer }: ModalPro
       >
         <div className="modal-header">
           <h3 id={titleId}>{title}</h3>
-          <button className="icon-button" onClick={onClose} aria-label="Cerrar">
+          <button className="icon-button" onClick={requestClose} aria-label="Cerrar">
             <X size={20} />
           </button>
         </div>

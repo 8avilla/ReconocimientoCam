@@ -45,3 +45,9 @@ dev.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# TWA
+twa/*.keystore
+twa/android-sdk
+twa/app-release*
+twa/build

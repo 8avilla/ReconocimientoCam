@@ -1,0 +1,28 @@
+{
+  "packageId": "co.com.supertorneos.app",
+  "host": "supertorneos.com.co",
+  "name": "Super Torneos",
+  "launcherName": "Super Torneos",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#0a3fb5",
+  "navigationColor": "#0a3fb5",
+  "backgroundColor": "#0a3fb5",
+  "startUrl": "/",
+  "iconUrl": "https://supertorneos.com.co/icon-512.png",
+  "maskableIconUrl": "https://supertorneos.com.co/icon-maskable-512.png",
+  "webManifestUrl": "https://supertorneos.com.co/manifest.webmanifest",
+  "appVersion": "1",
+  "appVersionCode": 1,
+  "enableNotifications": false,
+  "enableSiteSettingsShortcut": false,
+  "fallbackType": "customtabs",
+  "features": {},
+  "signingKey": {
+    "path": "./supertorneos.keystore",
+    "alias": "supertorneos"
+  },
+  "minSdkVersion": 21,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false
+}

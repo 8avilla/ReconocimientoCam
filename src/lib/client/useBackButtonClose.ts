@@ -72,12 +72,21 @@ export function useBackButtonClose(open: boolean, onClose: () => void): () => vo
       watchLinkClicks();
     }
     const entry: Entry = { close: () => onCloseRef.current() };
-    entryRef.current = entry;
-    window.history.pushState({ modal: true }, "");
-    stack.push(entry);
+    let pushed = false;
     // The query counts too: a search-only navigation (`router.replace("?s=phases")`) must not be undone either.
-    const addressAtOpen = window.location.pathname + window.location.search;
+    let addressAtOpen = "";
+    // Pushed on the next tick, not synchronously: React's development double-mount (mount, unmount, mount) would
+    // otherwise leave two history entries for one overlay, and closing it would need two "back" steps in a row.
+    const timer = setTimeout(() => {
+      pushed = true;
+      entryRef.current = entry;
+      window.history.pushState({ modal: true }, "");
+      stack.push(entry);
+      addressAtOpen = window.location.pathname + window.location.search;
+    }, 0);
     return () => {
+      clearTimeout(timer);
+      if (!pushed) return; // closed before it ever pushed anything
       entryRef.current = null;
       const index = stack.indexOf(entry);
       if (index === -1) return; // closed by the back button: nothing left behind

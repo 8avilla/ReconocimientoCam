@@ -18,6 +18,7 @@ interface ModalProps {
 export function Modal({ title, open, onClose, wide, children, footer }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const pressedOnBackdrop = useRef(false);
   // Stable, so the effect below only runs when the modal opens or closes (otherwise it would steal the focus
   // from the field being typed in on each keystroke). It closes through the history so the back button stays in sync.
   const requestClose = useBackButtonClose(open, onClose);
@@ -64,7 +65,19 @@ export function Modal({ title, open, onClose, wide, children, footer }: ModalPro
 
   if (!open) return null;
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && requestClose()}>
+    // Closes on a full click that started and ended on the backdrop (not on mouse-down): a press that begins inside
+    // the dialog (e.g. selecting text) and ends outside must not close it, and the click is consumed here so it can
+    // never reach whatever sits behind the overlay.
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => { pressedOnBackdrop.current = event.target === event.currentTarget; }}
+      onClick={(event) => {
+        if (event.target !== event.currentTarget || !pressedOnBackdrop.current) return;
+        pressedOnBackdrop.current = false;
+        event.stopPropagation();
+        requestClose();
+      }}
+    >
       <div
         ref={dialogRef}
         className={`modal${wide ? " wide" : ""}`}

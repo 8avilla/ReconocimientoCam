@@ -51,3 +51,12 @@ twa/*.keystore
 twa/android-sdk
 twa/app-release*
 twa/build
+twa/.gradle
+twa/app
+twa/gradle
+twa/gradlew*
+twa/*.gradle
+twa/gradle.properties
+twa/manifest-checksum.txt
+twa/store_icon.png
+twa/local.properties

@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "co.com.supertorneos.app",
+      "sha256_cert_fingerprints": [
+        "7B:42:38:14:6C:18:33:96:10:4E:77:CF:A3:88:F0:83:36:5E:62:B1:2F:D2:BB:19:52:A0:A5:DD:91:04:58:6C",
+        "A4:26:5F:04:83:BD:72:77:85:88:58:5F:09:53:33:8A:5B:77:66:82:52:80:AD:F6:95:28:B1:BB:F3:13:91:BA"
+      ]
+    }
+  }
+]

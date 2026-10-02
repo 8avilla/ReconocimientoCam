@@ -73,6 +73,6 @@ export function canAccess(role: Role, rawPath: string): boolean {
   if (within(pathname, "/admin")) return role === "admin";
   if (role !== "visitor") return true;
   // A visitor reads the championship: no setup pages, no personal data of players.
-  if (pathname === "/" || pathname === "/championships") return true;
+  if (pathname === "/" || pathname === "/championships" || pathname === "/privacidad") return true;
   return ["/matches", "/stats", "/phases", "/teams", "/sanctions", "/attendance"].some((prefix) => within(pathname, prefix));
 }

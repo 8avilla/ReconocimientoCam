@@ -16,6 +16,7 @@ import { canAccess } from "@/lib/roles";
 import { trackView } from "@/lib/client/usage";
 import { useChampionship } from "./ChampionshipContext";
 import { PlayerSheetProvider } from "@/components/player/PlayerSheetContext";
+import { LegalFooter } from "@/components/legal/LegalFooter";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
 import { AccountModal } from "./RoleSwitcher";
@@ -145,6 +146,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               }
             />
           )}
+          <LegalFooter />
         </main>
 
         <nav className={styles.bottomNav} aria-label={scoped ? "Torneo" : "Principal"}>

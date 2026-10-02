@@ -29,6 +29,9 @@ describe("screen access", () => {
     expect(canAccess("visitor", "/matches/123")).toBe(true);
     expect(canAccess("visitor", "/teams/abc")).toBe(true);
     expect(canAccess("visitor", "/players")).toBe(false);
+    expect(canAccess("visitor", "/privacidad")).toBe(true);
+    expect(canAccess("visitor", "/eliminar-cuenta")).toBe(true);
+    expect(canAccess("visitor", "/no-existe")).toBe(true);
     expect(canAccess("visitor", "/players/new")).toBe(false);
   });
   it("understands the championship-scoped addresses", () => {

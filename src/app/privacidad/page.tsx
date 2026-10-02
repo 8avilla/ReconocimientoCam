@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
-import styles from "./page.module.css";
+import Link from "next/link";
+import { LegalPage } from "@/components/legal/LegalPage";
+import { CONTACT_EMAIL } from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Política de Privacidad | Super Torneos",
   description: "Cómo Super Torneos recoge, usa y protege tus datos personales y biométricos.",
 };
 
-const CONTACT_EMAIL = "soporte@supertorneos.com.co";
 const UPDATED_AT = "2 de octubre de 2026";
 
 export default function PrivacyPolicyPage() {
   return (
-    <article className={styles.page}>
-      <h1>Política de Privacidad</h1>
-      <p className={styles.updated}>Última actualización: {UPDATED_AT}</p>
-
+    <LegalPage title="Política de Privacidad" updatedAt={UPDATED_AT}>
       <p>
         Super Torneos (supertorneos.com.co y su aplicación para Android) es una plataforma para organizar campeonatos
         deportivos: equipos, jugadores, partidos, sanciones y verificación de identidad de los jugadores. Esta política
@@ -137,8 +135,9 @@ export default function PrivacyPolicyPage() {
 
       <h2>11. Eliminación de cuenta y datos</h2>
       <p>
-        Puedes eliminar tu cuenta tú mismo, en cualquier momento: inicia sesión en la aplicación o en{" "}
-        <a href="/perfil">supertorneos.com.co/perfil</a> y pulsa <strong>Eliminar mi cuenta</strong>.
+        Puedes eliminar tu cuenta tú mismo, en cualquier momento: inicia sesión, abre <strong>Mi perfil</strong> y pulsa{" "}
+        <strong>Eliminar mi cuenta</strong>. Las instrucciones completas, incluso si no puedes entrar, están en{" "}
+        <Link href="/eliminar-cuenta">supertorneos.com.co/eliminar-cuenta</Link>.
       </p>
       <p>
         Al eliminarla borramos tu perfil, tu acceso y tus registros de uso, y quitamos tu nombre de los registros de asistencia y verificación. El registro de auditoría de la plataforma, que es inalterable por seguridad, conserva el nombre de quien realizó cada acción.
@@ -154,6 +153,6 @@ export default function PrivacyPolicyPage() {
       <p>
         Podemos actualizar esta política. Publicaremos la versión vigente en esta página con su fecha de actualización.
       </p>
-    </article>
+    </LegalPage>
   );
 }

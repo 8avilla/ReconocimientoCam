@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { AlertTriangle, LogOut, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, LogOut, UserRound } from "lucide-react";
 import { Avatar, Button, EmptyState, Input, Loading, Modal, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
 import { errorMessage, http } from "@/lib/client/http";
@@ -87,27 +87,11 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="card stack-sm">
-        <h2 style={{ fontSize: 16 }}>Eliminar mi cuenta</h2>
-        <p className="text-secondary text-small">
-          Se borra tu cuenta y tus datos personales: tu perfil, tu acceso y tus registros de uso, y tu nombre se quita de los registros de asistencia y verificación.
-          El registro de auditoría de la plataforma conserva el nombre de quien hizo cada acción. Esta acción no se puede deshacer.
-        </p>
-        <p className="text-secondary text-small">
-          Los torneos que organizas no se eliminan, porque pertenecen a quienes participan en ellos: pasan a un coorganizador si lo hay. Tus torneos de demostración sí se borran.
-        </p>
-        {impact && impact.withoutCoOrganizer > 0 && (
-          <p className="text-small" role="note" style={{ color: "var(--color-error)" }}>
-            <AlertTriangle size={14} aria-hidden /> {impact.withoutCoOrganizer === 1 ? "Un torneo tuyo no tiene coorganizador" : `${impact.withoutCoOrganizer} torneos tuyos no tienen coorganizador`}:
-            quedará sin responsable hasta que un administrador lo asigne. Añade a alguien antes si no quieres que pase.
-          </p>
-        )}
-        <div>
-          <Button variant="danger" icon={<Trash2 size={18} aria-hidden />} onClick={() => setDialogOpen(true)}>
-            Eliminar mi cuenta
-          </Button>
-        </div>
-      </section>
+      <p className="text-secondary text-small" style={{ textAlign: "center", marginTop: "var(--space-lg)" }}>
+        <button type="button" className="link-button" style={{ color: "inherit", textDecoration: "underline" }} onClick={() => setDialogOpen(true)}>
+          Eliminar mi cuenta
+        </button>
+      </p>
 
       <Modal
         open={dialogOpen}
@@ -126,6 +110,19 @@ export default function ProfilePage() {
           <p className="text-secondary">
             Vas a eliminar la cuenta de <strong>{user.email}</strong>. No se puede deshacer.
           </p>
+          <p className="text-secondary text-small">
+            Se borra tu cuenta y tus datos personales: tu perfil, tu acceso y tus registros de uso, y tu nombre se quita de los registros de asistencia y verificación.
+            El registro de auditoría de la plataforma conserva el nombre de quien hizo cada acción.
+          </p>
+          <p className="text-secondary text-small">
+            Los torneos que organizas no se eliminan, porque pertenecen a quienes participan en ellos: pasan a un coorganizador si lo hay. Tus torneos de demostración sí se borran.
+          </p>
+          {impact && impact.withoutCoOrganizer > 0 && (
+            <p className="text-small" role="note" style={{ color: "var(--color-error)" }}>
+              <AlertTriangle size={14} aria-hidden /> {impact.withoutCoOrganizer === 1 ? "Un torneo tuyo no tiene coorganizador" : `${impact.withoutCoOrganizer} torneos tuyos no tienen coorganizador`}:
+              quedará sin responsable hasta que un administrador lo asigne.
+            </p>
+          )}
           <Input
             label={`Escribe ${CONFIRM_WORD} para confirmar`}
             value={confirm}

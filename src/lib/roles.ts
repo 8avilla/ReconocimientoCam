@@ -73,6 +73,8 @@ export function canAccess(role: Role, rawPath: string): boolean {
   if (within(pathname, "/admin")) return role === "admin";
   if (role !== "visitor") return true;
   // A visitor reads the championship: no setup pages, no personal data of players.
-  if (pathname === "/" || pathname === "/championships" || pathname === "/privacidad" || pathname === "/perfil") return true;
-  return ["/matches", "/stats", "/phases", "/teams", "/sanctions", "/attendance"].some((prefix) => within(pathname, prefix));
+  if (pathname === "/" || pathname === "/championships") return true;
+  if (["/matches", "/stats", "/phases", "/teams", "/sanctions", "/attendance"].some((prefix) => within(pathname, prefix))) return true;
+  // Only the setup areas are closed to visitors. Everything else (privacy, terms, support, a 404...) is theirs to open.
+  return !["/players", "/championships"].some((prefix) => within(pathname, prefix));
 }

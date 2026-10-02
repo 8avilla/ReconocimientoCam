@@ -522,6 +522,8 @@ export const userCreateSchema = z.object({
   roleId: objectIdSchema.nullable().optional(),
   isAdmin: z.boolean().optional(),
 });
+/** Typed by the person to confirm they really want their account gone. */
+export const accountDeleteSchema = z.object({ confirm: z.literal("ELIMINAR", { message: "Escribe ELIMINAR para confirmar" }) });
 export const userUpdateSchema = z.object({
   name: requiredText(120),
   roleId: objectIdSchema.nullable(),

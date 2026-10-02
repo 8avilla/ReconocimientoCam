@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn as nextAuthSignIn } from "next-auth/react";
-import { AlertCircle, CheckCircle2, LogOut, Mail } from "lucide-react";
+import { AlertCircle, CheckCircle2, LogOut, Mail, UserRound } from "lucide-react";
 import { Avatar, Button, Input, Modal, useToast } from "@/components/ui";
 import { errorMessage, http } from "@/lib/client/http";
 import { ROLE_LABEL } from "@/lib/roles";
@@ -74,6 +75,9 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
             <p className="text-secondary text-small">
               {user.isAdmin ? "Eres administrador: gestionas la app y todos los torneos." : `Tu rol aquí: ${ROLE_LABEL[role]}.`}
             </p>
+            <Link href="/perfil" className="btn secondary block" onClick={close}>
+              <UserRound size={18} aria-hidden /> Mi perfil
+            </Link>
             <button
               className="btn secondary block"
               onClick={() => {

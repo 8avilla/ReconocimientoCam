@@ -137,8 +137,17 @@ export default function PrivacyPolicyPage() {
 
       <h2>11. Eliminación de cuenta y datos</h2>
       <p>
-        Puedes pedir la eliminación de tu cuenta y de tus datos escribiendo a{" "}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> desde el correo asociado a tu cuenta.
+        Puedes eliminar tu cuenta tú mismo, en cualquier momento: inicia sesión en la aplicación o en{" "}
+        <a href="/perfil">supertorneos.com.co/perfil</a> y pulsa <strong>Eliminar mi cuenta</strong>.
+      </p>
+      <p>
+        Al eliminarla borramos tu perfil, tu acceso y tus registros de uso, y quitamos tu nombre de los registros de asistencia y verificación. El registro de auditoría de la plataforma, que es inalterable por seguridad, conserva el nombre de quien realizó cada acción.
+        Los campeonatos que organizabas no se eliminan, porque contienen información de otras personas: pasan a un
+        coorganizador, si lo hay, o a la administración. Tus torneos de demostración sí se borran.
+      </p>
+      <p>
+        Si no puedes acceder a tu cuenta, o quieres que eliminemos también los datos de un jugador (incluida su plantilla
+        facial), escríbenos a <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> desde el correo asociado.
       </p>
 
       <h2>12. Cambios a esta política</h2>

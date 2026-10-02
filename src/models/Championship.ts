@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 import {
   CHAMPIONSHIP_FORMATS,
@@ -139,6 +140,8 @@ const ChampionshipSchema = new Schema<IChampionship>(
 ChampionshipSchema.index({ name: 1, season: 1 }, { unique: true });
 ChampionshipSchema.index({ demoOwnerUserId: 1 }, { sparse: true });
 ChampionshipSchema.index({ demoExpiresAt: 1 }, { sparse: true });
+
+invalidateOnWrite(ChampionshipSchema, "Championship");
 
 export const Championship: Model<IChampionship> =
   (models.Championship as Model<IChampionship>) || model<IChampionship>("Championship", ChampionshipSchema);

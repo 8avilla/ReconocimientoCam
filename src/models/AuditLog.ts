@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 export const AUDIT_ENTITY_TYPES = [
   "championship",
@@ -81,6 +82,8 @@ for (const op of blockedQueryOps) {
 AuditLogSchema.pre("save", function () {
   if (!this.isNew) throw new Error(IMMUTABLE_MESSAGE);
 });
+
+invalidateOnWrite(AuditLogSchema, "AuditLog");
 
 export const AuditLog: Model<IAuditLog> =
   (models.AuditLog as Model<IAuditLog>) || model<IAuditLog>("AuditLog", AuditLogSchema);

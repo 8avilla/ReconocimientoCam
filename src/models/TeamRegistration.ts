@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 import { POSITIONS, REGISTRATION_STATUSES, type Position, type RegistrationStatus } from "@/lib/constants";
 
@@ -47,6 +48,8 @@ TeamRegistrationSchema.index(
   { unique: true, partialFilterExpression: { status: { $in: LIVE_REGISTRATION_STATUSES }, shirtNumber: { $exists: true } } }
 );
 TeamRegistrationSchema.index({ teamId: 1, status: 1 });
+
+invalidateOnWrite(TeamRegistrationSchema, "TeamRegistration");
 
 export const TeamRegistration: Model<ITeamRegistration> =
   (models.TeamRegistration as Model<ITeamRegistration>) ||

@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 import { FOLLOW_TARGET_TYPES, type FollowTargetType } from "@/lib/constants";
 
@@ -24,5 +25,7 @@ const FollowSchema = new Schema<IFollow>(
 FollowSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
 // "Who follows this?" when something happens to a team, player or championship.
 FollowSchema.index({ targetType: 1, targetId: 1 });
+
+invalidateOnWrite(FollowSchema, "Follow");
 
 export const Follow: Model<IFollow> = (models.Follow as Model<IFollow>) || model<IFollow>("Follow", FollowSchema);

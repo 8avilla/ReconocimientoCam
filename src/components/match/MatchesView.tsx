@@ -21,6 +21,7 @@ import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, TeamDTO } from "@/types/api";
 
 export function MatchesView() {
+
   return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} championshipName={championship.name} />}</RequireChampionship>;
 }
 

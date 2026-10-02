@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut as nextAuthSignOut } from "next-auth/react";
+import { fetchCache } from "./fetchCache";
 import { disablePush } from "./push";
 import { getOutbox } from "./useOutbox";
 
@@ -18,5 +19,6 @@ export async function signOutAndClear(options: { callbackUrl?: string } = {}): P
   } catch {
     // No service worker (development, unsupported browser): nothing to clear.
   }
+  fetchCache.clear();
   await nextAuthSignOut(options);
 }

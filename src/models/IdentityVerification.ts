@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 export const VERIFICATION_RESULTS = ["verified", "review", "mismatch"] as const;
 export const VERIFICATION_METHODS = ["face", "manual_review"] as const;
@@ -47,6 +48,8 @@ const IdentityVerificationSchema = new Schema<IIdentityVerification>(
 );
 
 IdentityVerificationSchema.index({ matchId: 1, playerId: 1, performedAt: -1 });
+
+invalidateOnWrite(IdentityVerificationSchema, "IdentityVerification");
 
 export const IdentityVerification: Model<IIdentityVerification> =
   (models.IdentityVerification as Model<IIdentityVerification>) ||

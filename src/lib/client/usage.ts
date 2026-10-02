@@ -15,9 +15,14 @@ export function trackView(pathname: string): void {
   const screen = routePattern(pathname);
   if (screen === lastSent) return;
   lastSent = screen;
-  try {
-    void fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ route: screen }), keepalive: true }).catch(() => undefined);
-  } catch {
-    // Not tracked when the browser can't send it.
-  }
+  // Counting screen views must never compete with the screen's own data: it waits until the browser is idle.
+  const send = () => {
+    try {
+      void fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ route: screen }), keepalive: true }).catch(() => undefined);
+    } catch {
+      // Not tracked when the browser can't send it.
+    }
+  };
+  if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(send, { timeout: 5000 });
+  else setTimeout(send, 2000);
 }

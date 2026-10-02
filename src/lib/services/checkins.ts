@@ -3,6 +3,7 @@ import { conflict, notFound } from "@/lib/api";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { recordAudit } from "@/lib/audit";
+import { cached } from "@/lib/serverCache";
 import { isStale, resolveOccurredAt } from "@/lib/rules/offline";
 import { Match } from "@/models/Match";
 import { syncMatchCallUps } from "@/lib/services/callups";
@@ -163,13 +164,26 @@ export async function registerBulkCheckIn(actor: Actor, matchId: string, input: 
 }
 
 export async function getAttendance(matchId: string) {
-  await syncMatchCallUps(matchId);
-  const [checkIns, callUps] = await Promise.all([
+  // The call-up list only changes when squads or the match change, so a recent sync is reused (any write invalidates
+  // it, see `serverCache`); and what does not depend on it is read alongside instead of after it.
+  const [, match] = await Promise.all([
+    cached(`callups-sync:${matchId}`, 15_000, () => syncMatchCallUps(matchId)),
+    Match.findById(matchId).select("homeTeamId awayTeamId").lean(),
+  ]);
+  const [checkIns, callUps, suspended] = await Promise.all([
     PlayerCheckIn.find({ matchId })
       .populate({ path: "playerId", select: "publicId fullName photoUrl photoBlobName biometricConsentAt" })
       .populate({ path: "verificationId", select: "result confidence method performedAt" })
       .lean(),
     MatchCallUp.find({ matchId }).populate({ path: "registrationId", select: "shirtNumber position status" }).lean(),
+    // Suspended players are not called up; listing them explains why they are missing from the squad.
+    match
+      ? Suspension.find({ teamId: { $in: [match.homeTeamId, match.awayTeamId] }, status: "active" })
+          .populate({ path: "playerId", select: "publicId fullName photoUrl" })
+          .populate({ path: "registrationId", select: "shirtNumber" })
+          .select("teamId playerId registrationId reason matchesToServe matchesServed")
+          .lean()
+      : Promise.resolve([]),
   ]);
   const registrationByCallUp = new Map(callUps.map((callUp) => [callUp._id.toString(), callUp.registrationId]));
 
@@ -192,14 +206,5 @@ export async function getAttendance(matchId: string) {
     if (row.status === "present" && (row.method === "face" || verification?.result === "verified")) summary.verified += 1;
   }
 
-  // Suspended players are not called up; listing them explains why they are missing from the squad.
-  const match = await Match.findById(matchId).select("homeTeamId awayTeamId").lean();
-  const suspended = match
-    ? await Suspension.find({ teamId: { $in: [match.homeTeamId, match.awayTeamId] }, status: "active" })
-        .populate({ path: "playerId", select: "publicId fullName photoUrl" })
-        .populate({ path: "registrationId", select: "shirtNumber" })
-        .select("teamId playerId registrationId reason matchesToServe matchesServed")
-        .lean()
-    : [];
   return { checkIns: rows, summary, suspended };
 }

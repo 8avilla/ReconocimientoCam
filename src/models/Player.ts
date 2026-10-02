@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /**
  * Player identity. It is independent from any team or championship: participation lives in
@@ -73,5 +74,7 @@ const PlayerSchema = new Schema<IPlayer>(
 );
 
 PlayerSchema.index({ fullName: 1 });
+
+invalidateOnWrite(PlayerSchema, "Player");
 
 export const Player: Model<IPlayer> = (models.Player as Model<IPlayer>) || model<IPlayer>("Player", PlayerSchema);

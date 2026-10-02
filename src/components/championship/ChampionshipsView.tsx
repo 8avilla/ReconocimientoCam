@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { championshipPath } from "@/lib/paths";
 import { LogIn, Plus, Search, Star, Trophy } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
-import { useChampionship } from "@/components/layout/ChampionshipContext";
+import { useChampionship, useChampionshipList } from "@/components/layout/ChampionshipContext";
 import { AccountModal } from "@/components/layout/RoleSwitcher";
 import { ChampionshipFormModal } from "@/components/championship/ChampionshipFormModal";
 import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
@@ -19,7 +19,8 @@ type Sort = "recent" | "name";
 export function ChampionshipsView() {
   const toast = useToast();
   const router = useRouter();
-  const { championships, favoriteIds, toggleFavorite, loading, error, reload } = useChampionship();
+  const { favoriteIds, toggleFavorite } = useChampionship();
+  const { championships, loading, error, reload } = useChampionshipList();
   const { isSignedIn, canManageChampionship } = useRole();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("recent");

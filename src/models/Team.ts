@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 import { TEAM_STAFF_ROLES, type TeamStaffRole } from "@/lib/constants";
 
 export interface ITeamStaffMember {
@@ -44,5 +45,7 @@ const TeamSchema = new Schema<ITeam>(
 );
 
 TeamSchema.index({ championshipId: 1, name: 1 }, { unique: true });
+
+invalidateOnWrite(TeamSchema, "Team");
 
 export const Team: Model<ITeam> = (models.Team as Model<ITeam>) || model<ITeam>("Team", TeamSchema);

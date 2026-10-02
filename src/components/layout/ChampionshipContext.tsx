@@ -12,22 +12,34 @@ const SELECTION_EVENT = "super-torneos:championship-change";
 export const FAVORITES_KEY = "super-torneos:favorites";
 
 interface ChampionshipContextValue {
-  championships: ChampionshipDTO[];
   /**
    * The championship being looked at: the one in the address (`/c/<id>/…`) or, on detail pages that have no
    * championship in their address, the last one visited. Null until one exists (or when the address has an unknown id).
+   * It is loaded on its own: the full list is only fetched by the screens that show it (see `useChampionshipList`).
    */
   current: ChampionshipDTO | null;
   /** Id in the address, if any (so a wrong link can be told apart from "no championship yet"). */
   routeId: string | null;
   /** Remembers a championship as the last visited. */
   setCurrentId: (id: string) => void;
-  /** Championships the user follows (kept in this browser until accounts exist). */
+  /** Championships the user follows (in the account when signed in, else in this browser). */
   favoriteIds: ReadonlySet<string>;
   toggleFavorite: (id: string) => void;
   loading: boolean;
   error?: Error;
   reload: () => void;
+}
+
+const LIST_PATH = "/championships?limit=100";
+
+/**
+ * Every championship the person can see, for the screens that list them (home, the switcher, the search). Requests are
+ * shared, so opening several of them costs one request; pass `enabled=false` to not ask yet.
+ */
+export function useChampionshipList(enabled = true) {
+  const { data, loading, error, reload } = useFetch<Paginated<ChampionshipDTO>>(enabled ? LIST_PATH : null);
+  const championships = useMemo(() => data?.data ?? [], [data]);
+  return { championships, loading, error, reload };
 }
 
 const ChampionshipContext = createContext<ChampionshipContextValue | null>(null);
@@ -60,18 +72,17 @@ function rememberSelection(id: string) {
 }
 
 export function ChampionshipProvider({ children }: { children: React.ReactNode }) {
-  const { data, loading, error, reload } = useFetch<Paginated<ChampionshipDTO>>("/championships?limit=100");
   const [favoriteIds, toggleFavorite] = useFavoriteSet(FAVORITES_KEY);
   const pathname = usePathname();
   const routeId = parseChampionshipPath(pathname)?.id ?? null;
   const selectedId = useSyncExternalStore(subscribeSelection, readSelection, () => null);
 
-  const championships = useMemo(() => data?.data ?? [], [data]);
-  const matchInList = routeId ? championships.find((item) => item._id === routeId || item.slug === routeId) ?? null : null;
-  // The bulk list only carries public championships (plus ones this user owns/organizes) and real ids never
-  // match a slug string — a private-but-linked championship or a `/c/<slug>` address needs its own direct fetch.
-  const needsFallback = Boolean(routeId) && !loading && !matchInList;
-  const fallback = useFetch<ChampionshipDTO>(needsFallback ? `/championships/${routeId}` : null);
+  // Only the championship in view is loaded (by id or by slug), straight away: pages no longer wait for the whole list.
+  const viewedId = routeId ?? selectedId;
+  const single = useFetch<ChampionshipDTO>(viewedId ? `/championships/${viewedId}` : null);
+  // A remembered championship that no longer exists: the list decides instead (a followed championship, else the first).
+  const needsList = !routeId && Boolean(single.error);
+  const list = useChampionshipList(needsList);
 
   // Visiting a championship makes it the "last visited" one, which detail pages (a match, a team...) fall back to.
   useEffect(() => {
@@ -79,23 +90,28 @@ export function ChampionshipProvider({ children }: { children: React.ReactNode }
   }, [routeId]);
 
   const setCurrentId = useCallback((id: string) => rememberSelection(id), []);
+  const reloadSingle = single.reload;
+  const reloadList = list.reload;
+  const reload = useCallback(() => {
+    reloadSingle();
+    reloadList();
+  }, [reloadSingle, reloadList]);
 
   const value = useMemo<ChampionshipContextValue>(() => {
-    const current = routeId
-      ? matchInList ?? fallback.data ?? null
-      : championships.find((item) => item._id === selectedId) ?? championships.find((item) => favoriteIds.has(item._id)) ?? championships[0] ?? null;
+    const fromList = needsList ? list.championships.find((item) => favoriteIds.has(item._id)) ?? list.championships[0] ?? null : null;
+    const current = single.data ?? fromList;
     return {
-      championships,
       current,
       routeId,
       setCurrentId,
       favoriteIds,
       toggleFavorite,
-      loading: loading || (needsFallback && fallback.loading),
-      error: error ?? (needsFallback ? fallback.error : undefined),
+      loading: single.loading || (needsList && list.loading),
+      // A remembered championship that no longer exists is not an error: the list takes over.
+      error: routeId ? single.error : needsList ? list.error : single.error,
       reload,
     };
-  }, [championships, routeId, matchInList, fallback.data, fallback.loading, fallback.error, needsFallback, selectedId, setCurrentId, favoriteIds, toggleFavorite, loading, error, reload]);
+  }, [single.data, single.loading, single.error, needsList, list.championships, list.loading, list.error, routeId, setCurrentId, favoriteIds, toggleFavorite, reload]);
 
   return <ChampionshipContext.Provider value={value}>{children}</ChampionshipContext.Provider>;
 }

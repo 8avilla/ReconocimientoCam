@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /** A place where matches are played (a field); offered when scheduling. Matches keep the name they were given. */
 export interface IVenue {
@@ -23,5 +24,7 @@ const VenueSchema = new Schema<IVenue>(
   { timestamps: true }
 );
 VenueSchema.index({ championshipId: 1, name: 1 }, { unique: true });
+
+invalidateOnWrite(VenueSchema, "Venue");
 
 export const Venue: Model<IVenue> = (models.Venue as Model<IVenue>) || model<IVenue>("Venue", VenueSchema);

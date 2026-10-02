@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Goal, MapPin } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
@@ -23,19 +22,19 @@ export function ChampionshipHome() {
 
 function Dashboard({ championship }: { championship: ChampionshipDTO }) {
   const { _id: championshipId, name, season, logoUrl, status } = championship;
-  // Stable timestamp: a new value on every render would change the request path endlessly.
-  const [now] = useState(() => new Date().toISOString());
-  const upcoming = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&from=${encodeURIComponent(now)}&order=date&limit=4`);
-  const recent = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&played=true&order=date&limit=100`);
+  // Same address as the combined request that was made for this screen (see `screenBatchFor`).
+  const upcoming = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&upcoming=true&order=date&limit=4`);
+  const recent = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&played=true&order=date_desc&limit=4`);
   const stats = useFetch<PlayerStatsDTO>(`/championships/${championshipId}/stats`);
   const { can } = useRole();
-  const overview = useFetch<OverviewDTO>(`/championships/${championshipId}/overview`);
+  // The setup checklist is for whoever manages the championship: nobody else needs (or gets) that request.
+  const overview = useFetch<OverviewDTO>(can("championship.manage") ? `/championships/${championshipId}/overview` : null);
   const statusInfo = CHAMPIONSHIP_STATUS_LABEL[status];
 
   const nextMatches = upcoming.data?.data ?? [];
   const nextMatch = nextMatches[0];
-  // "played=true&order=date" comes oldest-first; the most recent results are the last ones.
-  const lastResults = [...(recent.data?.data ?? [])].reverse().slice(0, 4);
+  // Latest first, four of them.
+  const lastResults = recent.data?.data ?? [];
   const topScorers = stats.data?.scorers.slice(0, 5) ?? [];
 
   return (

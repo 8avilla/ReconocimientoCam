@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 import { PHASE_TYPES, TIEBREAK_CRITERIA, type PhaseType, type TiebreakCriterion } from "@/lib/constants";
 
 export { PHASE_TYPES, TIEBREAK_CRITERIA };
@@ -105,5 +106,7 @@ const PhaseSchema = new Schema<IPhase>(
 
 PhaseSchema.index({ championshipId: 1, order: 1 });
 PhaseSchema.index({ championshipId: 1, name: 1 }, { unique: true });
+
+invalidateOnWrite(PhaseSchema, "Phase");
 
 export const Phase: Model<IPhase> = (models.Phase as Model<IPhase>) || model<IPhase>("Phase", PhaseSchema);

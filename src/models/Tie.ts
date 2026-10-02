@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /**
  * A matchup of a knockout round, decided over one or two matches. The organizer picks the teams and
@@ -34,5 +35,7 @@ const TieSchema = new Schema<ITie>(
 );
 
 TieSchema.index({ phaseId: 1, roundId: 1, position: 1 });
+
+invalidateOnWrite(TieSchema, "Tie");
 
 export const Tie: Model<ITie> = (models.Tie as Model<ITie>) || model<ITie>("Tie", TieSchema);

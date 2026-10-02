@@ -1,3 +1,4 @@
+import { cached } from "@/lib/serverCache";
 import { conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { requireAdmin, requireOrganizer } from "@/lib/permissions";
@@ -14,15 +15,19 @@ import { Team } from "@/models/Team";
 
 type Params = { id: string };
 
-export const GET = route<Params>(async (_request, { id }) => {
-  const championship = await findChampionshipByIdOrSlug(id).lean();
-  if (!championship) throw notFound("Torneo no encontrado");
-  const [teams, matches] = await Promise.all([
-    Team.countDocuments({ championshipId: championship._id }),
-    Match.countDocuments({ championshipId: championship._id }),
-  ]);
-  return json({ ...championship, counts: { teams, matches } });
-});
+export const GET = route<Params>(async (_request, { id }) =>
+  json(
+    await cached(`championship:${id}`, 20_000, async () => {
+      const championship = await findChampionshipByIdOrSlug(id).lean();
+      if (!championship) throw notFound("Torneo no encontrado");
+      const [teams, matches] = await Promise.all([
+        Team.countDocuments({ championshipId: championship._id }),
+        Match.countDocuments({ championshipId: championship._id }),
+      ]);
+      return { ...championship, counts: { teams, matches } };
+    })
+  )
+);
 
 export const PATCH = route<Params>(async (request, { id }) => {
   const actor = getActor(request);

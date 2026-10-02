@@ -28,6 +28,7 @@ export const GET = route(async (request) => {
   if (query.from || query.to) {
     conditions.push({ scheduledAt: { ...(query.from ? { $gte: query.from } : {}), ...(query.to ? { $lte: query.to } : {}) } });
   }
+  if (query.upcoming === "true") conditions.push({ scheduledAt: { $gte: new Date() } });
   if (query.scheduled === "false") conditions.push({ $or: [{ scheduledAt: { $exists: false } }, { scheduledAt: null }] });
   if (query.scheduled === "true") conditions.push({ scheduledAt: { $exists: true, $ne: null } });
   const filter = conditions.length > 0 ? { $and: conditions } : {};
@@ -35,8 +36,8 @@ export const GET = route(async (request) => {
   // Default order follows the tournament (phase, fecha, then dated matches before undated ones);
   // "date" orders by the calendar, which is what "next match" needs.
   const pipeline: mongoose.PipelineStage[] =
-    query.order === "date"
-      ? [{ $match: filter }, { $sort: { scheduledAt: 1, _id: 1 } }]
+    query.order === "date" || query.order === "date_desc"
+      ? [{ $match: filter }, { $sort: query.order === "date" ? { scheduledAt: 1, _id: 1 } : { scheduledAt: -1, _id: -1 } }]
       : [
           { $match: filter },
           { $lookup: { from: Phase.collection.name, localField: "phaseId", foreignField: "_id", as: "_phase" } },

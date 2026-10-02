@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 import { MATCH_PERIODS, MATCH_STATUSES, type MatchPeriod, type MatchStatus } from "@/lib/constants";
 
@@ -70,5 +71,7 @@ MatchSchema.index({ matchdayId: 1 });
 MatchSchema.index({ tieId: 1 });
 MatchSchema.index({ homeTeamId: 1 });
 MatchSchema.index({ awayTeamId: 1 });
+
+invalidateOnWrite(MatchSchema, "Match");
 
 export const Match: Model<IMatch> = (models.Match as Model<IMatch>) || model<IMatch>("Match", MatchSchema);

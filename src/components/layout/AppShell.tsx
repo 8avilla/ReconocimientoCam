@@ -14,9 +14,10 @@ import { championshipPath, isEntityPath, parseChampionshipPath } from "@/lib/pat
 import { CHAMPIONSHIP_STATUS_LABEL } from "@/lib/labels";
 import { canAccess } from "@/lib/roles";
 import { trackView } from "@/lib/client/usage";
-import { useChampionship } from "./ChampionshipContext";
+import { useChampionship, useChampionshipList } from "./ChampionshipContext";
 import { PlayerSheetProvider } from "@/components/player/PlayerSheetContext";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { ScreenPrefetcher } from "@/lib/client/prefetch";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineBanner } from "./OfflineBanner";
 import { GlobalSearch } from "./GlobalSearch";
@@ -63,11 +64,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const { role, user, isSignedIn, canManageChampionship } = useRole();
-  const { current, championships, favoriteIds } = useChampionship();
+  const { current, favoriteIds } = useChampionship();
+  // The list is only needed once the switcher is opened.
+  const { championships } = useChampionshipList(switcherOpen);
   useEffect(() => trackView(pathname), [pathname]);
 
   // The switcher offers the championships the user organizes or follows (plus the one open now); "Ver todos" has the rest.
-  const switcherItems = championships.filter((item) => item._id === current?._id || favoriteIds.has(item._id) || (isSignedIn && canManageChampionship(item)));
+  const listed = championships.filter((item) => item._id === current?._id || favoriteIds.has(item._id) || (isSignedIn && canManageChampionship(item)));
+  // The one in view is there from the first moment, before the list arrives.
+  const switcherItems = current && !listed.some((item) => item._id === current._id) ? [current, ...listed] : listed;
 
   // Inside a championship (its own address, or one of its detail pages) the menu is that championship's sections.
   const routed = parseChampionshipPath(pathname);
@@ -87,13 +92,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PlayerSheetProvider>
+    <ScreenPrefetcher />
     <div className={styles.container}>
       <a href="#contenido" className="skip-link" data-print-hide>Saltar al contenido</a>
       <div className={styles.viewport}>
         <header className={styles.topbar} data-print-hide>
           <div className={styles.topbarTop}>
             <Link href="/" aria-label="Todos los torneos" className={styles.topbarLogoLink}>
-              <Image src="/brand-wordmark.png" alt="Super Torneos" width={140} height={46} priority className={styles.topbarLogo} />
+              {/* A copy made for this size (280 px wide, 2x of what is shown): the 400 px original cost 25 KB even after the image optimizer. */}
+              <Image src="/brand-wordmark-sm.webp" alt="Super Torneos" width={140} height={49} priority unoptimized className={styles.topbarLogo} />
             </Link>
 
             {scoped && (

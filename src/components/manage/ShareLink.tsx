@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import QRCode from "qrcode";
 import { Copy, Share2 } from "lucide-react";
 import { Button, useToast } from "@/components/ui";
 import { championshipPath, type Section } from "@/lib/paths";
@@ -25,7 +24,8 @@ export function ShareLink({ championshipId, name }: { championshipId: string; na
   useEffect(() => {
     if (!link) return;
     let cancelled = false;
-    QRCode.toDataURL(link, { width: 240, margin: 1 }).then((url) => {
+    // The QR library is only needed here: it is fetched when this opens, not with every screen.
+    import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(link, { width: 240, margin: 1 })).then((url) => {
       if (!cancelled) setQr(url);
     });
     return () => {

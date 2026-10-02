@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 export const CHECK_IN_STATUSES = ["pending", "present", "absent"] as const;
 export const CHECK_IN_METHODS = ["qr", "face", "manual"] as const;
@@ -45,6 +46,8 @@ const PlayerCheckInSchema = new Schema<IPlayerCheckIn>(
 
 PlayerCheckInSchema.index({ matchId: 1, playerId: 1 }, { unique: true });
 PlayerCheckInSchema.index({ matchId: 1, status: 1 });
+
+invalidateOnWrite(PlayerCheckInSchema, "PlayerCheckIn");
 
 export const PlayerCheckIn: Model<IPlayerCheckIn> =
   (models.PlayerCheckIn as Model<IPlayerCheckIn>) || model<IPlayerCheckIn>("PlayerCheckIn", PlayerCheckInSchema);

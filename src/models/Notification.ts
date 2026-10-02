@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /** Notifications are kept this long: enough to catch up after a trip, short enough not to pile up. */
 export const NOTIFICATION_RETENTION_DAYS = 60;
@@ -29,5 +30,7 @@ const NotificationSchema = new Schema<INotification>({
   createdAt: { type: Date, default: Date.now, expires: NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 },
 });
 NotificationSchema.index({ userId: 1, createdAt: -1 });
+
+invalidateOnWrite(NotificationSchema, "Notification");
 
 export const Notification: Model<INotification> = (models.Notification as Model<INotification>) || model<INotification>("Notification", NotificationSchema);

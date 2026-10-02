@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 import { MATCH_EVENT_TYPES, type MatchEventType } from "@/lib/constants";
 
 export { MATCH_EVENT_TYPES };
@@ -60,6 +61,8 @@ const MatchEventSchema = new Schema<IMatchEvent>(
 
 MatchEventSchema.index({ matchId: 1, minute: 1, createdAt: 1 });
 MatchEventSchema.index({ championshipId: 1, playerId: 1, type: 1 });
+
+invalidateOnWrite(MatchEventSchema, "MatchEvent");
 
 export const MatchEvent: Model<IMatchEvent> =
   (models.MatchEvent as Model<IMatchEvent>) || model<IMatchEvent>("MatchEvent", MatchEventSchema);

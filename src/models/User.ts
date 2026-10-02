@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /**
  * A signed-in person: with Google (created the first time someone signs in; `isAdmin` comes from the
@@ -41,5 +42,7 @@ const UserSchema = new Schema<IUser>(
   },
   { timestamps: true }
 );
+
+invalidateOnWrite(UserSchema, "User");
 
 export const User: Model<IUser> = (models.User as Model<IUser>) || model<IUser>("User", UserSchema);

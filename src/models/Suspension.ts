@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 import {
   SUSPENSION_REASONS,
   SUSPENSION_STATUSES,
@@ -55,6 +56,8 @@ const SuspensionSchema = new Schema<ISuspension>(
 SuspensionSchema.index({ championshipId: 1, status: 1, createdAt: -1 });
 SuspensionSchema.index({ playerId: 1, status: 1 });
 SuspensionSchema.index({ teamId: 1, status: 1 });
+
+invalidateOnWrite(SuspensionSchema, "Suspension");
 
 export const Suspension: Model<ISuspension> =
   (models.Suspension as Model<ISuspension>) || model<ISuspension>("Suspension", SuspensionSchema);

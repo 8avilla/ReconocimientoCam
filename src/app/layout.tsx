@@ -7,6 +7,7 @@ import { AuthSessionProvider } from "@/components/layout/AuthSessionProvider";
 import { ChampionshipProvider } from "@/components/layout/ChampionshipContext";
 import { FollowProvider } from "@/components/layout/FollowProvider";
 import { RoleProvider } from "@/components/layout/RoleContext";
+import { EarlyBatchScript } from "@/components/layout/EarlyBatchScript";
 import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -23,6 +24,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={inter.variable}>
+      <head>
+        <EarlyBatchScript />
+      </head>
       <body>
         <ServiceWorkerRegister />
         <AuthSessionProvider>

@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /**
  * A matchday ("Fecha 1", "Fecha 2"...) of a phase. Every match belongs to one, the matchday to its
@@ -33,5 +34,7 @@ const MatchdaySchema = new Schema<IMatchday>(
 
 MatchdaySchema.index({ phaseId: 1, number: 1 }, { unique: true });
 MatchdaySchema.index({ phaseId: 1, roundId: 1, leg: 1 });
+
+invalidateOnWrite(MatchdaySchema, "Matchday");
 
 export const Matchday: Model<IMatchday> = (models.Matchday as Model<IMatchday>) || model<IMatchday>("Matchday", MatchdaySchema);

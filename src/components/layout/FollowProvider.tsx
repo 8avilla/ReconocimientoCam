@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui";
 import { FollowContext, type FollowSets } from "@/lib/client/followContext";
 import { clearLocalFollows, readLocalFollows } from "@/lib/client/favorites";
+import { fetchCache } from "@/lib/client/fetchCache";
 import { errorMessage, http } from "@/lib/client/http";
 import { FOLLOW_TARGET_TYPES, type FollowTargetType } from "@/lib/constants";
 
@@ -19,12 +20,22 @@ const toSets = (dto: Record<FollowTargetType, string[]>): FollowSets => ({
  * the browser. On signing in, what was followed in the browser is merged into the account once.
  */
 export function FollowProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const userId = session?.user?.id;
   const toast = useToast();
   // The account's follows, tagged with whose they are: after signing out (or in as someone else) they stop applying.
   const [loaded, setLoaded] = useState<{ userId: string; sets: FollowSets } | null>(null);
   const server = userId && loaded?.userId === userId ? loaded.sets : null;
+
+  // What screens remembered was asked as somebody else (or as nobody): not valid once the person changes. Not at the
+  // start: the first answer about who is signed in only confirms what the cookies already told every request.
+  const settledUser = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (status === "loading") return;
+    const now = userId ?? null;
+    if (settledUser.current !== undefined && settledUser.current !== now) fetchCache.clear();
+    settledUser.current = now;
+  }, [status, userId]);
 
   useEffect(() => {
     if (!userId) return;

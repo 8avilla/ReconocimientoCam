@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /** A player selected by a team for a specific match. */
 export interface IMatchCallUp {
@@ -25,6 +26,8 @@ const MatchCallUpSchema = new Schema<IMatchCallUp>(
 
 MatchCallUpSchema.index({ matchId: 1, playerId: 1 }, { unique: true });
 MatchCallUpSchema.index({ matchId: 1, teamId: 1 });
+
+invalidateOnWrite(MatchCallUpSchema, "MatchCallUp");
 
 export const MatchCallUp: Model<IMatchCallUp> =
   (models.MatchCallUp as Model<IMatchCallUp>) || model<IMatchCallUp>("MatchCallUp", MatchCallUpSchema);

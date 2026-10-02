@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /** A referee of the championship; matches can be assigned one. */
 export interface IReferee {
@@ -24,5 +25,7 @@ const RefereeSchema = new Schema<IReferee>(
   { timestamps: true }
 );
 RefereeSchema.index({ championshipId: 1, fullName: 1 });
+
+invalidateOnWrite(RefereeSchema, "Referee");
 
 export const Referee: Model<IReferee> = (models.Referee as Model<IReferee>) || model<IReferee>("Referee", RefereeSchema);

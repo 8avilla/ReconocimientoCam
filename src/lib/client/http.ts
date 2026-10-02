@@ -1,3 +1,5 @@
+import { fetchCache } from "./fetchCache";
+
 export interface ApiIssue {
   path: string;
   message: string;
@@ -60,6 +62,8 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     const body = (payload ?? {}) as { error?: string; code?: string; details?: unknown };
     throw new HttpError(response.status, body.error ?? "Ocurrió un error inesperado", body.code, body.details);
   }
+  // Something changed on the server: what screens remembered may be out of date.
+  if ((options.method ?? (options.json !== undefined ? "POST" : "GET")) !== "GET") fetchCache.clear();
   return payload as T;
 }
 

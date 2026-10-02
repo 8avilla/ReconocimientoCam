@@ -16,6 +16,7 @@
     "demo:template": "tsx --env-file=.env.local scripts/demo-template.ts",
     "demo:cleanup": "tsx --env-file=.env.local scripts/demo-cleanup.ts",
     "demo:user": "tsx --env-file=.env.local scripts/create-demo-user.ts",
+    "thumbs": "tsx --env-file=.env.local scripts/backfill-thumbnails.ts",
     "integrity": "tsx --env-file=.env.local scripts/check-integrity.ts"
   },
   "dependencies": {

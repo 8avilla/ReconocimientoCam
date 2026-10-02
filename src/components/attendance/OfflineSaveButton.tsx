@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { CloudDownload } from "lucide-react";
 import { Button, useToast } from "@/components/ui";
-import { http } from "@/lib/client/http";
 import { useOnline } from "@/lib/client/useOutbox";
 import type { MatchDTO } from "@/types/api";
 
@@ -44,19 +43,24 @@ export function OfflineSaveButton({ match }: { match: MatchDTO }) {
         ),
       ];
       await Promise.all(assets.map((url) => fetch(url).catch(() => undefined)));
-      // Same addresses the match screen asks for, so the saved copy is the one it will look for offline.
+      // Same addresses the match screen asks for, so the saved copy is the one it will look for offline. They go straight
+      // to the network (not through the screens' own memory) so the service worker sees each of them and keeps it.
+      const get = async (path: string) => {
+        const response = await fetch(`/api${path}`);
+        if (!response.ok) throw new Error(String(response.status));
+      };
       await Promise.all([
         fetch(`/matches/${matchId}`, { headers: { Accept: "text/html" } }),
-        http("/auth/session"),
-        http(`/matches/${matchId}`),
-        http(`/matches/${matchId}/events`),
-        http(`/matches/${matchId}/attendance`),
-        http(`/suspensions?matchId=${matchId}&limit=50`),
-        http(`/championships/${championshipId}`),
-        http(`/championships/${championshipId}/phases`),
-        http("/championships?limit=100"),
-        ...(match.phaseId.type !== "knockout" ? [http(`/phases/${match.phaseId._id}/standings`)] : []),
-        http(`/matches?championshipId=${championshipId}&teamId=${match.homeTeamId._id}&played=true&order=date&limit=50`),
+        get("/auth/session"),
+        get(`/matches/${matchId}`),
+        get(`/matches/${matchId}/events`),
+        get(`/matches/${matchId}/attendance`),
+        get(`/suspensions?matchId=${matchId}&limit=50`),
+        get(`/championships/${championshipId}`),
+        get(`/championships/${championshipId}/phases`),
+        get("/championships?limit=100"),
+        ...(match.phaseId.type !== "knockout" ? [get(`/phases/${match.phaseId._id}/standings`)] : []),
+        get(`/matches?championshipId=${championshipId}&teamId=${match.homeTeamId._id}&played=true&order=date&limit=50`),
       ]);
       const now = new Date().toISOString();
       try {

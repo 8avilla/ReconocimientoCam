@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /** A device that agreed to receive notifications (Web Push): where to send them and the keys to encrypt them. */
 export interface IPushSubscription {
@@ -21,6 +22,8 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>(
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
+
+invalidateOnWrite(PushSubscriptionSchema, "PushSubscription");
 
 export const PushSubscription: Model<IPushSubscription> =
   (models.PushSubscription as Model<IPushSubscription>) || model<IPushSubscription>("PushSubscription", PushSubscriptionSchema);

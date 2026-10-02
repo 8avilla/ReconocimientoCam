@@ -240,10 +240,12 @@ export const matchListQuery = paginationSchema.extend({
   to: z.coerce.date().optional(),
   /** "false" = only matches without day and time; "true" = only the scheduled ones. */
   scheduled: z.enum(["true", "false"]).optional(),
+  /** "true" = only matches from this moment on (the server's clock), so the address does not depend on the time. */
+  upcoming: z.enum(["true"]).optional(),
   /** "true" = only already-played matches (finished/walkover); "false" = only the ones still ahead. Ignored when `status` narrows it further. */
   played: z.enum(["true", "false"]).optional(),
-  /** "matchday" (default): by phase and fecha; "date": by calendar day. */
-  order: z.enum(["matchday", "date"]).default("matchday"),
+  /** "matchday" (default): by phase and fecha; "date": by calendar day; "date_desc": latest first. */
+  order: z.enum(["matchday", "date", "date_desc"]).default("matchday"),
 });
 
 // ---------- Phases ----------
@@ -572,3 +574,11 @@ export const pushSubscribeSchema = z.object({
   keys: z.object({ p256dh: z.string().min(1).max(300), auth: z.string().min(1).max(100) }),
 });
 export const pushUnsubscribeSchema = z.object({ endpoint: z.string().url().max(1000) });
+
+// ---------- Batch of reads ----------
+
+export const batchSchema = z.object({
+  paths: z.array(z.string().min(1).max(600)).min(1).max(16),
+  /** Id or slug of the championship the screen is about: lets `:cid` / `:route` be used in the paths. */
+  championship: z.string().trim().min(1).max(80).optional(),
+});

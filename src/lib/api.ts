@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { connectToDatabase } from "@/lib/db";
 import type { Actor } from "@/lib/actor";
-import { runWithActor } from "@/lib/requestContext";
+import { currentActor, runWithActor } from "@/lib/requestContext";
 import { loadSessionUser } from "@/lib/services/users";
 
 /** Error carrying an HTTP status and a user-facing (Spanish) message. */
@@ -43,7 +43,8 @@ export function route<P = Record<string, never>>(handler: RouteHandler<P>) {
     try {
       await connectToDatabase();
       const params = await context.params;
-      const actor = await resolveActor();
+      // A sub-request of a batch runs as the person who sent the batch (resolved once, not once per path).
+      const actor = currentActor() ?? (await resolveActor());
       return await runWithActor(actor, () => handler(request, params));
     } catch (error) {
       return toErrorResponse(error, request);

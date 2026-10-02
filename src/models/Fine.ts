@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 export const FINE_STATUSES = ["pending", "partial", "paid", "waived", "cancelled"] as const;
 export type FineStatus = (typeof FINE_STATUSES)[number];
@@ -87,5 +88,7 @@ FineSchema.index({ eventId: 1 }, { unique: true, partialFilterExpression: { even
 // A team has at most one registration fee (unlike card fines, which are one per event) — enforced here
 // so two near-simultaneous requests (e.g. the fines list backfilling missing ones) can't both create one.
 FineSchema.index({ teamId: 1, type: 1 }, { unique: true, partialFilterExpression: { type: "registration" } });
+
+invalidateOnWrite(FineSchema, "Fine");
 
 export const Fine: Model<IFine> = (models.Fine as Model<IFine>) || model<IFine>("Fine", FineSchema);

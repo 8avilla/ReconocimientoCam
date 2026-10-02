@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MatchList } from "@/components/match/MatchList";
+import { dayBounds } from "@/lib/client/time";
 import { useFetch } from "@/lib/client/useFetch";
 import type { MatchDTO, Paginated } from "@/types/api";
 
@@ -13,13 +14,7 @@ const REFRESH_MS = 30_000;
  */
 export function LiveMatchesBanner({ championshipId, spaced }: { championshipId: string; /** Adds space below (only when it renders). */ spaced?: boolean }) {
   // Stable day bounds: new values on each render would change the request path endlessly.
-  const [day] = useState(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
-    return { from: encodeURIComponent(start.toISOString()), to: encodeURIComponent(end.toISOString()) };
-  });
+  const [day] = useState(dayBounds);
   const live = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=live&order=date&limit=10`);
   const today = useFetch<Paginated<MatchDTO>>(`/matches?championshipId=${championshipId}&status=scheduled&from=${day.from}&to=${day.to}&order=date&limit=20`);
 

@@ -49,7 +49,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
           <Star size={20} fill={on ? "currentColor" : "none"} />
         </button>
 
-        <Link href={`/teams/${team._id}`} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Link href={`/teams/${team._id}`} prefetch={false} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div className="team-card-shield">
             <Avatar src={team.shieldUrl} name={team.name} size={64} square />
           </div>
@@ -69,7 +69,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
     const on = favoriteTeams.has(team._id);
     return (
       <div key={team._id} className="list-row team-row">
-        <Link href={`/teams/${team._id}`} className="row grow" style={{ minWidth: 0 }}>
+        <Link href={`/teams/${team._id}`} prefetch={false} className="row grow" style={{ minWidth: 0 }}>
           <Avatar src={team.shieldUrl} name={team.name} size={44} square />
           <div className="grow" style={{ minWidth: 0 }}>
             <div className="champ-caption truncate">{team.playerCount ?? 0} jugadores</div>
@@ -80,7 +80,7 @@ function TeamsList({ championshipId }: { championshipId: string }) {
         <button className={`star-button${on ? " on" : ""}`} aria-pressed={on} aria-label={on ? `Dejar de seguir ${team.name}` : `Seguir ${team.name}`} onClick={() => toggleFavoriteTeam(team._id)}>
           <Star size={22} fill={on ? "currentColor" : "none"} />
         </button>
-        <Link href={`/teams/${team._id}`} aria-label={`Abrir ${team.name}`} tabIndex={-1}><ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" /></Link>
+        <Link href={`/teams/${team._id}`} prefetch={false} aria-label={`Abrir ${team.name}`} tabIndex={-1}><ChevronRight size={20} aria-hidden color="var(--color-text-disabled)" /></Link>
       </div>
     );
   };

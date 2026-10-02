@@ -7,7 +7,7 @@ import { ChampionshipTile } from "@/components/championship/ChampionshipTile";
 import { Avatar, Modal } from "@/components/ui";
 import { useFetch } from "@/lib/client/useFetch";
 import { canAccess } from "@/lib/roles";
-import { useChampionship } from "./ChampionshipContext";
+import { useChampionship, useChampionshipList } from "./ChampionshipContext";
 import { useRole } from "./RoleContext";
 import { championshipPath } from "@/lib/paths";
 import { MATCH_STATUS_LABEL } from "@/lib/labels";
@@ -45,7 +45,8 @@ export function GlobalSearch({ championshipId }: { championshipId?: string }) {
 /** Outside a championship: filters the followed/organized championships by name or season. */
 function ChampionshipSearchModal({ onClose }: { onClose: () => void }) {
   const [term, setTerm] = useState("");
-  const { championships, favoriteIds } = useChampionship();
+  const { favoriteIds } = useChampionship();
+  const { championships } = useChampionshipList();
   const query = term.trim().toLowerCase();
   const matches = query ? championships.filter((item) => `${item.name} ${item.season}`.toLowerCase().includes(query)) : [];
 

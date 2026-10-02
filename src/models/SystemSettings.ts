@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 
 /**
  * Singleton document (exactly one, created lazily on first read/write — see `getSystemSettings`) for
@@ -23,6 +24,8 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
   },
   { timestamps: true }
 );
+
+invalidateOnWrite(SystemSettingsSchema, "SystemSettings");
 
 export const SystemSettings: Model<ISystemSettings> =
   (models.SystemSettings as Model<ISystemSettings>) || model<ISystemSettings>("SystemSettings", SystemSettingsSchema);

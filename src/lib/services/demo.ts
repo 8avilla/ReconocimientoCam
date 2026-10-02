@@ -1,3 +1,4 @@
+import { bumpDataVersion } from "@/lib/serverCache";
 import mongoose, { Types } from "mongoose";
 import { conflict, notFound } from "@/lib/api";
 import { deleteImage } from "@/lib/azureBlob";
@@ -148,6 +149,8 @@ export async function createDemoForUser(userId: string, days = DEMO_TTL_DAYS) {
     for (const [name, ids] of created) await col(name).deleteMany({ _id: { $in: ids } });
     throw error;
   }
+  // The copy was written straight to the collections (no model hooks): tell the answer cache.
+  bumpDataVersion();
   return Championship.findById(newId).lean();
 }
 
@@ -177,6 +180,7 @@ export async function deleteDemo(championshipId: Types.ObjectId) {
   }
   await col("players").deleteMany({ _id: { $in: orphanIds } });
   await Championship.deleteOne({ _id: championshipId });
+  bumpDataVersion(); // children were removed straight from the collections
 
   await Promise.all(blobs.filter(Boolean).map((blob) => deleteImage(blob).catch((error) => console.error("Failed to delete demo image:", error))));
 }

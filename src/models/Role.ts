@@ -1,4 +1,5 @@
 import { Schema, model, models, Model, Types } from "mongoose";
+import { invalidateOnWrite } from "@/lib/serverCache";
 import type { Permission } from "@/lib/roles";
 
 /** A named, admin-defined set of permissions, assignable to a `User` (see `User.roleId`). */
@@ -17,5 +18,7 @@ const RoleSchema = new Schema<IRole>(
   },
   { timestamps: true }
 );
+
+invalidateOnWrite(RoleSchema, "Role");
 
 export const Role: Model<IRole> = (models.Role as Model<IRole>) || model<IRole>("Role", RoleSchema);

@@ -65,3 +65,5 @@ twa/local.properties
 playwright-report/
 test-results/
 .next-e2e/
+# Any other build folder made with NEXT_DIST_DIR (e.g. the bundle analyzer's)
+.next-*/

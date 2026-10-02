@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   serverExternalPackages: ["onnxruntime-node", "sharp"],
   images: {
-    minimumCacheTTL: 86400,
+    // Every stored image has a name that is never reused, so what the optimizer made of it never goes out of date.
+    minimumCacheTTL: 31 * 86400,
     remotePatterns: [
       {
         protocol: "https",

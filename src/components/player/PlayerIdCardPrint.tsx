@@ -3,7 +3,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
-import QRCode from "qrcode";
 import { initials } from "@/lib/labels";
 import type { PlayerCardDTO } from "@/types/api";
 import styles from "./PlayerIdCardPrint.module.css";
@@ -21,7 +20,7 @@ export function PlayerIdCardPrint({ card, preview = false }: { card: PlayerCardD
 
   useEffect(() => {
     let cancelled = false;
-    QRCode.toDataURL(card.qrPayload, { margin: 1, width: 240, errorCorrectionLevel: "M", color: { dark: "#0f172a" } })
+    import("qrcode").then(({ default: QRCode }) => QRCode.toDataURL(card.qrPayload, { margin: 1, width: 240, errorCorrectionLevel: "M", color: { dark: "#0f172a" } }))
       .then((url) => !cancelled && setQr(url))
       .catch((error) => console.error("Failed to generate QR code:", error));
     return () => {

@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, CheckCheck, ClipboardCheck, ScanFace, ScanLine, Search, SquarePen } from "lucide-react";
+import { Check, CheckCheck, ClipboardCheck, CloudOff, ScanFace, ScanLine, Search, SquarePen } from "lucide-react";
 import { CheckInBadge, VerificationBadge } from "@/components/attendance/AttendanceBadges";
 import { CameraAttendanceModal } from "@/components/attendance/CameraAttendanceModal";
 import { ManualCheckInModal } from "@/components/attendance/ManualCheckInModal";
+import { OfflineSaveButton } from "@/components/attendance/OfflineSaveButton";
 import { errorMessage, http } from "@/lib/client/http";
+import { submitAttendance, useOnline } from "@/lib/client/useOutbox";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { VerificationFlow } from "@/components/verification/VerificationFlow";
-import { Avatar, Badge, Button, EmptyState, useToast } from "@/components/ui";
+import Link from "next/link";
+import { Avatar, Badge, Button, EmptyState, ReportActions, useToast } from "@/components/ui";
+import { csvFileName, downloadCsv } from "@/lib/client/exportCsv";
+import { attendanceReport } from "@/lib/client/reports";
 import { SUSPENSION_REASON_LABEL } from "@/lib/labels";
 import type { AttendanceDTO, AttendanceRowDTO, CheckInStatusDTO, MatchDTO } from "@/types/api";
 
@@ -20,6 +25,10 @@ interface Props {
   readOnly?: boolean;
   /** Reloads the match data after attendance changes. */
   onChanged: () => void;
+}
+
+function PendingSyncBadge() {
+  return <Badge tone="warning" icon={<CloudOff size={12} aria-hidden />}>Sin enviar</Badge>;
 }
 
 /** Attendance of a match: the whole squad of both teams, with QR/face verification and manual contingency. */
@@ -40,27 +49,36 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
   }, [matchId, readOnly, matchOpen]);
   const [manualFor, setManualFor] = useState<AttendanceRowDTO | null>(null);
   const toast = useToast();
+  const online = useOnline();
   const [marking, setMarking] = useState(false);
 
-  /** Manual attendance for several players at once; the toast's "Deshacer" puts each one back as it was. */
+  /**
+   * Manual attendance for several players at once; the toast's "Deshacer" puts each one back as it was. Without a
+   * connection the change is kept on this device and sent later (the list already shows it, see `applyPendingOps`).
+   */
   async function mark(payload: { status: CheckInStatusDTO; playerIds?: string[]; teamId?: string }, message: (count: number) => string, before: { playerId: string; status: CheckInStatusDTO }[]) {
+    const path = `/matches/${matchId}/check-ins/bulk`;
     setMarking(true);
     try {
-      const { updated } = await http<{ updated: string[] }>(`/matches/${matchId}/check-ins/bulk`, { json: payload });
+      const outcome = await submitAttendance<{ updated: string[]; skipped?: string[] }>(matchId, path, payload);
+      // Queued: the server has not answered, so what changed is what was asked for (all of `before`).
+      const updated = outcome.queued ? before.map((row) => row.playerId) : outcome.result.updated;
       if (updated.length === 0) {
-        toast.error("No hay jugadores por marcar");
+        toast.error(!outcome.queued && outcome.result.skipped?.length ? "Otra persona ya registró a esos jugadores" : "No hay jugadores por marcar");
         return;
       }
-      onChanged();
-      toast.success(message(updated.length), {
+      if (!outcome.queued) onChanged();
+      const skipped = outcome.queued ? 0 : outcome.result.skipped?.length ?? 0;
+      toast.success(`${outcome.queued ? "Sin conexión, guardado en este dispositivo · " : ""}${message(updated.length)}${skipped ? ` (${skipped} ya tenían un registro más reciente)` : ""}`, {
         label: "Deshacer",
         onClick: async () => {
           try {
+            let allSent = true;
             for (const status of ["pending", "absent"] as const) {
               const ids = before.filter((row) => updated.includes(row.playerId) && row.status === status).map((row) => row.playerId);
-              if (ids.length > 0) await http(`/matches/${matchId}/check-ins/bulk`, { json: { status, playerIds: ids } });
+              if (ids.length > 0) allSent = !(await submitAttendance(matchId, path, { status, playerIds: ids })).queued && allSent;
             }
-            onChanged();
+            if (allSent) onChanged();
           } catch (error) {
             toast.error(errorMessage(error));
           }
@@ -96,7 +114,7 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
           <Button size="small" variant="secondary" icon={<Check size={16} />} disabled={marking} onClick={() => markOne(row)}>Presente</Button>
         )}
         {markable(row) && (
-          <Button size="small" onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>Verificar</Button>
+          <Button size="small" disabled={!online} title={online ? undefined : "Requiere conexión"} onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>Verificar</Button>
         )}
         <Button size="small" variant="ghost" onClick={() => setManualFor(row)}>Manual</Button>
       </div>
@@ -104,10 +122,27 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
 
   return (
     <div className="stack" style={{ gap: 0 }}>
+      {canOperate && <OfflineSaveButton match={match} />}
+      {!readOnly && checkIns.length > 0 && (
+        <div className="row" style={{ marginBottom: "var(--space-lg)", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+          <ReportActions
+            subject="la asistencia"
+            onDownload={() => {
+              const report = attendanceReport(match, checkIns);
+              downloadCsv(csvFileName(match.homeTeamId.name, "vs", match.awayTeamId.name, "asistencia"), report.headers, report.rows);
+            }}
+          />
+          <Link href={`/matches/${matchId}/planilla`} className="btn secondary small">Planilla de juego (PDF)</Link>
+        </div>
+      )}
       {canOperate && (
         <div style={{ marginBottom: "var(--space-lg)" }}>
-          <Button size="large" block icon={<ScanFace size={20} />} onClick={() => setCameraOpen(true)}>Asistencia por cámara</Button>
-          <p className="text-secondary text-small" style={{ marginTop: "var(--space-xs)" }}>Apunta la cámara a los jugadores y se registran solos. Ideal para tomar lista rápido.</p>
+          <Button size="large" block icon={<ScanFace size={20} />} disabled={!online} onClick={() => setCameraOpen(true)}>Asistencia por cámara</Button>
+          <p className="text-secondary text-small" style={{ marginTop: "var(--space-xs)" }}>
+            {online
+              ? "Apunta la cámara a los jugadores y se registran solos. Ideal para tomar lista rápido."
+              : "La cámara necesita conexión. Sin conexión marca a cada jugador con «Presente» o «Manual»."}
+          </p>
         </div>
       )}
       {canOperate && QR_VERIFICATION_ENABLED && (
@@ -166,7 +201,7 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
                   <tr key={row._id}>
                     <td>{row.shirtNumber}</td>
                     <td><span className="row"><Avatar src={row.playerId.photoUrl} name={row.playerId.fullName} size={36} /><span className="text-strong">{row.playerId.fullName}</span></span></td>
-                    <td><CheckInBadge status={row.status} /></td>
+                    <td><CheckInBadge status={row.status} />{row.pendingSync && <PendingSyncBadge />}</td>
                     <td>
                       <VerificationBadge verification={row.verificationId} />
                       {row.verificationId?.confidence !== undefined && <span className="text-secondary text-small"> {(row.verificationId.confidence * 100).toFixed(1)}%</span>}
@@ -187,6 +222,7 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
                   <span className="text-secondary">#{row.shirtNumber ?? "–"}</span> <span className="text-strong">{row.playerId.fullName}</span>
                 </div>
                 <CheckInBadge status={row.status} />
+                {row.pendingSync && <PendingSyncBadge />}
                 {canOperate && (
                   <div className="row" style={{ gap: 2 }}>
                     {markable(row) && (
@@ -195,7 +231,7 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
                       </button>
                     )}
                     {markable(row) && (
-                      <button className="icon-button" aria-label={`Verificar a ${row.playerId.fullName}`} onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>
+                      <button className="icon-button" aria-label={`Verificar a ${row.playerId.fullName}`} disabled={!online} title={online ? undefined : "Requiere conexión"} onClick={() => setFlow({ open: true, code: row.playerId.publicId })}>
                         <ScanFace size={18} />
                       </button>
                     )}
@@ -237,9 +273,9 @@ export function AttendancePanel({ matchId, match, attendance, onChanged, readOnl
           matchId={matchId}
           player={manualFor.playerId}
           onClose={() => setManualFor(null)}
-          onSaved={() => {
+          onSaved={(queued) => {
             setManualFor(null);
-            onChanged();
+            if (!queued) onChanged();
           }}
         />
       )}

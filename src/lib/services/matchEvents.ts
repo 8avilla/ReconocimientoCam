@@ -1,3 +1,4 @@
+import { notifyMatchEvent, notifyMatchState } from "@/lib/services/notifications";
 import { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
 import { badRequest, conflict, notFound } from "@/lib/api";
@@ -178,6 +179,9 @@ export async function createEvent(actor: Actor, matchId: string, input: CreateEv
     summary: `Evento ${input.type} al minuto ${input.minute}`,
     changes: { matchId, playerId: input.playerId, relatedPlayerId: input.relatedPlayerId, auto: autoEvents.map((auto) => auto._id.toString()) },
   });
+  // After the score is recomputed, so the message carries the new result. A double yellow also tells about its red.
+  await notifyMatchEvent(actor, event);
+  for (const auto of autoEvents) await notifyMatchEvent(actor, auto);
   return { event: event.toObject(), autoEvents, suspensions: suspensions.map((suspension) => suspension.toObject()), score };
 }
 
@@ -260,6 +264,8 @@ export async function transitionMatch(actor: Actor, matchId: string, action: Mat
 
   let servedBans = 0;
   if (next.status === "finished") servedBans = await serveSuspensions(actor, match);
+  if (action === "start") await notifyMatchState(actor, matchId, "started");
+  if (next.status === "finished") await notifyMatchState(actor, matchId, "finished");
 
   await recordAudit(actor, {
     action: "transition",

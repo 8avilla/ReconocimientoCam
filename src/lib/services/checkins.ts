@@ -3,6 +3,7 @@ import { conflict, notFound } from "@/lib/api";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { QR_VERIFICATION_ENABLED } from "@/lib/features";
 import { recordAudit } from "@/lib/audit";
+import { isStale, resolveOccurredAt } from "@/lib/rules/offline";
 import { Match } from "@/models/Match";
 import { syncMatchCallUps } from "@/lib/services/callups";
 import { MatchCallUp } from "@/models/MatchCallUp";
@@ -17,6 +18,8 @@ export interface RegisterCheckInInput {
   reason?: string;
   /** Confirms attendance from a successful verification; the method is derived from it. */
   verificationId?: string;
+  /** Set when the change was made offline and is synced later (see `lib/rules/offline`). */
+  occurredAt?: Date;
 }
 
 const VERIFICATION_MAX_AGE_MS = 15 * 60 * 1000;
@@ -36,6 +39,11 @@ export async function registerCheckIn(actor: Actor, matchId: string, input: Regi
 
   const checkIn = await PlayerCheckIn.findOne({ matchId: match._id, playerId: input.playerId });
   if (!checkIn) throw notFound("El jugador no está convocado en este partido");
+
+  const { at, offline } = resolveOccurredAt(input.occurredAt);
+  if (isStale(checkIn.checkedInAt, at, offline)) {
+    throw conflict("Ya hay un registro más reciente de este jugador; no se aplicó el cambio hecho sin conexión", "stale_offline");
+  }
 
   let method: CheckInMethod = input.method ?? "manual";
   let manualReason = input.method === "manual" ? input.reason : undefined;
@@ -65,7 +73,7 @@ export async function registerCheckIn(actor: Actor, matchId: string, input: Regi
   checkIn.set({
     status: input.status,
     method,
-    checkedInAt: new Date(),
+    checkedInAt: at,
     operatorName: actor.name,
     operatorUserId: actor.userId,
     manualReason,
@@ -78,8 +86,8 @@ export async function registerCheckIn(actor: Actor, matchId: string, input: Regi
     entityType: "check_in",
     entityId: checkIn._id,
     championshipId: match.championshipId,
-    summary: `Asistencia ${input.status === "present" ? "presente" : "ausente"} (${method})`,
-    changes: { matchId, playerId: input.playerId, reason: manualReason, verificationId: verificationId?.toString() },
+    summary: `Asistencia ${input.status === "present" ? "presente" : "ausente"} (${method})${offline ? " · registrada sin conexión" : ""}`,
+    changes: { matchId, playerId: input.playerId, reason: manualReason, verificationId: verificationId?.toString(), ...(offline ? { occurredAt: at.toISOString() } : {}) },
   });
   return checkIn;
 }
@@ -88,6 +96,8 @@ export interface BulkCheckInInput {
   status: "present" | "absent" | "pending";
   playerIds?: string[];
   teamId?: string;
+  /** Set when the change was made offline and is synced later. */
+  occurredAt?: Date;
 }
 
 /**
@@ -119,7 +129,10 @@ export async function registerBulkCheckIn(actor: Actor, matchId: string, input: 
     rows = rows.filter((row) => active.has(row.callUpId.toString()));
   }
 
-  const now = new Date();
+  const { at: now, offline } = resolveOccurredAt(input.occurredAt);
+  // Whoever marked a player more recently wins over an older offline change: those players are skipped and reported.
+  const skipped = rows.filter((row) => isStale(row.checkedInAt, now, offline)).map((row) => row.playerId.toString());
+  if (skipped.length > 0) rows = rows.filter((row) => !skipped.includes(row.playerId.toString()));
   for (const row of rows) {
     if (input.status === "pending") {
       row.set({ status: "pending", method: undefined, checkedInAt: undefined, manualReason: undefined, operatorName: actor.name, operatorUserId: actor.userId });
@@ -142,11 +155,11 @@ export async function registerBulkCheckIn(actor: Actor, matchId: string, input: 
       entityType: "check_in",
       entityId: rows[0]._id,
       championshipId: match.championshipId,
-      summary: `Asistencia ${input.status === "present" ? "presente" : input.status === "absent" ? "ausente" : "pendiente"} (manual) para ${rows.length} jugador(es)`,
-      changes: { matchId, playerIds: rows.map((row) => row.playerId.toString()), bulk: !input.playerIds },
+      summary: `Asistencia ${input.status === "present" ? "presente" : input.status === "absent" ? "ausente" : "pendiente"} (manual) para ${rows.length} jugador(es)${offline ? " · registrada sin conexión" : ""}`,
+      changes: { matchId, playerIds: rows.map((row) => row.playerId.toString()), bulk: !input.playerIds, ...(offline ? { occurredAt: now.toISOString(), skippedAsStale: skipped } : {}) },
     });
   }
-  return { updated: rows.map((row) => row.playerId.toString()) };
+  return { updated: rows.map((row) => row.playerId.toString()), skipped };
 }
 
 export async function getAttendance(matchId: string) {

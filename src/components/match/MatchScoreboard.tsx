@@ -14,32 +14,29 @@ function Side({
   teamId,
   name,
   shieldUrl,
-  away,
   favorite,
   onToggleFavorite,
 }: {
   teamId: string;
   name: string;
   shieldUrl: string;
-  away: boolean;
   favorite: boolean;
   onToggleFavorite: () => void;
 }) {
   return (
-    <div className="stack-sm" style={{ alignItems: "center", textAlign: "center", minWidth: 0, flex: 1 }}>
-      <div className="row" style={{ gap: 2, justifyContent: "center", flexDirection: away ? "row-reverse" : "row" }}>
-        <button
-          type="button"
-          className={`star-button${favorite ? " on" : ""}`}
-          aria-pressed={favorite}
-          aria-label={favorite ? `Dejar de seguir a ${name}` : `Seguir a ${name}`}
-          onClick={onToggleFavorite}
-        >
-          <Star size={16} fill={favorite ? "currentColor" : "none"} />
-        </button>
-        <Link href={`/teams/${teamId}`}><Avatar src={shieldUrl} name={name} size={44} square /></Link>
-      </div>
-      <Link href={`/teams/${teamId}`} className="truncate" style={{ fontSize: 13, maxWidth: 120 }}>{name}</Link>
+    <div className="stack-sm" style={{ alignItems: "center", textAlign: "center", minWidth: 0, flex: "1 1 0" }}>
+      {/* Shield, name and star stacked: side by side they did not fit on 360 px phones, where the centre column squeezed the shield into a sliver. */}
+      <Link href={`/teams/${teamId}`} style={{ display: "flex", flexShrink: 0 }}><Avatar src={shieldUrl} name={name} size={44} square /></Link>
+      <Link href={`/teams/${teamId}`} style={{ fontSize: 13, minWidth: 0, maxWidth: "100%", overflowWrap: "anywhere", minHeight: 39 }}>{name}</Link>
+      <button
+        type="button"
+        className={`star-button${favorite ? " on" : ""}`}
+        aria-pressed={favorite}
+        aria-label={favorite ? `Dejar de seguir a ${name}` : `Seguir a ${name}`}
+        onClick={onToggleFavorite}
+      >
+        <Star size={16} fill={favorite ? "currentColor" : "none"} />
+      </button>
     </div>
   );
 }
@@ -71,11 +68,10 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
           teamId={match.homeTeamId._id}
           name={match.homeTeamId.name}
           shieldUrl={match.homeTeamId.shieldUrl}
-          away={false}
           favorite={favoriteTeams.has(match.homeTeamId._id)}
           onToggleFavorite={() => toggleFavorite(match.homeTeamId._id, match.homeTeamId.name)}
         />
-        <div className="stack-sm" style={{ alignItems: "center", textAlign: "center" }}>
+        <div className="stack-sm" style={{ alignItems: "center", textAlign: "center", flex: "0 1 54%", minWidth: 0 }}>
           {started && (
             <div
               style={{ fontSize: 28, fontWeight: 700, lineHeight: 1, fontFamily: "ui-monospace, 'SF Mono', 'Roboto Mono', Consolas, monospace", fontVariantNumeric: "tabular-nums" }}
@@ -98,7 +94,6 @@ export function MatchScoreboard({ match }: { match: MatchDTO }) {
           teamId={match.awayTeamId._id}
           name={match.awayTeamId.name}
           shieldUrl={match.awayTeamId.shieldUrl}
-          away
           favorite={favoriteTeams.has(match.awayTeamId._id)}
           onToggleFavorite={() => toggleFavorite(match.awayTeamId._id, match.awayTeamId.name)}
         />

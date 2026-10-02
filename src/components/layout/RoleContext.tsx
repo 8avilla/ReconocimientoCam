@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useMemo } from "react";
-import { useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "next-auth/react";
+import { useSession, signIn as nextAuthSignIn } from "next-auth/react";
+import { signOutAndClear } from "@/lib/client/session";
 import { can as roleCan, type Permission, type Role } from "@/lib/roles";
 import { useChampionship } from "./ChampionshipContext";
 
@@ -56,7 +57,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       can: (permission) => roleCan(role, permission),
       canManageChampionship,
       signIn: () => void nextAuthSignIn("google"),
-      signOut: () => void nextAuthSignOut(),
+      signOut: () => void signOutAndClear(),
     };
   }, [session, status, current]);
 

@@ -34,6 +34,10 @@ export default function PrivacyPolicyPage() {
         <li>Nombre, correo electrónico y foto de perfil, al iniciar sesión con Google o con correo y contraseña.</li>
         <li>Rol y permisos asignados dentro de cada campeonato.</li>
         <li>
+          Lo que sigues (torneos, equipos y jugadores), tus avisos y, si los activas, el dispositivo registrado para
+          recibir notificaciones. Solo tú ves lo que sigues; los demás no.
+        </li>
+        <li>
           Registros de uso (pantallas visitadas, rol y fecha) y de auditoría de acciones, para seguridad y mejora del
           servicio.
         </li>
@@ -79,10 +83,16 @@ export default function PrivacyPolicyPage() {
         personas fuera de la plataforma.
       </p>
 
-      <h2>5. Permiso de cámara</h2>
+      <h2>5. Cámara y almacenamiento en tu dispositivo</h2>
       <p>
         La aplicación solicita acceso a la cámara únicamente para escanear códigos QR, registrar la fotografía de un
         jugador y realizar la verificación facial. No accedemos a la cámara en segundo plano ni a tu galería.
+      </p>
+
+      <p>
+        Para que la app funcione sin conexión, tu dispositivo guarda temporalmente las pantallas y los datos de los partidos que
+        abriste (incluidos nombres y fotos de jugadores) y los cambios de asistencia que aún no se han enviado. Esa copia se borra
+        al cerrar sesión, salvo los cambios pendientes de envío, que se mantienen hasta sincronizarse.
       </p>
 
       <h2>6. Con quién compartimos los datos</h2>
@@ -91,6 +101,7 @@ export default function PrivacyPolicyPage() {
         <li>Google, para el inicio de sesión con tu cuenta de Google.</li>
         <li>Microsoft Azure, para el almacenamiento de fotografías y evidencias.</li>
         <li>Proveedores de base de datos, alojamiento y envío de correo.</li>
+        <li>Los servicios de notificaciones de tu navegador o teléfono (Google, Apple, Mozilla), solo para entregarte los avisos que activaste.</li>
       </ul>
       <p>
         Los datos personales de los jugadores solo son visibles para los organizadores y el personal autorizado del

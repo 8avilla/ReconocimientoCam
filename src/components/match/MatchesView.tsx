@@ -10,7 +10,9 @@ import { MatchFormModal } from "@/components/match/MatchFormModal";
 import { MatchdayScheduleModal } from "@/components/match/MatchdayScheduleModal";
 import { LiveMatchesBanner } from "@/components/match/LiveMatchesBanner";
 import { MatchList } from "@/components/match/MatchList";
-import { Button, EmptyState, ErrorState, Loading, Modal, PageHeader } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Loading, Modal, PageHeader, ReportActions } from "@/components/ui";
+import { csvFileName, downloadCsv } from "@/lib/client/exportCsv";
+import { calendarReport } from "@/lib/client/reports";
 import { PLAYED_MATCH_STATUSES, UNPLAYED_MATCH_STATUSES, type MatchStatus } from "@/lib/constants";
 import { useRole } from "@/components/layout/RoleContext";
 import { championshipPath } from "@/lib/paths";
@@ -19,7 +21,7 @@ import { MATCH_STATUS_LABEL } from "@/lib/labels";
 import type { MatchDTO, MatchdayDTO, Paginated, PhaseDTO, TeamDTO } from "@/types/api";
 
 export function MatchesView() {
-  return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} />}</RequireChampionship>;
+  return <RequireChampionship>{(championship) => <MatchesList championshipId={championship._id} championshipName={championship.name} />}</RequireChampionship>;
 }
 
 type MatchesTab = "results" | "upcoming";
@@ -32,7 +34,7 @@ const MATCHES_TABS: { id: MatchesTab; label: string }[] = [
  * ones used are also remembered per championship and applied when the list is opened without any. */
 const FILTER_PARAMS = ["vista", "estado", "fase", "equipo", "fecha", "programacion", "desde", "hasta"] as const;
 
-function MatchesList({ championshipId }: { championshipId: string }) {
+function MatchesList({ championshipId, championshipName }: { championshipId: string; championshipName: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -186,10 +188,20 @@ function MatchesList({ championshipId }: { championshipId: string }) {
       <PageHeader
         title="Partidos"
         description="Programación, asistencia y eventos de cada encuentro."
-        actions={manage && (
+        actions={(
           <>
-            <Button variant="secondary" icon={<CalendarPlus size={18} />} disabled={phaseList.length === 0} onClick={() => setFixtureOpen(true)}>Generar calendario</Button>
-            <Button icon={<Plus size={18} />} disabled={phaseList.length === 0} onClick={() => setFormOpen(true)}>Nuevo partido</Button>
+            {matches.length > 0 && (
+              <ReportActions
+                subject={tab === "results" ? "los resultados" : "el calendario"}
+                onDownload={() => {
+                  const report = calendarReport(matches);
+                  downloadCsv(csvFileName(championshipName, tab === "results" ? "resultados" : "calendario"), report.headers, report.rows);
+                }}
+                onPrint={() => window.print()}
+              />
+            )}
+            {manage && <Button variant="secondary" icon={<CalendarPlus size={18} />} disabled={phaseList.length === 0} onClick={() => setFixtureOpen(true)}>Generar calendario</Button>}
+            {manage && <Button icon={<Plus size={18} />} disabled={phaseList.length === 0} onClick={() => setFormOpen(true)}>Nuevo partido</Button>}
           </>
         )}
         mobileActions={manage ? [

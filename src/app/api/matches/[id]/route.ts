@@ -1,3 +1,4 @@
+import { notifyMatchScheduled, notifyMatchState } from "@/lib/services/notifications";
 import { badRequest, conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
@@ -92,7 +93,14 @@ export const PATCH = route<Params>(async (request, { id }) => {
     }
   }
   await match.save();
-  if (justFinished) await serveSuspensions(actor, match);
+  if (justFinished) {
+    await serveSuspensions(actor, match);
+    await notifyMatchState(actor, id, "finished");
+  }
+  // A new date (or the first one) is news for whoever follows these teams or the championship.
+  if (match.status === "scheduled" && match.scheduledAt && match.scheduledAt.getTime() !== before.scheduledAt?.getTime()) {
+    await notifyMatchScheduled(actor, id, before.scheduledAt);
+  }
 
   const { scheduledAt: requestedDate, refereeId: _referee, walkoverWinnerTeamId: _winner, ...otherFields } = fields;
   void _referee; // the referee is audited through its own summary below

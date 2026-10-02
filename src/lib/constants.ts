@@ -36,3 +36,7 @@ export type SuspensionStatus = (typeof SUSPENSION_STATUSES)[number];
 export type PhaseType = (typeof PHASE_TYPES)[number];
 export type TiebreakCriterion = (typeof TIEBREAK_CRITERIA)[number];
 export type TeamStaffRole = (typeof TEAM_STAFF_ROLES)[number];
+
+/** What can be followed (for notifications). Lives here, not in the model, so screens can import it without Mongoose. */
+export const FOLLOW_TARGET_TYPES = ["championship", "team", "player"] as const;
+export type FollowTargetType = (typeof FOLLOW_TARGET_TYPES)[number];

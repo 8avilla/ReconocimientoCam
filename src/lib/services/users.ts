@@ -4,6 +4,9 @@ import { ALL_PERMISSIONS } from "@/lib/roles";
 import { conflict } from "@/lib/api";
 import { deleteDemo } from "@/lib/services/demo";
 import { Championship } from "@/models/Championship";
+import { Follow } from "@/models/Follow";
+import { Notification } from "@/models/Notification";
+import { PushSubscription } from "@/models/PushSubscription";
 import { IdentityVerification } from "@/models/IdentityVerification";
 import { Player } from "@/models/Player";
 import { PlayerCheckIn } from "@/models/PlayerCheckIn";
@@ -31,14 +34,18 @@ export async function resolveOrganizerInvites(userId: Types.ObjectId | string, e
   );
 }
 
-/** The permissions a signed-in, non-admin user has: their assigned role's set, or none without one. */
-export async function getUserPermissions(userId: string): Promise<Permission[]> {
+/**
+ * Whether the signed-in person still exists, and what they may do (their role's set; everything for an admin).
+ * A session outlives the account it was issued for (it is a signed token), so a deleted account must stop working
+ * here: `null` means "no such user", and the request is treated as signed out.
+ */
+export async function loadSessionUser(userId: string, isAdmin: boolean): Promise<{ permissions: Permission[] } | null> {
   const user = await User.findById(userId).select("roleId isAdmin").lean();
-  if (!user) return [];
-  if (user.isAdmin) return [...ALL_PERMISSIONS];
-  if (!user.roleId) return [];
+  if (!user) return null;
+  if (isAdmin || user.isAdmin) return { permissions: [...ALL_PERMISSIONS] };
+  if (!user.roleId) return { permissions: [] };
   const role = await Role.findById(user.roleId).select("permissions").lean();
-  return role?.permissions ?? [];
+  return { permissions: role?.permissions ?? [] };
 }
 
 const DELETED_USER_NAME = "Usuario eliminado";
@@ -84,7 +91,13 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
     IdentityVerification.updateMany({ operatorUserId: userId }, { $set: { operatorName: DELETED_USER_NAME, operatorUserId: null } }),
     Player.updateMany({ createdByUserId: userId }, { $set: { createdByUserId: null } }),
     UsageEvent.deleteMany({ userId }),
+    purgeUserNotifications(userId),
   ]);
 
   await user.deleteOne();
+}
+
+/** What a person followed, was notified about and the devices registered for pop-ups: gone with the account. */
+export async function purgeUserNotifications(userId: string): Promise<void> {
+  await Promise.all([Follow.deleteMany({ userId }), Notification.deleteMany({ userId }), PushSubscription.deleteMany({ userId })]);
 }

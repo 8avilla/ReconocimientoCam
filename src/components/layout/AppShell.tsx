@@ -17,6 +17,8 @@ import { trackView } from "@/lib/client/usage";
 import { useChampionship } from "./ChampionshipContext";
 import { PlayerSheetProvider } from "@/components/player/PlayerSheetContext";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { NotificationBell } from "./NotificationBell";
+import { OfflineBanner } from "./OfflineBanner";
 import { GlobalSearch } from "./GlobalSearch";
 import { useRole } from "./RoleContext";
 import { AccountModal } from "./RoleSwitcher";
@@ -86,8 +88,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PlayerSheetProvider>
     <div className={styles.container}>
+      <a href="#contenido" className="skip-link" data-print-hide>Saltar al contenido</a>
       <div className={styles.viewport}>
-        <header className={styles.topbar}>
+        <header className={styles.topbar} data-print-hide>
           <div className={styles.topbarTop}>
             <Link href="/" aria-label="Todos los torneos" className={styles.topbarLogoLink}>
               <Image src="/brand-wordmark.png" alt="Super Torneos" width={140} height={46} priority className={styles.topbarLogo} />
@@ -112,6 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             <div className={styles.topbarActions}>
               <GlobalSearch championshipId={scopeId ?? undefined} />
+              <NotificationBell />
               <AccountMenuTrigger user={user} isSignedIn={isSignedIn} onClick={() => setAccountOpen(true)} />
             </div>
           </div>
@@ -127,7 +131,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
         </header>
-        <main className={styles.content}>
+        <main id="contenido" tabIndex={-1} className={styles.content}>
+          <OfflineBanner />
           {allowed ? children : (
             <EmptyState
               icon={<Lock size={28} />}
@@ -149,7 +154,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <LegalFooter />
         </main>
 
-        <nav className={styles.bottomNav} aria-label={scoped ? "Torneo" : "Principal"}>
+        <nav className={styles.bottomNav} aria-label={scoped ? "Torneo" : "Principal"} data-print-hide>
           {bottom.map((item) => (
             <Link key={item.href} href={item.href} className={`${styles.bottomItem} ${isActive(pathname, item) ? styles.active : ""}`}>
               <item.icon size={22} aria-hidden /> {item.label}

@@ -245,6 +245,8 @@ export interface AttendanceRowDTO {
   position: Position | null;
   registrationStatus: RegistrationStatus | null;
   verificationId?: { result: VerificationResultDTO; confidence?: number; method: "face" | "manual_review"; performedAt: string } | null;
+  /** Client only: changed on this device and not yet confirmed by the server (made offline). */
+  pendingSync?: boolean;
 }
 
 export interface SuspendedPlayerDTO {

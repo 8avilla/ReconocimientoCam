@@ -1,3 +1,4 @@
+import { notifySuspension } from "@/lib/services/notifications";
 import { invalidateGalleries } from "@/lib/services/faceGallery";
 import type { Types } from "mongoose";
 import type { Actor } from "@/lib/actor";
@@ -54,6 +55,7 @@ export async function createSuspension(actor: Actor, input: CreateSuspensionInpu
     summary: `Suspensión (${input.reason}) de ${input.matchesToServe} partido(s)`,
     changes: { playerId: input.playerId.toString(), sourceEventId: input.sourceEventId?.toString(), note: input.note },
   });
+  await notifySuspension(actor, suspension);
   return suspension;
 }
 

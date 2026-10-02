@@ -8,7 +8,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
         <div style={{ textAlign: "center", padding: 24 }}>
           <h1 style={{ fontSize: 22 }}>Algo salió mal</h1>
           <p style={{ color: "#64748b" }}>No pudimos cargar Super Torneos. Inténtalo de nuevo.</p>
-          <button onClick={reset} style={{ marginTop: 12, padding: "12px 20px", borderRadius: 10, border: 0, background: "#16a34a", color: "#fff", fontWeight: 700 }}>
+          <button onClick={reset} style={{ marginTop: 12, padding: "12px 20px", borderRadius: 10, border: 0, background: "#15803d", color: "#fff", fontWeight: 700 }}>
             Reintentar
           </button>
         </div>

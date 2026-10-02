@@ -340,6 +340,9 @@ export const matchdayScheduleSchema = z.object({
  * or as a QR/manual contingency (the reason of a manual one is optional). Face check-ins can only
  * come from a verification.
  */
+/** When the change really happened, sent by a device that registered it without a connection and syncs later. */
+const occurredAtSchema = z.coerce.date().optional();
+
 export const checkInCreateSchema = z
   .object({
     playerId: objectIdSchema,
@@ -347,6 +350,7 @@ export const checkInCreateSchema = z
     method: z.enum(["qr", "manual"]).optional(),
     reason: optionalText(300).optional(),
     verificationId: objectIdSchema.optional(),
+    occurredAt: occurredAtSchema,
   })
   .refine((value) => value.verificationId || value.method, {
     message: "Indica el método de registro",
@@ -367,6 +371,7 @@ export const bulkCheckInSchema = z
     status: z.enum(["present", "absent", "pending"]),
     playerIds: z.array(objectIdSchema).min(1).max(100).optional(),
     teamId: objectIdSchema.optional(),
+    occurredAt: occurredAtSchema,
   })
   .refine((value) => value.playerIds || value.teamId, { message: "Indica los jugadores o el equipo", path: ["playerIds"] })
   .refine((value) => value.playerIds || value.status === "present", { message: "Marcar a todo un equipo solo sirve para presentes", path: ["status"] });
@@ -551,3 +556,19 @@ export const systemSettingsUpdateSchema = z.object({
 export const usageViewSchema = z.object({ route: z.string().trim().min(1).max(100).regex(/^\/[a-z0-9/:_-]*$/i, "Ruta no válida") });
 
 export const usageSummaryQuery = z.object({ days: z.coerce.number().int().min(1).max(365).default(30) });
+
+// ---------- Follows, notifications and push ----------
+
+export const followSchema = z.object({ targetType: z.enum(["championship", "team", "player"]), targetId: objectIdSchema });
+export const followImportSchema = z.object({
+  championship: z.array(z.string()).max(300).optional(),
+  team: z.array(z.string()).max(300).optional(),
+  player: z.array(z.string()).max(300).optional(),
+});
+export const notificationListQuery = z.object({ limit: z.coerce.number().int().min(1).max(50).default(30) });
+export const notificationReadSchema = z.object({ ids: z.array(objectIdSchema).max(100).optional() });
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(300), auth: z.string().min(1).max(100) }),
+});
+export const pushUnsubscribeSchema = z.object({ endpoint: z.string().url().max(1000) });

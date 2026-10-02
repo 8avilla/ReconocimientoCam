@@ -16,4 +16,5 @@
 
 .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--color-border); text-align: center; }
 .footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; font-size: 13px; color: var(--color-text-secondary); }
+.footer a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .footer a:hover { text-decoration: underline; }

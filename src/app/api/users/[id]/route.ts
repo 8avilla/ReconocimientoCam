@@ -2,7 +2,7 @@ import { conflict, json, notFound, parseBody, route } from "@/lib/api";
 import { getActor } from "@/lib/actor";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/permissions";
-import { loadPublicUser } from "@/lib/services/users";
+import { loadPublicUser, purgeUserNotifications } from "@/lib/services/users";
 import { userUpdateSchema } from "@/lib/validation/schemas";
 import { IUser, User } from "@/models/User";
 
@@ -54,6 +54,7 @@ export const DELETE = route<Params>(async (request, { id }) => {
     throw conflict("Debe quedar al menos un administrador", "last_admin");
   }
 
+  await purgeUserNotifications(user._id.toString());
   await user.deleteOne();
   await recordAudit(actor, { action: "delete", entityType: "user", entityId: user._id, summary: `Usuario eliminado: ${user.name} (${user.email})` });
   return json({ ok: true });

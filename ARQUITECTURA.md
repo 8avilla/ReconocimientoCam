@@ -236,3 +236,37 @@ Variables de entorno: `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` (cre
 - **Finanzas:** Sanciones reúne Multas, Cuotas de inscripción y Suspensiones; los montos se configuran en Configuración → Finanzas y multas. "Compartir" vive dentro de "Enlace, visibilidad y compartir".
 - **Jugadores:** `GET /api/players` acepta `filter=no_face|has_face|incomplete` y devuelve `counts` sobre toda la búsqueda; `Player.createdByUserId` (oculto) permite deshacer una identidad creada que aún no tiene inscripción.
 - **Historial del navegador:** quien navega con `router.push/replace` mientras se cierra un diálogo debe llamar antes a `noteNavigation()` (`useBackButtonClose`), o el diálogo devolverá su entrada de historial y deshará la navegación.
+
+## Modo sin conexión (asistencia)
+
+El árbitro o delegado puede abrir un partido ya visitado y marcar asistencia sin señal; al volver la conexión los cambios se envían solos.
+
+- **Service worker (`public/sw.js`):** estáticos y fotos primero de caché; páginas y GET de `/api` primero de red (4 s) con caída a lo guardado. No guarda escrituras ni `/api/auth` (salvo la sesión), usuarios, auditoría ni ajustes. Solo se registra en producción. Al cerrar sesión (`signOutAndClear`, `lib/client/session.ts`) la app le manda `clear-caches`.
+- **Guardar para usar sin conexión (`OfflineSaveButton`):** pide a la red las mismas direcciones que usa la pantalla del partido para que el service worker las deje guardadas (la primera visita aún no está controlada por el service worker). Si el partido muestra otros datos, añade su dirección ahí.
+- **Cola de cambios (`lib/client/outbox.ts`):** asistencia manual y en bloque se guarda en `localStorage` con la hora real (`occurredAt`) y se reenvía en orden (al volver la red, al traer la app al frente y cada 20 s). `outboxApply.ts` superpone lo pendiente a la lista (marca «Sin enviar»). La cámara/verificación facial necesita conexión (corre en el servidor).
+- **Servidor (`lib/rules/offline.ts`, `services/checkins.ts`):** usa `occurredAt` como `checkedInAt` si es plausible (hasta 7 días atrás, sin futuro); un cambio sin conexión **pierde** contra un registro más reciente de otra persona (`stale_offline`) y se muestra como «no se pudo aplicar»; la auditoría marca «registrada sin conexión».
+- **Probado** con navegador real en build de producción (`next start`): partido guardado → sin conexión → marcar → reconectar → sincronizado con la hora original; conflicto con registro más reciente; borrado de cachés al cerrar sesión.
+
+## Avisos (notificaciones)
+
+Quien tiene sesión recibe avisos de lo que sigue: **torneo**, **equipo** o **jugador** (la estrella de cada pantalla). Sin sesión se puede seguir igual, pero solo se guarda en el navegador y no genera avisos; al iniciar sesión lo seguido se pasa a la cuenta una vez (`FollowProvider`, `POST /api/follows/import`).
+
+- **Modelos:** `Follow` (quién sigue qué), `Notification` (la campana; se borran a los 60 días), `PushSubscription` (dispositivos que activaron avisos en el teléfono). Todo se borra con la cuenta (`purgeUserNotifications`).
+- **A quién avisar (`lib/rules/notifications.ts`, probado):** torneo → programación, inicio y final de sus partidos; equipo → además goles y tarjetas; jugador → sus goles, tarjetas y suspensiones. Una persona recibe un aviso una sola vez y nunca el que lo provocó.
+- **Disparadores (`lib/services/notifications.ts`):** `createEvent` (gol/tarjeta), `transitionMatch` y el PATCH del partido (inicio/final), crear o cambiar la fecha de un partido, `createSuspension`. Avisar nunca rompe la operación que lo origina (try/catch).
+- **Entrega:** la campana (`NotificationBell`) consulta cada minuto y al volver la app al frente. Además, **Web Push** si el servidor tiene claves VAPID (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; la pública se compila: definirla antes de `next build`). El service worker muestra el aviso y abre la pantalla al tocarlo. Sin claves, la campana funciona igual. Al cerrar sesión el dispositivo se da de baja de los avisos.
+- **App de Play Store (TWA):** `enableNotifications: true` en `twa/twa-manifest.json`; hay que regenerar el AAB (sube `appVersionCode`) para que Android delegue las notificaciones.
+- **Sesión de una cuenta eliminada:** `resolveActor` consulta que el usuario exista; el token anterior deja de valer aunque no haya caducado.
+
+## Reportes y exportación
+
+- **Excel:** CSV con BOM y `;` (lo abre Excel en español), generado en el navegador con lo que la pantalla ya cargó (`lib/client/reports.ts` + `exportCsv.ts`, probados). Los textos que parecen fórmula (`=`, `+`, `-`, `@`) se neutralizan. Disponible en posiciones, goleadores/asistencias/tarjetas, calendario y resultados, y asistencia de un partido.
+- **PDF:** vía imprimir del navegador («Guardar como PDF»). Lo que no debe imprimirse lleva `data-print-hide`; `/matches/[id]/planilla` es la planilla de juego (plantillas, firmas, eventos en blanco).
+
+## Accesibilidad básica
+
+Contrastes AA (primario `#15803d`, texto secundario `#526077`), enlace «Saltar al contenido», foco visible también en campos, objetivos táctiles de 44 px en barra y pie, `prefers-reduced-motion`, diálogos con foco atrapado que devuelven el foco. `e2e/a11y.spec.ts` pasa axe (WCAG 2.0/2.1 A y AA) sobre las pantallas principales: es el mínimo automático; lector de pantalla y teclado en dispositivo real siguen siendo revisión manual.
+
+## Pruebas de extremo a extremo (`npm run test:e2e`)
+
+Playwright con un navegador real contra un **build de producción** (`.next-e2e`, no toca el `next dev` en uso; `E2E_DEV=1` usa `next dev` y se saltan las pruebas sin conexión). Usa la base de `.env.local`: todo lo creado es `zz-qa-*` y se borra al terminar (`scripts/e2e-db.ts cleanup`). Requiere la plantilla de demo (`npm run demo:template`). Entra con el login real de correo y contraseña (el proveedor de pruebas sigue apagado en producción). Cubre: visitante, accesibilidad, cuenta (eliminarla y que su sesión antigua deje de valer), asistencia sin conexión (guardar, marcar, reconectar, conflicto, borrado al cerrar sesión), reportes y avisos (quién recibe qué, campana, dejar de seguir).

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 import { AlertTriangle, LogOut, UserRound } from "lucide-react";
 import { Avatar, Button, EmptyState, Input, Loading, Modal, PageHeader } from "@/components/ui";
 import { useRole } from "@/components/layout/RoleContext";
 import { errorMessage, http } from "@/lib/client/http";
+import { signOutAndClear } from "@/lib/client/session";
 import { ROLE_LABEL } from "@/lib/roles";
 
 interface DeletionImpact {
@@ -54,7 +54,7 @@ export default function ProfilePage() {
     setError("");
     try {
       await http("/users/me", { method: "DELETE", json: { confirm } });
-      await signOut({ callbackUrl: "/" });
+      await signOutAndClear({ callbackUrl: "/" });
     } catch (err) {
       setError(errorMessage(err));
       setDeleting(false);
@@ -81,7 +81,7 @@ export default function ProfilePage() {
           <Link href="/privacidad" className="link-button">Política de Privacidad</Link>.
         </p>
         <div>
-          <button className="btn secondary" onClick={() => void signOut({ callbackUrl: "/" })}>
+          <button className="btn secondary" onClick={() => void signOutAndClear({ callbackUrl: "/" })}>
             <LogOut size={18} aria-hidden /> Cerrar sesión
           </button>
         </div>

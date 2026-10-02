@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AlertCircle, Camera, CheckCircle2, Copy, Download, FileText, Goal, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, ShieldOff, SquareStack, Trash2, UserRound } from "lucide-react";
+import { AlertCircle, Camera, Star, CheckCircle2, Copy, Download, FileText, Goal, MoreHorizontal, Pencil, ScanFace, ShieldAlert, ShieldCheck, ShieldOff, SquareStack, Trash2, UserRound } from "lucide-react";
 import { useRole } from "@/components/layout/RoleContext";
 import { FaceEnrollModal } from "@/components/player/FaceEnrollModal";
 import { PlayerIdCardPrint } from "@/components/player/PlayerIdCardPrint";
@@ -12,6 +12,7 @@ import { PlayerPhotoModal } from "@/components/player/PlayerPhotoModal";
 import { FaceBadge, RegistrationBadge } from "@/components/player/PlayerBadges";
 import { Avatar, Badge, Button, ConfirmDialog, ErrorState, Loading, Modal, useToast } from "@/components/ui";
 import { downloadCarnetImage } from "@/lib/client/carnetExport";
+import { FAVORITE_PLAYERS_KEY, useFavoriteSet } from "@/lib/client/favorites";
 import { errorMessage, http } from "@/lib/client/http";
 import { useFetch } from "@/lib/client/useFetch";
 import { ageFromBirthYear, formatDate, SUSPENSION_REASON_LABEL } from "@/lib/labels";
@@ -40,6 +41,7 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
   const suspensions = useFetch<Paginated<SuspensionDTO>>(playerId ? `/suspensions?playerId=${playerId}&status=active&limit=10` : null);
   const liveChampionshipId = player.data?.registrations.find((item) => item.status !== "inactive")?.championshipId?._id;
   const stats = useFetch<PlayerStatsSummaryDTO>(playerId ? `/players/${playerId}/stats${liveChampionshipId ? `?championshipId=${liveChampionshipId}` : ""}` : null);
+  const [followedPlayers, toggleFollowedPlayer] = useFavoriteSet(FAVORITE_PLAYERS_KEY);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"general" | "actividad">("general");
@@ -123,6 +125,18 @@ export function PlayerInfoModal({ playerId, onClose, onChanged }: Props) {
                 <h3 style={{ margin: 0 }} className="truncate">{data.fullName}</h3>
                 <div className="text-secondary truncate">{subtitle}</div>
               </div>
+              <button
+                type="button"
+                className={`star-button${followedPlayers.has(data._id) ? " on" : ""}`}
+                aria-pressed={followedPlayers.has(data._id)}
+                aria-label={followedPlayers.has(data._id) ? `Dejar de seguir a ${data.fullName}` : `Seguir a ${data.fullName}`}
+                onClick={() => {
+                  toggleFollowedPlayer(data._id);
+                  toast.success(followedPlayers.has(data._id) ? `Dejaste de seguir a ${data.fullName}` : `Ahora sigues a ${data.fullName}`);
+                }}
+              >
+                <Star size={20} fill={followedPlayers.has(data._id) ? "currentColor" : "none"} />
+              </button>
             </div>
 
             <div className="row-wrap" style={{ gap: "var(--space-xs)" }}>

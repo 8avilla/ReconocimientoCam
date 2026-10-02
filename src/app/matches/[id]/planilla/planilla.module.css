@@ -1,0 +1,28 @@
+.sheet { max-width: 900px; margin: 0 auto; color: #111; line-height: 1.35; }
+.toolbar { display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
+.header { text-align: center; margin-bottom: 16px; }
+.header h1 { font-size: 22px; }
+.versus { font-size: 18px; font-weight: 700; margin: 4px 0 12px; }
+.versus span { font-weight: 400; color: #555; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; text-align: left; }
+.meta dt { font-size: 11px; text-transform: uppercase; color: #555; }
+.meta dd { margin: 0; font-weight: 600; }
+.squads { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 700px) { .squads { grid-template-columns: 1fr; } }
+.sheet h2 { font-size: 15px; margin: 12px 0 6px; }
+.sheet table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sheet th, .sheet td { border: 1px solid #333; padding: 4px 6px; text-align: left; height: 22px; }
+.sheet th { background: #eee; }
+.check { text-align: center; width: 40px; }
+.events td { height: 26px; }
+.result { display: flex; gap: 8px; align-items: baseline; margin: 16px 0; font-size: 14px; }
+.result i { display: inline-block; width: 60px; border-bottom: 1px solid #333; }
+.signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 36px; text-align: center; }
+.signatures span { display: block; border-bottom: 1px solid #333; height: 32px; }
+.signatures p { font-size: 12px; margin-top: 4px; }
+.observations { margin-top: 20px; font-size: 13px; border-bottom: 1px solid #333; padding-bottom: 36px; }
+@media print {
+  .squads { grid-template-columns: 1fr 1fr; }
+  .sheet { max-width: none; }
+  .sheet table { break-inside: avoid; }
+}

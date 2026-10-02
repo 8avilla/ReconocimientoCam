@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 import { AttendancePanel } from "@/components/attendance/AttendancePanel";
@@ -22,6 +22,8 @@ import { errorMessage, http } from "@/lib/client/http";
 import { useSyncChampionship } from "@/components/layout/ChampionshipContext";
 import { useRole } from "@/components/layout/RoleContext";
 import { useFetch } from "@/lib/client/useFetch";
+import { applyPendingOps } from "@/lib/client/outboxApply";
+import { useOutbox } from "@/lib/client/useOutbox";
 import { suggestedMinute } from "@/lib/rules/match";
 import type { AttendanceDTO, ChampionshipDTO, MatchDTO, MatchEventDTO, Paginated, PhaseDTO, SuspensionDTO } from "@/types/api";
 
@@ -39,7 +41,18 @@ export function MatchDetail({ id, initialTab }: { id: string; initialTab?: Match
   const match = useFetch<MatchDTO>(`/matches/${id}`);
   useSyncChampionship(match.data?.championshipId);
   const events = useFetch<{ data: MatchEventDTO[] }>(`/matches/${id}/events`);
-  const attendance = useFetch<AttendanceDTO>(`/matches/${id}/attendance`);
+  const fetchedAttendance = useFetch<AttendanceDTO>(`/matches/${id}/attendance`);
+  // Changes made on this device without a connection show up right away, before the server has them.
+  const { pending, syncedCount } = useOutbox();
+  const attendance = useMemo(
+    () => ({ ...fetchedAttendance, data: fetchedAttendance.data && applyPendingOps(fetchedAttendance.data, pending, id) }),
+    [fetchedAttendance, pending, id]
+  );
+  const reloadAttendance = fetchedAttendance.reload;
+  // Once the queue reaches the server, show what it really recorded.
+  useEffect(() => {
+    if (syncedCount > 0) reloadAttendance();
+  }, [syncedCount, reloadAttendance]);
   const suspensions = useFetch<Paginated<SuspensionDTO>>(`/suspensions?matchId=${id}&limit=50`);
   const phases = useFetch<{ data: PhaseDTO[] }>(match.data ? `/championships/${match.data.championshipId}/phases` : null);
   const championship = useFetch<ChampionshipDTO>(match.data ? `/championships/${match.data.championshipId}` : null);

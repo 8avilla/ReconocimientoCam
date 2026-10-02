@@ -4,7 +4,9 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChartColumn } from "lucide-react";
 import { RequireChampionship } from "@/components/layout/RequireChampionship";
-import { Avatar, EmptyState, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { Avatar, EmptyState, ErrorState, Loading, PageHeader, ReportActions } from "@/components/ui";
+import { csvFileName, downloadCsv } from "@/lib/client/exportCsv";
+import { rankingReport, standingsReport, type Report } from "@/lib/client/reports";
 import { championshipPath } from "@/lib/paths";
 import { useFetch } from "@/lib/client/useFetch";
 import { currentPhase } from "@/lib/rules/currentPhase";
@@ -43,10 +45,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function StatsView({ initialPhaseId }: { initialPhaseId?: string }) {
-  return <RequireChampionship>{(championship) => <Stats championshipId={championship._id} initialPhaseId={initialPhaseId} />}</RequireChampionship>;
+  return <RequireChampionship>{(championship) => <Stats championshipId={championship._id} championshipName={championship.name} initialPhaseId={initialPhaseId} />}</RequireChampionship>;
 }
 
-function Stats({ championshipId, initialPhaseId }: { championshipId: string; initialPhaseId?: string }) {
+function Stats({ championshipId, championshipName, initialPhaseId }: { championshipId: string; championshipName: string; initialPhaseId?: string }) {
   // "Posiciones" is always the tab you land on; switching tabs only lasts the visit.
   const [tab, setTab] = useState<Tab>("standings");
   const [phaseChoice, setPhaseChoice] = useStoredState<string>(`super-torneos:stats:phase:${championshipId}`, "", undefined, initialPhaseId);
@@ -58,10 +60,36 @@ function Stats({ championshipId, initialPhaseId }: { championshipId: string; ini
   const phaseStandings = useFetch<PhaseStandingsDTO>(phase && phase.type !== "knockout" ? `/phases/${phase._id}/standings` : null);
   const stats = useFetch<PlayerStatsDTO>(`/championships/${championshipId}/stats`);
 
+  // What the Excel button exports: the table of the phase on screen, or the ranking of the open tab.
+  const report: { subject: string; file: string; data: Report } | null =
+    tab === "standings"
+      ? phase && phase.type !== "knockout" && phaseStandings.data
+        ? { subject: "la tabla de posiciones", file: `${phase.name} posiciones`, data: standingsReport(phaseStandings.data.tables) }
+        : null
+      : stats.data
+        ? tab === "scorers"
+          ? { subject: "los goleadores", file: "goleadores", data: rankingReport(stats.data.scorers, "Goles", (row) => row.goals) }
+          : tab === "assists"
+            ? { subject: "las asistencias", file: "asistencias", data: rankingReport(stats.data.assisters, "Asistencias", (row) => row.assists) }
+            : tab === "yellow"
+              ? { subject: "las tarjetas amarillas", file: "tarjetas amarillas", data: rankingReport(stats.data.cards.filter((row) => row.yellowCards > 0).sort((a, b) => b.yellowCards - a.yellowCards), "Amarillas", (row) => row.yellowCards) }
+              : { subject: "las tarjetas rojas", file: "tarjetas rojas", data: rankingReport(stats.data.cards.filter((row) => row.redCards > 0).sort((a, b) => b.redCards - a.redCards), "Rojas", (row) => row.redCards) }
+        : null;
+
   const active = tab === "standings" ? (phase && phase.type !== "knockout" ? phaseStandings : phases) : stats;
   return (
     <>
-      <PageHeader title="Estadísticas" description="Solo cuentan los partidos finalizados." />
+      <PageHeader
+        title="Estadísticas"
+        description="Solo cuentan los partidos finalizados."
+        actions={report && (
+          <ReportActions
+            subject={report.subject}
+            onDownload={() => downloadCsv(csvFileName(championshipName, report.file), report.data.headers, report.data.rows)}
+            onPrint={() => window.print()}
+          />
+        )}
+      />
       <div className="tabs-line" role="tablist" aria-label="Estadísticas">
         {TABS.map((item) => (
           <button key={item.id} role="tab" aria-selected={tab === item.id} className={`tab-line${tab === item.id ? " active" : ""}`} onClick={() => setTab(item.id)}>

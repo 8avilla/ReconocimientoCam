@@ -1,3 +1,4 @@
+import { notifyMatchScheduled } from "@/lib/services/notifications";
 import type mongoose from "mongoose";
 import { badRequest, json, notFound, parseBody, parseQuery, route, toObjectId, Paginated } from "@/lib/api";
 import { getActor } from "@/lib/actor";
@@ -92,5 +93,6 @@ export const POST = route(async (request) => {
     championshipId: match.championshipId,
     summary: `Partido creado: ${names}`,
   });
+  if (match.status === "scheduled" && match.scheduledAt) await notifyMatchScheduled(actor, match._id.toString(), undefined);
   return json(match, 201);
 });

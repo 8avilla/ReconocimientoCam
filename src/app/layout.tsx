@@ -5,6 +5,7 @@ import AppShell from "@/components/layout/AppShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthSessionProvider } from "@/components/layout/AuthSessionProvider";
 import { ChampionshipProvider } from "@/components/layout/ChampionshipContext";
+import { FollowProvider } from "@/components/layout/FollowProvider";
 import { RoleProvider } from "@/components/layout/RoleContext";
 import { ServiceWorkerRegister } from "@/components/layout/ServiceWorkerRegister";
 
@@ -26,11 +27,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ServiceWorkerRegister />
         <AuthSessionProvider>
           <ToastProvider>
-            <ChampionshipProvider>
-              <RoleProvider>
-                <AppShell>{children}</AppShell>
-              </RoleProvider>
-            </ChampionshipProvider>
+            <FollowProvider>
+              <ChampionshipProvider>
+                <RoleProvider>
+                  <AppShell>{children}</AppShell>
+                </RoleProvider>
+              </ChampionshipProvider>
+            </FollowProvider>
           </ToastProvider>
         </AuthSessionProvider>
       </body>

@@ -80,6 +80,11 @@ export const fetchCache = {
     return promise;
   },
 
+  /** Changes every time the cache is emptied: an answer asked for under an older number may be from before the change. */
+  generation(): number {
+    return generation;
+  },
+
   /** Forgets everything: something changed, or somebody else is looking now. */
   clear(): void {
     entries = new Map();

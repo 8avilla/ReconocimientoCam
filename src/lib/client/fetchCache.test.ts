@@ -71,6 +71,12 @@ describe("fetchCache", () => {
     expect(await fetchCache.shared("/a", load)).toBe("network"); // a manual reload always asks
   });
 
+  it("counts every emptying, so a combined request can tell it was overtaken by a change", () => {
+    const before = fetchCache.generation();
+    fetchCache.clear();
+    expect(fetchCache.generation()).toBe(before + 1);
+  });
+
   it("keeps at most a couple of hundred answers, dropping the oldest", () => {
     for (let i = 0; i < 205; i++) fetchCache.put(`/p${i}`, i, 1000);
     expect(fetchCache.peek("/p0", 1000)).toBeNull();

@@ -41,11 +41,15 @@ export function prefetch(paths: string[], championship?: string | null): void {
   if (last && Date.now() - last < DEDUPE_MS) return;
   running.set(body, Date.now());
 
+  // Something saved while this was on its way (you changed a result and moved on quickly) can make its answer older than
+  // the change: the clear that the save triggers must not be undone by it. Then the screen asks for its data as usual.
+  const startedIn = fetchCache.generation();
   const early = window.__earlyBatch;
   window.__earlyBatch = undefined;
   const response = early && early.body === body ? early.promise.then((answer) => answer ?? send(body)) : send(body);
   fetchCache.trackBatch(
     response.then(({ results }) => {
+      if (fetchCache.generation() !== startedIn) return;
       for (const [path, result] of Object.entries(results)) if (result.status === 200) fetchCache.put(path, result.body);
     })
   );

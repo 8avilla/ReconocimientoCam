@@ -4,7 +4,9 @@ import { badRequest, conflict, notFound } from "@/lib/api";
 import { diffChanges, recordAudit } from "@/lib/audit";
 import type { PhaseType, TiebreakCriterion } from "@/lib/constants";
 import { drawGroups, type GroupAssignment } from "@/lib/rules/fixture";
+import { fairPlayPoints } from "@/lib/rules/fairPlay";
 import { computeStandings } from "@/lib/rules/standings";
+import { resolveTiebreakers } from "@/lib/rules/tiebreakers";
 import { Championship, DEFAULT_RULES } from "@/models/Championship";
 import { requireOrganizerOfChampionship } from "@/lib/permissions";
 import { IdentityVerification } from "@/models/IdentityVerification";
@@ -86,6 +88,7 @@ export async function createPhase(actor: Actor, championshipId: string, input: P
     legs: input.legs,
     groupCount: input.type === "groups" ? input.groupCount : undefined,
     tiebreakers: input.type !== "knockout" ? input.tiebreakers : undefined,
+    tiebreakersCustom: input.type !== "knockout" && input.tiebreakers !== undefined ? true : undefined,
     highlights: input.type !== "knockout" ? input.highlights : undefined,
   });
   await recordAudit(actor, {
@@ -122,6 +125,7 @@ export async function updatePhase(actor: Actor, id: string, input: Partial<Phase
     groupCount: type === "groups" ? input.groupCount ?? phase.groupCount : undefined,
     // Purely informational (never blocks the phase from having a calendar), so neither is part of `structural` above.
     tiebreakers: type !== "knockout" ? (input.tiebreakers === undefined ? phase.tiebreakers : input.tiebreakers) : undefined,
+    tiebreakersCustom: type !== "knockout" ? (input.tiebreakers === undefined ? phase.tiebreakersCustom : true) : undefined,
     highlights: type !== "knockout" ? (input.highlights === undefined ? phase.highlights : input.highlights) : undefined,
   });
   // A different format invalidates the previous group distribution.
@@ -259,6 +263,21 @@ export async function drawPhaseGroups(actor: Actor, id: string) {
   return phase;
 }
 
+/**
+ * Fair play points of every team in the championship (all its phases: "las tarjetas que tenga en el campeonato"):
+ * the cards of finished matches that were not voided, weighted by the championship's rules.
+ */
+async function championshipFairPlay(championshipId: Types.ObjectId, weights: { yellow: number; red: number }) {
+  const finished = await Match.find({ championshipId, status: "finished" }).select("_id").lean();
+  const cards = await MatchEvent.find({ matchId: { $in: finished.map((match) => match._id) }, voided: false, type: { $in: ["yellow_card", "red_card"] } })
+    .select("teamId type linkedEventId")
+    .lean();
+  return fairPlayPoints(
+    cards.map((card) => ({ _id: card._id.toString(), teamId: card.teamId.toString(), type: card.type as "yellow_card" | "red_card", linkedEventId: card.linkedEventId?.toString() })),
+    weights
+  );
+}
+
 /** League table of the phase, or one table per group. */
 export async function getPhaseStandings(id: string) {
   const phase = await Phase.findById(id).lean();
@@ -272,6 +291,14 @@ export async function getPhaseStandings(id: string) {
       .lean(),
   ]);
   const team = new Map(teams.map((entry) => [entry._id.toString(), entry]));
+  // Only worked out when the phase uses the criterion (it needs a pass over the championship's cards).
+  const tiebreakers = resolveTiebreakers(phase);
+  const fairPlay = tiebreakers.includes("fair_play")
+    ? await championshipFairPlay(phase.championshipId, {
+        yellow: championship?.rules.fairPlayYellowPoints ?? DEFAULT_RULES.fairPlayYellowPoints,
+        red: championship?.rules.fairPlayRedPoints ?? DEFAULT_RULES.fairPlayRedPoints,
+      })
+    : undefined;
   const rules = {
     pointsPerWin: championship?.rules.pointsPerWin ?? DEFAULT_RULES.pointsPerWin,
     pointsPerDraw: championship?.rules.pointsPerDraw ?? DEFAULT_RULES.pointsPerDraw,
@@ -290,7 +317,8 @@ export async function getPhaseStandings(id: string) {
       teamIds.map((teamId) => ({ id: teamId.toString(), name: team.get(teamId.toString())?.name ?? "" })),
       scope.map(toMatch),
       rules,
-      phase.tiebreakers
+      tiebreakers,
+      fairPlay
     ).map((row) => ({ ...row, shieldUrl: team.get(row.teamId)?.shieldUrl ?? "" }));
 
   // A phase set up before "highlights" existed keeps showing its old single accent (as the top1/blue

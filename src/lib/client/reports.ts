@@ -40,13 +40,14 @@ export function attendanceReport(match: Pick<MatchDTO, "homeTeamId" | "awayTeamI
 /** The table of a phase; a phase with groups gets a leading "Grupo" column. */
 export function standingsReport(tables: { group: string | null; rows: StandingsRowDTO[] }[]): Report {
   const grouped = tables.some((table) => table.group);
-  const columns = ["Posición", "Equipo", "PJ", "G", "E", "P", "GF", "GC", "DG", "Puntos"];
+  const withFairPlay = tables.some((table) => table.rows.some((row) => row.fairPlay !== undefined));
+  const columns = ["Posición", "Equipo", "PJ", "G", "E", "P", "GF", "GC", "DG", ...(withFairPlay ? ["Juego limpio"] : []), "Puntos"];
   return {
     headers: grouped ? ["Grupo", ...columns] : columns,
     rows: tables.flatMap((table) =>
       table.rows.map((row) => [
         ...(grouped ? [table.group ?? ""] : []),
-        row.position, row.name, row.played, row.won, row.drawn, row.lost, row.goalsFor, row.goalsAgainst, row.goalDifference, row.points,
+        row.position, row.name, row.played, row.won, row.drawn, row.lost, row.goalsFor, row.goalsAgainst, row.goalDifference, ...(withFairPlay ? [row.fairPlay ?? 0] : []), row.points,
       ])
     ),
   };

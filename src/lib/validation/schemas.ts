@@ -32,6 +32,8 @@ const rulesSchema = z
     redCardSuspensionMatches: z.number().int().min(1).max(20),
     yellowCardFine: z.number().int().min(0).max(100_000_000),
     redCardFine: z.number().int().min(0).max(100_000_000),
+    fairPlayYellowPoints: z.number().int().min(0).max(100),
+    fairPlayRedPoints: z.number().int().min(0).max(100),
     registrationFeeAmount: z.number().int().min(0).max(100_000_000),
     allowManualReview: z.boolean(),
     walkoverGoals: z.number().int().min(0).max(50),
@@ -252,7 +254,11 @@ export const matchListQuery = paginationSchema.extend({
 
 const legsSchema = z.union([z.literal(1), z.literal(2)]);
 
-const tiebreakersSchema = z.array(z.enum(TIEBREAK_CRITERIA)).max(TIEBREAK_CRITERIA.length);
+/** The criteria in use, in order: any subset of what the system offers (none = only points, then name), each at most once. */
+const tiebreakersSchema = z
+  .array(z.enum(TIEBREAK_CRITERIA))
+  .max(TIEBREAK_CRITERIA.length)
+  .refine((list) => new Set(list).size === list.length, { message: "Un criterio no puede repetirse" });
 
 /** 0 (or omitted) means that band is off. */
 const highlightBand = z.number().int().min(0).max(64).optional();

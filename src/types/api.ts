@@ -32,6 +32,8 @@ export interface ChampionshipRulesDTO {
   redCardSuspensionMatches?: number;
   yellowCardFine?: number;
   redCardFine?: number;
+  fairPlayYellowPoints?: number;
+  fairPlayRedPoints?: number;
   registrationFeeAmount?: number;
   allowManualReview: boolean;
   walkoverGoals?: number;
@@ -318,6 +320,8 @@ export interface StandingsRowDTO {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  /** Fair play points (yellow + red cards, weighted by the championship's rules); only when the phase uses that criterion. */
+  fairPlay?: number;
   form: ("W" | "D" | "L")[];
 }
 
@@ -377,6 +381,8 @@ export interface PhaseDTO {
   qualifyCount?: number;
   highlights?: PhaseHighlightsDTO;
   tiebreakers?: TiebreakCriterion[];
+  /** True once the organizer saved the list (even an empty one); see `resolveTiebreakers`. */
+  tiebreakersCustom?: boolean;
   teamIds: string[];
   groups: { name: string; teamIds: string[] }[];
   rounds: { _id: string; name: string; order: number; legs: 1 | 2 }[];

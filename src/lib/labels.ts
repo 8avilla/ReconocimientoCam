@@ -98,6 +98,7 @@ export const TIEBREAK_CRITERION_LABEL: Record<TiebreakCriterion, { label: string
   goals_for: { label: "Goles a favor", description: "Total de goles anotados" },
   fewest_goals_against: { label: "Menos goles en contra", description: "El que menos goles ha recibido" },
   most_wins: { label: "Partidos ganados", description: "El que más partidos ha ganado" },
+  fair_play: { label: "Juego limpio", description: "El equipo con menos puntos por tarjetas en el torneo (amarilla y roja suman, configurable)" },
 };
 
 export const LEGS_LABEL: Record<1 | 2, string> = {

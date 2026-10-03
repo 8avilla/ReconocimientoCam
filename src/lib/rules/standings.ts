@@ -37,6 +37,8 @@ export interface StandingsRow {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  /** Fair play points (fewer is better); only present when the table was computed with them. */
+  fairPlay?: number;
   /** Last results, most recent last. */
   form: FormResult[];
 }
@@ -73,20 +75,24 @@ function compareByCriterion(criterion: TiebreakCriterion, a: Row, b: Row, matche
     case "goals_for": return b.goalsFor - a.goalsFor;
     case "fewest_goals_against": return a.goalsAgainst - b.goalsAgainst;
     case "most_wins": return b.won - a.won;
+    case "fair_play": return (a.fairPlay ?? 0) - (b.fairPlay ?? 0);
     case "head_to_head": return headToHeadScore(b.teamId, a.teamId, matches, rules) - headToHeadScore(a.teamId, b.teamId, matches, rules);
   }
 }
 
 /**
  * League table. Order: points, then the given tiebreak criteria in that order, then team name.
- * `tiebreakers` defaults to the historical order (goal difference, then goals for) when omitted, so
- * existing phases that never set their own keep behaving exactly as before.
+ * `tiebreakers` is the list of criteria in use (any subset, in the order chosen; an empty list means only points,
+ * then name) and defaults to the historical order (goal difference, then goals for) when omitted, so existing
+ * phases that never set their own keep behaving exactly as before.
+ * `fairPlayPoints` (team id -> points, fewer is better) is needed for the "fair_play" criterion; teams missing from it have 0.
  */
 export function computeStandings(
   teams: readonly StandingsTeam[],
   matches: readonly FinishedMatch[],
   rules: PointsRules,
-  tiebreakers: readonly TiebreakCriterion[] = DEFAULT_TIEBREAKERS
+  tiebreakers: readonly TiebreakCriterion[] = DEFAULT_TIEBREAKERS,
+  fairPlayPoints?: ReadonlyMap<string, number>
 ): StandingsRow[] {
   const rows = new Map<string, Omit<StandingsRow, "position" | "goalDifference">>(
     teams.map((team) => [
@@ -127,7 +133,11 @@ export function computeStandings(
   }
 
   return [...rows.values()]
-    .map((row) => ({ ...row, goalDifference: row.goalsFor - row.goalsAgainst }))
+    .map((row) => ({
+      ...row,
+      goalDifference: row.goalsFor - row.goalsAgainst,
+      ...(fairPlayPoints ? { fairPlay: fairPlayPoints.get(row.teamId) ?? 0 } : {}),
+    }))
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
       for (const criterion of tiebreakers) {

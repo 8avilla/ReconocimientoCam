@@ -247,6 +247,8 @@ export function StandingsTable({
   const [mode, setMode] = useStandingsMode();
   const isHighlighted = (teamId: string) => (Array.isArray(highlightTeamId) ? highlightTeamId.includes(teamId) : teamId === highlightTeamId);
   const bandClass = (position: number) => highlightBand(position, rows.length, highlights);
+  // Only phases that use the fair play tiebreak carry the points.
+  const showFairPlay = rows.some((row) => row.fairPlay !== undefined);
   if (rows.length === 0) {
     return <div className="card"><EmptyState icon={<ChartColumn size={28} />} title="Sin equipos" description="Registra equipos y juega partidos para ver la tabla." /></div>;
   }
@@ -263,7 +265,9 @@ export function StandingsTable({
               <tr>
                 <th className="sticky-col">Equipo</th>
                 <th title="Partidos jugados">PJ</th><th title="Ganados">G</th><th title="Empatados">E</th><th title="Perdidos">P</th>
-                <th title="Goles a favor">GF</th><th title="Goles en contra">GC</th><th title="Diferencia de goles">DG</th><th title="Puntos">Pts</th>
+                <th title="Goles a favor">GF</th><th title="Goles en contra">GC</th><th title="Diferencia de goles">DG</th>
+                {showFairPlay && <th title="Juego limpio: puntos por tarjetas (menos es mejor)">JL</th>}
+                <th title="Puntos">Pts</th>
                 <th className="only-desktop">Forma</th>
               </tr>
             </thead>
@@ -279,6 +283,7 @@ export function StandingsTable({
                   </td>
                   <td>{row.played}</td><td>{row.won}</td><td>{row.drawn}</td><td>{row.lost}</td>
                   <td>{row.goalsFor}</td><td>{row.goalsAgainst}</td><td>{signed(row.goalDifference)}</td>
+                  {showFairPlay && <td>{row.fairPlay ?? 0}</td>}
                   <td className="text-strong">{row.points}</td>
                   <td className="only-desktop"><Form form={row.form} /></td>
                 </tr>

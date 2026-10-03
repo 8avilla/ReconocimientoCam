@@ -79,4 +79,52 @@ describe("computeStandings", () => {
     );
     expect(table.find((row) => row.teamId === "a")).toMatchObject({ won: 1, goalsFor: 3, goalDifference: 3 });
   });
+
+  describe("criterios activables y juego limpio", () => {
+    // Atlas y Brazuca empatan en todo (1-1): solo el criterio elegido los separa.
+    const draw = [{ homeTeamId: "a", awayTeamId: "b", homeScore: 1, awayScore: 1 }];
+    const order = (table: ReturnType<typeof computeStandings>) => table.filter((row) => row.teamId !== "c").map((row) => row.teamId);
+
+    it("juego limpio: queda arriba el equipo con menos puntos por tarjetas", () => {
+      const points = new Map([["a", 5], ["b", 2]]);
+      expect(order(computeStandings(teams, draw, RULES, ["fair_play"], points))).toEqual(["b", "a"]);
+      // Sin tarjetas registradas para uno de ellos cuenta 0
+      expect(order(computeStandings(teams, draw, RULES, ["fair_play"], new Map([["a", 1]])))).toEqual(["b", "a"]);
+    });
+
+    it("la tabla trae los puntos de juego limpio de cada equipo, y no los trae si no se calcularon", () => {
+      const withPoints = computeStandings(teams, draw, RULES, ["fair_play"], new Map([["a", 3]]));
+      expect(withPoints.find((row) => row.teamId === "a")!.fairPlay).toBe(3);
+      expect(withPoints.find((row) => row.teamId === "b")!.fairPlay).toBe(0);
+      expect(computeStandings(teams, draw, RULES, ["goal_difference"]).every((row) => row.fairPlay === undefined)).toBe(true);
+    });
+
+    it("el orden de los criterios activos lo decide quien configura la fase", () => {
+      // Atlas gana en juego limpio pero tiene peor diferencia de gol
+      const matches = [
+        { homeTeamId: "a", awayTeamId: "c", homeScore: 1, awayScore: 0 },
+        { homeTeamId: "b", awayTeamId: "c", homeScore: 4, awayScore: 0 },
+      ];
+      const points = new Map([["a", 0], ["b", 6]]);
+      expect(order(computeStandings(teams, matches, RULES, ["fair_play", "goal_difference"], points))).toEqual(["a", "b"]);
+      expect(order(computeStandings(teams, matches, RULES, ["goal_difference", "fair_play"], points))).toEqual(["b", "a"]);
+    });
+
+    it("un criterio desactivado no cuenta: con la lista vacía solo importan los puntos y luego el nombre", () => {
+      const matches = [
+        { homeTeamId: "a", awayTeamId: "c", homeScore: 1, awayScore: 0 },
+        { homeTeamId: "b", awayTeamId: "c", homeScore: 4, awayScore: 0 },
+      ];
+      // Brazuca tiene mucha mejor diferencia de gol, pero ese criterio está desactivado
+      expect(order(computeStandings(teams, matches, RULES, []))).toEqual(["a", "b"]);
+    });
+
+    it("sin lista propia se mantiene el orden histórico (diferencia de gol, luego goles a favor)", () => {
+      const matches = [
+        { homeTeamId: "a", awayTeamId: "c", homeScore: 1, awayScore: 0 },
+        { homeTeamId: "b", awayTeamId: "c", homeScore: 4, awayScore: 0 },
+      ];
+      expect(order(computeStandings(teams, matches, RULES))).toEqual(["b", "a"]);
+    });
+  });
 });

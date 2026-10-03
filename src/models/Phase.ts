@@ -52,6 +52,8 @@ export interface IPhase {
   /** Order to break ties after points, picked by the organizer; absent uses the historical default
    * (goal difference, then goals for — see `computeStandings`), so existing phases don't silently change. */
   tiebreakers?: TiebreakCriterion[];
+  /** True once the organizer saved the list (even an empty one); see `resolveTiebreakers`. */
+  tiebreakersCustom?: boolean;
   /** Participating teams. */
   teamIds: Types.ObjectId[];
   /** Team distribution for a group phase. */
@@ -96,7 +98,9 @@ const PhaseSchema = new Schema<IPhase>(
     groupCount: { type: Number, min: 2, max: 26 },
     qualifyCount: { type: Number, min: 1, max: 64 },
     highlights: { type: PhaseHighlightsSchema },
-    tiebreakers: { type: [String], enum: TIEBREAK_CRITERIA },
+    // No default: an unset list means "use the default", which an empty one now cannot say.
+    tiebreakers: { type: [String], enum: TIEBREAK_CRITERIA, default: undefined },
+    tiebreakersCustom: { type: Boolean },
     teamIds: [{ type: Schema.Types.ObjectId, ref: "Team" }],
     groups: { type: [PhaseGroupSchema], default: [] },
     rounds: { type: [PhaseRoundSchema], default: [] },

@@ -29,6 +29,10 @@ export interface ChampionshipRules {
   yellowCardFine: number;
   /** Fine (COP) charged for each red card; 0 = no fine. */
   redCardFine: number;
+  /** Fair play ("juego limpio") points each yellow card adds to its team; the team with the fewest points wins that tiebreak. */
+  fairPlayYellowPoints: number;
+  /** Fair play points each red card adds (a double yellow counts as one yellow plus one red). */
+  fairPlayRedPoints: number;
   /** Fee (COP) charged once per team when it registers for the championship; 0 = no fee. */
   registrationFeeAmount: number;
   /** Whether referees may resolve a failed verification manually. Fixed to true for now. */
@@ -86,6 +90,8 @@ export const DEFAULT_RULES: ChampionshipRules = {
   redCardSuspensionMatches: 1,
   yellowCardFine: 0,
   redCardFine: 0,
+  fairPlayYellowPoints: 1,
+  fairPlayRedPoints: 2,
   registrationFeeAmount: 0,
   allowManualReview: true,
   walkoverGoals: 0,
@@ -105,6 +111,8 @@ const RulesSchema = new Schema<ChampionshipRules>(
     redCardSuspensionMatches: { type: Number, default: DEFAULT_RULES.redCardSuspensionMatches, min: 1 },
     yellowCardFine: { type: Number, default: DEFAULT_RULES.yellowCardFine, min: 0 },
     redCardFine: { type: Number, default: DEFAULT_RULES.redCardFine, min: 0 },
+    fairPlayYellowPoints: { type: Number, default: DEFAULT_RULES.fairPlayYellowPoints, min: 0 },
+    fairPlayRedPoints: { type: Number, default: DEFAULT_RULES.fairPlayRedPoints, min: 0 },
     registrationFeeAmount: { type: Number, default: DEFAULT_RULES.registrationFeeAmount, min: 0 },
     allowManualReview: { type: Boolean, default: DEFAULT_RULES.allowManualReview },
     walkoverGoals: { type: Number, default: DEFAULT_RULES.walkoverGoals, min: 0, max: 50 },

@@ -9,27 +9,29 @@ import type { Schema } from "mongoose";
  * with. A change made by another server instance, or straight in the database, is picked up when the entry's
  * time (`ttlMs`) runs out, so keep it short.
  */
-let dataVersion = 0;
-
-export const bumpDataVersion = (): void => {
-  dataVersion += 1;
-};
-
 interface Entry {
   version: number;
   at: number;
   value: Promise<unknown>;
 }
 
-const store = new Map<string, Entry>();
+// The state lives on `globalThis`, not in this module: Next loads the same file more than once (the models are first
+// loaded from `instrumentation.ts`, the routes load their own copy), and a copy of the version number per module would
+// mean a write bumps one counter while the routes read another, so nothing would ever be invalidated.
+const shared = ((globalThis as { __serverCache?: { version: number; store: Map<string, Entry> } }).__serverCache ??= { version: 0, store: new Map() });
+const store = shared.store;
 const MAX_ENTRIES = 500;
+
+export const bumpDataVersion = (): void => {
+  shared.version += 1;
+};
 
 /** Runs `load` unless a fresh answer for `key` exists; simultaneous callers share one run. A failure is not remembered. */
 export function cached<T>(key: string, ttlMs: number, load: () => Promise<T>, now = Date.now()): Promise<T> {
   const hit = store.get(key);
-  if (hit && hit.version === dataVersion && now - hit.at < ttlMs) return hit.value as Promise<T>;
+  if (hit && hit.version === shared.version && now - hit.at < ttlMs) return hit.value as Promise<T>;
   // Tagged with the version it started under: a write while it runs makes the answer already out of date.
-  const entry: Entry = { version: dataVersion, at: now, value: load() };
+  const entry: Entry = { version: shared.version, at: now, value: load() };
   entry.value.catch(() => {
     if (store.get(key) === entry) store.delete(key);
   });
